@@ -1,7 +1,6 @@
 import './style.css';
 import { Graphics } from './j2me/lcdui/Graphics';
 import { Image as J2MEImage } from './j2me/lcdui/Image';
-import { GradiusNeoGame } from './game/b';
 import { applyIntegerScale, calculateIntegerScale, LOGICAL_HEIGHT, LOGICAL_WIDTH } from './runtime/integer-scale';
 import { ResourceManager } from './runtime/resources';
 
@@ -66,21 +65,13 @@ async function preloadResources(): Promise<void> {
     inputLabel.textContent = `Resources: ${loaded}/${total}`;
   });
   await J2MEImage.preloadResources(resources);
-  if (new URLSearchParams(window.location.search).has('direct')) {
-    inputLabel.textContent = 'Starting direct b.java port …';
-    const { DirectGameRunner } = await import('./game/direct/DirectGameRunner');
-    const runner = new DirectGameRunner(canvas, graphics, resources, (error) => {
-      inputLabel.textContent = `Direct error: ${error instanceof Error ? error.message : String(error)}`;
-    });
-    runner.start();
-    inputLabel.textContent = `Direct port · ${resources.list().length} resources`;
-    return;
-  }
-  const game = new GradiusNeoGame(canvas, graphics, resources, (input) => {
-    inputLabel.textContent = `Input: ${input}`;
+  inputLabel.textContent = 'Starting direct b.java port …';
+  const { DirectGameRunner } = await import('./game/direct/DirectGameRunner');
+  const runner = new DirectGameRunner(canvas, graphics, resources, (error) => {
+    inputLabel.textContent = `Direct error: ${error instanceof Error ? error.message : String(error)}`;
   });
-  inputLabel.textContent = `Resources ready: ${resources.list().length} · Images: ${resources.list('png').length}`;
-  game.start();
+  runner.start();
+  inputLabel.textContent = `Direct port · ${resources.list().length} resources`;
 }
 
 window.addEventListener('resize', resize);

@@ -49,4 +49,4 @@ Die LCDUI-Mini-Schicht liegt unter `src/j2me/lcdui`. `drawRegion()` unterstützt
 
 Die nächsten Schritte stehen in `PORTING_PLAN.md`. Die benötigte Mini-J2ME-Oberfläche ist in `J2ME_API_INVENTORY.md` dokumentiert.
 
-Die wörtliche Gesamtportierung von `b.java` wird unter `src/game/direct` aufgebaut. Der bisherige spielbare Teil bleibt aktiv, bis der direkte `paint()`-/Update-Pfad vollständig übernommen wurde.
+Die wörtliche Gesamtportierung von `b.java` unter `src/game/direct` ist der aktive Standardpfad. Der frühere handgeschriebene Prototyp `src/game/b.ts` wurde entfernt.

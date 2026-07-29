@@ -74,7 +74,7 @@ source = source.replace(
       .replace(/(?<![.\w])u\[/g, 'b.u[')
       .replace(/(?<![.\w])I\b/g, 'b.I')
       .replace(/(?<![.\w])J\b/g, 'b.J')
-      .replace(/b\.u\[0\] \/ 1000/g, 'Number(b.u[0] / 1000n)');
+      .replace(/b\.u\[0\] \/ 1000(?!n)/g, 'Number(b.u[0] / 1000n)');
     for (const method of staticMethods) {
       fixed = fixed.replace(new RegExp(`(?<![.\\w])${method}\\(`, 'g'), `b.${method}(`);
     }
@@ -86,6 +86,54 @@ source = source.replace(
   /catch \(var29\) \{\nif \(var29 instanceof java\.lang\.Throwable\) \{\n\s*\} else \{/,
   'catch (var29) {\nif (var29 instanceof java.lang.Throwable) {\n            throw new Error(`b.paint state ${b.b}: ${var29.message}`, { cause: var29 });\n         } else {',
 );
+
+// Confirmed semantic names. Keep this final so the mechanical fixes above can
+// continue to match the converter's original identifiers.
+source = source
+  .replace('private static  s:', 'private static  state:')
+  .replace(/b\.s\b/g, 'b.state')
+  .replace('public static  a:', 'public static  runtimeFlags:')
+  .replace(/b\.a\[/g, 'b.runtimeFlags[')
+  .replace('private static  u:', 'private static  timestamps:')
+  .replace(/b\.u\b/g, 'b.timestamps')
+  .replace('private static  t:', 'private static  stageEventScript:')
+  .replace(/b\.t\b/g, 'b.stageEventScript')
+  .replace('public static  b:  int;', 'public static  screenState:  int;')
+  .replace(/b\.b(?!__|\w)/g, 'b.screenState')
+  .replace('private static  y:', 'private static  resourceBuffer:')
+  .replace(/b\.y\b/g, 'b.resourceBuffer')
+  .replace('private static  B:', 'private static  spriteRegions:')
+  .replace(/b\.B\b/g, 'b.spriteRegions')
+  .replace('private static  H:', 'private static  saveData:')
+  .replace(/b\.H\b/g, 'b.saveData')
+  .replace('public  m:  boolean = true;', 'public  running:  boolean = true;')
+  .replace(/this\.m\b/g, 'this.running')
+  .replace('protected  i: int = 0;', 'protected  heldInputBits: int = 0;')
+  .replace(/this\.i\b/g, 'this.heldInputBits')
+  .replace('protected  j: int = 0;', 'protected  releasedInputBits: int = 0;')
+  .replace(/this\.j\b/g, 'this.releasedInputBits')
+  .replace('private  K:  java.lang.String =', 'private  instructionsText:  java.lang.String =')
+  .replace(/this\.K\b/g, 'this.instructionsText')
+  .replace('protected  n: java.lang.String[][] =', 'protected  endingCreditsPages: java.lang.String[][] =')
+  .replace(/this\.n\b/g, 'this.endingCreditsPages')
+  .replace('protected  d: java.lang.String[][] =', 'protected  bgmTrackTitles: java.lang.String[][] =')
+  .replace(/this\.d\b/g, 'this.bgmTrackTitles')
+  .replace('protected  f: Image[] =', 'protected  spriteSheets: Image[] =')
+  .replace(/this\.f\b/g, 'this.spriteSheets')
+  .replace('private  a__int_String(var1: int, var2: java.lang.String):', 'private  loadSpriteSheet(var1: int, var2: java.lang.String):')
+  .replace(/this\.a__int_String\(/g, 'this.loadSpriteSheet(')
+  .replace(
+    'private static  a__int_int_int_int(var0: int, var1: int, var2: int, var3: int):',
+    'private static  spawnEntity(var0: int, var1: int, var2: int, var3: int):',
+  )
+  .replace(/b\.a__int_int_int_int\(/g, 'b.spawnEntity(')
+  .replace(
+    'private static  b__int_int_int_int(var0: int, var1: int, var2: int, var3: int):',
+    'private static  spawnAuxiliaryEntity(var0: int, var1: int, var2: int, var3: int):',
+  )
+  .replace(/b\.b__int_int_int_int\(/g, 'b.spawnAuxiliaryEntity(')
+  .replace(/(?<![.\w])b__int_int_int_int\(/g, 'b.spawnAuxiliaryEntity(')
+  .replace(/Number\(Number\(b\.timestamps\[0\] \/ 1000n\)n\)/g, 'Number(b.timestamps[0] / 1000n)');
 
 await writeFile(target, source);
 console.log(`Postprocessed ${target.pathname}`);

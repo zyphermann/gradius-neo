@@ -5,7 +5,7 @@ import { BrowserMidletHost } from './BrowserMidletHost';
 import { b as DirectGame } from './generated/b';
 
 interface DirectLoopAccess {
-  m: boolean;
+  running: boolean;
   repaint(): void;
   serviceRepaints(): void;
   k__void(): void;
@@ -50,7 +50,7 @@ export class DirectGameRunner {
       this.previousTime = now;
       this.accumulatedTime += elapsed;
 
-      while (this.accumulatedTime >= JAVA_FRAME_MS && loop.m) {
+      while (this.accumulatedTime >= JAVA_FRAME_MS && loop.running) {
         loop.repaint();
         loop.serviceRepaints();
         loop.k__void();
@@ -59,7 +59,7 @@ export class DirectGameRunner {
         this.accumulatedTime -= JAVA_FRAME_MS;
       }
 
-      if (loop.m) this.frameHandle = requestAnimationFrame(this.onAnimationFrame);
+      if (loop.running) this.frameHandle = requestAnimationFrame(this.onAnimationFrame);
       else this.frameHandle = null;
     } catch (error: unknown) {
       this.frameHandle = null;
