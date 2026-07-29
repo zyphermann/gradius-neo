@@ -1,0 +1,33 @@
+# macOS / editor metadata
+.DS_Store
+._*
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# JavaScript dependencies and caches
+node_modules/
+.vite/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Frontend build output
+dist/
+
+# Reproducible Java/transpiler intermediates
+browser-prototype-ts/tools/java-out/
+browser-prototype-ts/tools/generated-java-direct/
+browser-prototype/build/
+*.class
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+.cache/

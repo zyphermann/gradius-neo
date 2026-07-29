@@ -1,0 +1,13 @@
+{
+  "packageRoot": "tools/generated-java-direct",
+  "outputPath": "src/game/direct/generated",
+  "include": ["b\\.java$"],
+  "options": {
+    "prefix": "/* Generated mechanically from decompiled/src/b.java. Do not hand-edit. */\n// @ts-nocheck\n",
+    "autoAddBraces": true,
+    "addNullUnionType": false,
+    "suppressTypeWithInitializer": false,
+    "wrapStringLiterals": false,
+    "addIndexFiles": false
+  }
+}

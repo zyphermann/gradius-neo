@@ -1,0 +1,22 @@
+{
+  "name": "gradius-neo-browser-ts",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc -b && vite build",
+    "prepare:b-java": "javac -d tools/java-out tools/java/RenameBOverloads.java && java -cp tools/java-out RenameBOverloads ../decompiled/src tools/generated-java-direct ../browser-prototype/emulator/freej2me-web.jar",
+    "generate:b-direct": "npm run prepare:b-java && java2ts tools/java2ts-b.config.json && node tools/postprocess-b-direct.mjs",
+    "postprocess:b-direct": "node tools/postprocess-b-direct.mjs",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "java2typescript": "^1.1.0",
+    "typescript": "5.7.2",
+    "vite": "5.4.14",
+    "vitest": "2.1.8"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "gradius-neo-browser-prototype",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Lokaler Browser-Prototyp für Gradius Neo auf Basis von FreeJ2ME-Web",
+  "scripts": {
+    "start": "serve -u -l 4173 ."
+  },
+  "devDependencies": {
+    "serve": "14.2.4"
+  }
+}

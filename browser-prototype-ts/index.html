@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#05070b" />
+    <title>Gradius Neo – TypeScript-Port</title>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header>
+        <p class="eyebrow">Native Canvas Port · Phase 1</p>
+        <h1>GRADIUS <span>NEO</span></h1>
+      </header>
+      <section class="display-shell" aria-label="Spielbildschirm">
+        <canvas id="game" width="176" height="220" tabindex="0"></canvas>
+      </section>
+      <div class="status-line">
+        <span id="scale">1×</span>
+        <span>176 × 220 logical pixels</span>
+        <span id="input">Input: –</span>
+      </div>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

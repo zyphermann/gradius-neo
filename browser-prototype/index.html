@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gradius Neo – Browser-Prototyp</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header>
+        <p class="eyebrow">J2ME · 176 × 220</p>
+        <h1>GRADIUS <span>NEO</span></h1>
+        <p class="subtitle">Browser-Emulator-Prototyp</p>
+      </header>
+
+      <section class="console" aria-label="Spielkonsole">
+        <div class="screen-frame">
+          <iframe
+            id="emulator"
+            title="Gradius Neo Emulator"
+            src="emulator/run?app=Gradius_Neo"
+            allow="autoplay; fullscreen"
+          ></iframe>
+          <div id="boot-note" class="boot-note">Laufzeit wird geladen …</div>
+        </div>
+
+        <div class="controls" aria-label="Virtuelle Steuerung">
+          <div class="dpad">
+            <button class="up" data-code="ArrowUp" aria-label="Nach oben">▲</button>
+            <button class="left" data-code="ArrowLeft" aria-label="Nach links">◀</button>
+            <button class="right" data-code="ArrowRight" aria-label="Nach rechts">▶</button>
+            <button class="down" data-code="ArrowDown" aria-label="Nach unten">▼</button>
+          </div>
+
+          <div class="actions">
+            <button class="soft" data-code="F1">L</button>
+            <button class="fire" data-code="Enter">FIRE</button>
+            <button class="soft" data-code="F2">R</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="toolbar">
+        <button id="restart">Neu starten</button>
+        <button id="fullscreen">Vollbild</button>
+        <p id="status">Originalgeschwindigkeit startet. Der erste Start benötigt eine Internetverbindung.</p>
+      </section>
+
+      <details>
+        <summary>Tastaturbelegung</summary>
+        <p>Pfeiltasten: bewegen · Enter: Aktion/Feuer · F1/Q: linke Funktionstaste · F2/W: rechte Funktionstaste · Esc: Emulatoroptionen</p>
+      </details>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
