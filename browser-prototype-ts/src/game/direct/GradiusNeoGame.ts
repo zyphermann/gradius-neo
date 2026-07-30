@@ -306,12 +306,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     for (let layer: int = 4; layer < 18; layer++) {
       for (const command of GradiusNeoGame.renderQueue.commands(layer)) {
         const motionOffset =
-          command.sourceEntityId === null
-            ? undefined
-            : this.entityMotion.offset(command.sourceEntityId, command.sourceGeneration, 1);
-        const motionFactor = command.sourcePosition === 'current' ? interpolationAlpha - 1 : interpolationAlpha;
-        const commandX = command.x + (motionOffset?.x ?? 0) * motionFactor;
-        const commandY = command.y + (motionOffset?.y ?? 0) * motionFactor;
+          command.sourceEntityId !== null && command.sourceEntityId <= -100
+            ? this.entityMotion.offset(command.sourceEntityId, command.sourceGeneration, 1)
+            : GradiusNeoGame.renderQueue.interpolationOffset(command, interpolationAlpha);
+        const projectileMotionFactor =
+          command.sourceEntityId !== null && command.sourceEntityId <= -100 ? interpolationAlpha - 1 : 1;
+        const commandX = command.x + (motionOffset?.x ?? 0) * projectileMotionFactor;
+        const commandY = command.y + (motionOffset?.y ?? 0) * projectileMotionFactor;
         switch (command.type) {
           case 0: {
             if (command.spriteRegion <= 147) {

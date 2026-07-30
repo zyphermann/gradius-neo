@@ -13,4 +13,13 @@ describe('TransientEffectSystem', () => {
 
     expect(removeEntity).toHaveBeenCalledWith(42);
   });
+
+  it('uses Java-style integer division for explosion animation frames', () => {
+    const enqueue = vi.fn();
+    const effects = new TransientEffectSystem({ enqueue } as unknown as RenderQueue, vi.fn());
+
+    effects.update(7, EntityType.ThreeFrameSmallExplosion, 20, 30, 1);
+
+    expect(enqueue).toHaveBeenCalledWith(0, 12, 22, 16, 135, 131590);
+  });
 });

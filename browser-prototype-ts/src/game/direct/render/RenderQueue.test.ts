@@ -25,4 +25,13 @@ describe('RenderQueue', () => {
     queue.beginFrame();
     expect([...queue.commands(4)]).toEqual([]);
   });
+
+  it('applies Java int conversion to calculated sprite indices', () => {
+    const state = new GameState(new Int32Array(9790));
+    const queue = new RenderQueue(new EntityPool(state));
+
+    queue.enqueue(1, 10.75, 20.5, 13, 180 + 15 / 4, 0);
+
+    expect([...queue.commands(13)][0]).toMatchObject({ x: 10, y: 20, spriteRegion: 183 });
+  });
 });
