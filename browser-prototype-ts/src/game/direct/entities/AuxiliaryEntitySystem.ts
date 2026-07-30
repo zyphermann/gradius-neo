@@ -48,6 +48,7 @@ export class AuxiliaryEntitySystem {
       this.entityDirectionSign = -1;
       let directionSideIndex: int = (this.entityDirectionSign + 1) / 2;
       this.changedEntityCount = 0;
+      this.renderQueue.beginEntity(entityId);
       switch (this.state[EntityField.Type + entityId]) {
         case 33:
         case 34:

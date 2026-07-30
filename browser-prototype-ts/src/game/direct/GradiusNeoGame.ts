@@ -16,6 +16,7 @@ import { EntityPool } from './entities/EntityPool';
 import { EntityType } from './entities/EntityType';
 import { TransientEffectSystem } from './entities/TransientEffectSystem';
 import { AuxiliaryEntitySystem } from './entities/AuxiliaryEntitySystem';
+import { EntityMotionSnapshots } from './entities/EntityMotionSnapshots';
 import { RenderQueue } from './render/RenderQueue';
 import { AudioSystem } from './audio/AudioSystem';
 import { initializeDefaultSaveData, readInt32, SAVE_DATA_LENGTH, SaveOffset, writeInt32 } from './save/SaveData';
@@ -115,11 +116,16 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
   private static extraModeBestScores = new Int32Array(5);
   private static readonly sharedState = new GameState(GradiusNeoGame.state);
   private static readonly entityPool = new EntityPool(GradiusNeoGame.sharedState);
-  private static readonly renderQueue = new RenderQueue(GradiusNeoGame.sharedState, GradiusNeoGame.entityPool);
+  private static readonly renderQueue = new RenderQueue(GradiusNeoGame.entityPool);
   private static readonly transientEffects = new TransientEffectSystem(GradiusNeoGame.renderQueue, (entityId) =>
     GradiusNeoGame.removePrimaryEntity(entityId),
   );
   private readonly gameState = new GameState(GradiusNeoGame.state);
+  private readonly entityMotion = new EntityMotionSnapshots(GradiusNeoGame.sharedState, GradiusNeoGame.entityPool);
+  private gameplayBackgroundFrame: ImageData | null = null;
+  private gameplayPreBackdropFrame: ImageData | null = null;
+  private backdropLogicFrame = 0;
+  private backdropScrollX = 0;
   private readonly auxiliaryEntities = new AuxiliaryEntitySystem(
     GradiusNeoGame.state,
     GradiusNeoGame.entityPool,
@@ -169,6 +175,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
   private leftSoftKeyLabel: java.lang.String = ' ';
   private rightSoftKeyLabel: java.lang.String = ' ';
   private static saveData: Int8Array = new Int8Array(SAVE_DATA_LENGTH);
+  private static smoothRenderingEnabled = true;
   protected heldInputBits: int = 0;
   protected releasedInputBits: int = 0;
   private static entityDirectionSign: int;
@@ -295,75 +302,65 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     );
   }
 
-  private renderForegroundQueue(gfx: Graphics): void {
+  private renderForegroundQueue(gfx: Graphics, interpolationAlpha = 0): void {
     for (let layer: int = 4; layer < 18; layer++) {
-      let renderCommandId: int = GradiusNeoGame.state[EntityField.RenderLayerHead + layer];
-
-      while (renderCommandId !== -1) {
-        let nextRenderCommandId: int = GradiusNeoGame.state[EntityField.Next + renderCommandId];
-        switch (GradiusNeoGame.state[EntityField.Type + renderCommandId]) {
+      for (const command of GradiusNeoGame.renderQueue.commands(layer)) {
+        const motionOffset =
+          command.sourceEntityId === null
+            ? undefined
+            : this.entityMotion.offset(command.sourceEntityId, command.sourceGeneration, 1);
+        const motionFactor = command.sourcePosition === 'current' ? interpolationAlpha - 1 : interpolationAlpha;
+        const commandX = command.x + (motionOffset?.x ?? 0) * motionFactor;
+        const commandY = command.y + (motionOffset?.y ?? 0) * motionFactor;
+        switch (command.type) {
           case 0: {
-            if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 147) {
+            if (command.spriteRegion <= 147) {
               this.drawSpriteRegion(
                 gfx,
                 0,
-                GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
-                toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
-                toRenderPixels(
-                  GradiusNeoGame.state[EntityField.Y + renderCommandId] - GradiusNeoGame.state[StateSlot.CameraOffsetY],
-                ),
+                command.spriteRegion,
+                toRenderPixels(commandX),
+                toRenderPixels(commandY - GradiusNeoGame.state[StateSlot.CameraOffsetY]),
                 20,
               );
             } else {
-              if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 282) {
+              if (command.spriteRegion <= 282) {
                 this.drawSpriteRegion(
                   gfx,
                   1,
-                  GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
-                  toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
-                  toRenderPixels(
-                    GradiusNeoGame.state[EntityField.Y + renderCommandId] -
-                      GradiusNeoGame.state[StateSlot.CameraOffsetY],
-                  ),
+                  command.spriteRegion,
+                  toRenderPixels(commandX),
+                  toRenderPixels(commandY - GradiusNeoGame.state[StateSlot.CameraOffsetY]),
                   20,
                 );
               } else {
-                if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 292) {
+                if (command.spriteRegion <= 292) {
                   this.drawSpriteRegion(
                     gfx,
                     3,
-                    GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
-                    toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
-                    toRenderPixels(
-                      GradiusNeoGame.state[EntityField.Y + renderCommandId] -
-                        GradiusNeoGame.state[StateSlot.CameraOffsetY],
-                    ),
+                    command.spriteRegion,
+                    toRenderPixels(commandX),
+                    toRenderPixels(commandY - GradiusNeoGame.state[StateSlot.CameraOffsetY]),
                     20,
                   );
                 } else {
-                  if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 348) {
+                  if (command.spriteRegion <= 348) {
                     this.drawSpriteRegion(
                       gfx,
                       4,
-                      GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
-                      toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
-                      toRenderPixels(
-                        GradiusNeoGame.state[EntityField.Y + renderCommandId] -
-                          GradiusNeoGame.state[StateSlot.CameraOffsetY],
-                      ),
+                      command.spriteRegion,
+                      toRenderPixels(commandX),
+                      toRenderPixels(commandY - GradiusNeoGame.state[StateSlot.CameraOffsetY]),
                       20,
                     );
                   } else {
-                    if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 408) {
+                    if (command.spriteRegion <= 408) {
                       this.drawSpriteRegion(
                         gfx,
                         2,
-                        GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
-                        toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
-                        toRenderPixels(
-                          GradiusNeoGame.state[EntityField.Y + renderCommandId] -
-                            GradiusNeoGame.state[StateSlot.CameraOffsetY],
-                        ),
+                        command.spriteRegion,
+                        toRenderPixels(commandX),
+                        toRenderPixels(commandY - GradiusNeoGame.state[StateSlot.CameraOffsetY]),
                         20,
                       );
                     }
@@ -376,67 +373,53 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           }
 
           case 1: {
-            if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 147) {
+            if (command.spriteRegion <= 147) {
               this.drawSpriteRegion(
                 gfx,
                 0,
-                GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
-                toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
-                toRenderPixels(
-                  GradiusNeoGame.state[EntityField.Y + renderCommandId] - GradiusNeoGame.state[StateSlot.CameraOffsetY],
-                ),
+                command.spriteRegion,
+                toRenderPixels(commandX),
+                toRenderPixels(commandY - GradiusNeoGame.state[StateSlot.CameraOffsetY]),
                 20,
               );
             } else {
-              if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 282) {
+              if (command.spriteRegion <= 282) {
                 this.drawSpriteRegion(
                   gfx,
                   1,
-                  GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
-                  toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
-                  toRenderPixels(
-                    GradiusNeoGame.state[EntityField.Y + renderCommandId] -
-                      GradiusNeoGame.state[StateSlot.CameraOffsetY],
-                  ),
+                  command.spriteRegion,
+                  toRenderPixels(commandX),
+                  toRenderPixels(commandY - GradiusNeoGame.state[StateSlot.CameraOffsetY]),
                   20,
                 );
               } else {
-                if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 292) {
+                if (command.spriteRegion <= 292) {
                   this.drawSpriteRegion(
                     gfx,
                     3,
-                    GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
-                    toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
-                    toRenderPixels(
-                      GradiusNeoGame.state[EntityField.Y + renderCommandId] -
-                        GradiusNeoGame.state[StateSlot.CameraOffsetY],
-                    ),
+                    command.spriteRegion,
+                    toRenderPixels(commandX),
+                    toRenderPixels(commandY - GradiusNeoGame.state[StateSlot.CameraOffsetY]),
                     20,
                   );
                 } else {
-                  if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 348) {
+                  if (command.spriteRegion <= 348) {
                     this.drawSpriteRegion(
                       gfx,
                       4,
-                      GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
-                      toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
-                      toRenderPixels(
-                        GradiusNeoGame.state[EntityField.Y + renderCommandId] -
-                          GradiusNeoGame.state[StateSlot.CameraOffsetY],
-                      ),
+                      command.spriteRegion,
+                      toRenderPixels(commandX),
+                      toRenderPixels(commandY - GradiusNeoGame.state[StateSlot.CameraOffsetY]),
                       20,
                     );
                   } else {
-                    if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 408) {
+                    if (command.spriteRegion <= 408) {
                       this.drawSpriteRegion(
                         gfx,
                         2,
-                        GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
-                        toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
-                        toRenderPixels(
-                          GradiusNeoGame.state[EntityField.Y + renderCommandId] -
-                            GradiusNeoGame.state[StateSlot.CameraOffsetY],
-                        ),
+                        command.spriteRegion,
+                        toRenderPixels(commandX),
+                        toRenderPixels(commandY - GradiusNeoGame.state[StateSlot.CameraOffsetY]),
                         20,
                       );
                     }
@@ -449,67 +432,53 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           }
 
           case 2: {
-            if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 147) {
+            if (command.spriteRegion <= 147) {
               this.drawSpriteRegion(
                 gfx,
                 0,
-                GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
-                toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
-                toRenderPixels(
-                  GradiusNeoGame.state[EntityField.Y + renderCommandId] - GradiusNeoGame.state[StateSlot.CameraOffsetY],
-                ),
+                command.spriteRegion,
+                toRenderPixels(commandX),
+                toRenderPixels(commandY - GradiusNeoGame.state[StateSlot.CameraOffsetY]),
                 20,
               );
             } else {
-              if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 282) {
+              if (command.spriteRegion <= 282) {
                 this.drawSpriteRegion(
                   gfx,
                   1,
-                  GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
-                  toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
-                  toRenderPixels(
-                    GradiusNeoGame.state[EntityField.Y + renderCommandId] -
-                      GradiusNeoGame.state[StateSlot.CameraOffsetY],
-                  ),
+                  command.spriteRegion,
+                  toRenderPixels(commandX),
+                  toRenderPixels(commandY - GradiusNeoGame.state[StateSlot.CameraOffsetY]),
                   20,
                 );
               } else {
-                if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 292) {
+                if (command.spriteRegion <= 292) {
                   this.drawSpriteRegion(
                     gfx,
                     3,
-                    GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
-                    toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
-                    toRenderPixels(
-                      GradiusNeoGame.state[EntityField.Y + renderCommandId] -
-                        GradiusNeoGame.state[StateSlot.CameraOffsetY],
-                    ),
+                    command.spriteRegion,
+                    toRenderPixels(commandX),
+                    toRenderPixels(commandY - GradiusNeoGame.state[StateSlot.CameraOffsetY]),
                     20,
                   );
                 } else {
-                  if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 348) {
+                  if (command.spriteRegion <= 348) {
                     this.drawSpriteRegion(
                       gfx,
                       4,
-                      GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
-                      toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
-                      toRenderPixels(
-                        GradiusNeoGame.state[EntityField.Y + renderCommandId] -
-                          GradiusNeoGame.state[StateSlot.CameraOffsetY],
-                      ),
+                      command.spriteRegion,
+                      toRenderPixels(commandX),
+                      toRenderPixels(commandY - GradiusNeoGame.state[StateSlot.CameraOffsetY]),
                       20,
                     );
                   } else {
-                    if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 408) {
+                    if (command.spriteRegion <= 408) {
                       this.drawSpriteRegion(
                         gfx,
                         2,
-                        GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
-                        toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
-                        toRenderPixels(
-                          GradiusNeoGame.state[EntityField.Y + renderCommandId] -
-                            GradiusNeoGame.state[StateSlot.CameraOffsetY],
-                        ),
+                        command.spriteRegion,
+                        toRenderPixels(commandX),
+                        toRenderPixels(commandY - GradiusNeoGame.state[StateSlot.CameraOffsetY]),
                         20,
                       );
                     }
@@ -529,58 +498,32 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 gfx,
                 0,
                 var2,
-                toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId] + 6 + var11 * 1 - 16),
-                toRenderPixels(
-                  GradiusNeoGame.state[EntityField.Y + renderCommandId] +
-                    -8 +
-                    var11 * 1 -
-                    1 -
-                    GradiusNeoGame.state[StateSlot.CameraOffsetY],
-                ),
+                toRenderPixels(commandX + 6 + var11 * 1 - 16),
+                toRenderPixels(commandY + -8 + var11 * 1 - 1 - GradiusNeoGame.state[StateSlot.CameraOffsetY]),
                 20,
               );
               this.drawSpriteRegion(
                 gfx,
                 0,
                 var2 + 1,
-                toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId] + 6 - var11 * 1 + 8),
-                toRenderPixels(
-                  GradiusNeoGame.state[EntityField.Y + renderCommandId] +
-                    -8 +
-                    var11 * 1 -
-                    1 -
-                    GradiusNeoGame.state[StateSlot.CameraOffsetY],
-                ),
+                toRenderPixels(commandX + 6 - var11 * 1 + 8),
+                toRenderPixels(commandY + -8 + var11 * 1 - 1 - GradiusNeoGame.state[StateSlot.CameraOffsetY]),
                 20,
               );
               this.drawSpriteRegion(
                 gfx,
                 0,
                 var2 + 2,
-                toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId] + 6 + var11 * 1 - 16),
-                toRenderPixels(
-                  GradiusNeoGame.state[EntityField.Y + renderCommandId] +
-                    -8 -
-                    var11 * 1 +
-                    16 -
-                    1 -
-                    GradiusNeoGame.state[StateSlot.CameraOffsetY],
-                ),
+                toRenderPixels(commandX + 6 + var11 * 1 - 16),
+                toRenderPixels(commandY + -8 - var11 * 1 + 16 - 1 - GradiusNeoGame.state[StateSlot.CameraOffsetY]),
                 20,
               );
               this.drawSpriteRegion(
                 gfx,
                 0,
                 var2 + 1 + 2,
-                toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId] + 6 - var11 * 1 + 8),
-                toRenderPixels(
-                  GradiusNeoGame.state[EntityField.Y + renderCommandId] +
-                    -8 -
-                    var11 * 1 +
-                    16 -
-                    1 -
-                    GradiusNeoGame.state[StateSlot.CameraOffsetY],
-                ),
+                toRenderPixels(commandX + 6 - var11 * 1 + 8),
+                toRenderPixels(commandY + -8 - var11 * 1 + 16 - 1 - GradiusNeoGame.state[StateSlot.CameraOffsetY]),
                 20,
               );
             }
@@ -614,12 +557,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               gfx,
               0,
               var7,
-              toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
-              toRenderPixels(
-                GradiusNeoGame.state[EntityField.Y + renderCommandId] -
-                  2 -
-                  GradiusNeoGame.state[StateSlot.CameraOffsetY],
-              ),
+              toRenderPixels(commandX),
+              toRenderPixels(commandY - 2 - GradiusNeoGame.state[StateSlot.CameraOffsetY]),
               20,
             );
             var7 = 44;
@@ -631,20 +570,16 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               gfx,
               0,
               var7,
-              toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId] - 8),
-              toRenderPixels(
-                GradiusNeoGame.state[EntityField.Y + renderCommandId] -
-                  2 -
-                  GradiusNeoGame.state[StateSlot.CameraOffsetY],
-              ),
+              toRenderPixels(commandX - 8),
+              toRenderPixels(commandY - 2 - GradiusNeoGame.state[StateSlot.CameraOffsetY]),
               20,
             );
             break;
           }
 
           case 4: {
-            if (GradiusNeoGame.state[EntityField.Y + renderCommandId] >= 0) {
-              if (GradiusNeoGame.state[EntityField.Y + renderCommandId] <= 2) {
+            if (command.y >= 0) {
+              if (command.y <= 2) {
                 for (let var10: int = 0; var10 < 9; var10++) {
                   this.drawSpriteRegion(
                     gfx,
@@ -653,12 +588,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     toRenderPixels(
                       GradiusNeoGame.state[StateSlot.PlayerX] +
                         8 * (5 + (var10 % 3) * 2) +
-                        (1 - (var10 % 3)) * 4 * (2 - GradiusNeoGame.state[EntityField.Y + renderCommandId]),
+                        (1 - (var10 % 3)) * 4 * (2 - command.y),
                     ),
                     toRenderPixels(
                       GradiusNeoGame.state[StateSlot.PlayerY] +
                         16 * (var10 / 3 - 1) +
-                        (1 - var10 / 3) * 4 * (2 - GradiusNeoGame.state[EntityField.Y + renderCommandId]) -
+                        (1 - var10 / 3) * 4 * (2 - command.y) -
                         GradiusNeoGame.state[StateSlot.CameraOffsetY],
                     ),
                     20,
@@ -706,7 +641,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     toRenderPixels(
                       GradiusNeoGame.state[StateSlot.PlayerY] +
                         -16 +
-                        4 * (5 - GradiusNeoGame.state[EntityField.Y + renderCommandId]) -
+                        4 * (5 - command.y) -
                         GradiusNeoGame.state[StateSlot.CameraOffsetY],
                     ),
                     20,
@@ -719,7 +654,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     toRenderPixels(
                       GradiusNeoGame.state[StateSlot.PlayerY] +
                         16 -
-                        4 * (5 - GradiusNeoGame.state[EntityField.Y + renderCommandId]) -
+                        4 * (5 - command.y) -
                         GradiusNeoGame.state[StateSlot.CameraOffsetY],
                     ),
                     20,
@@ -731,63 +666,42 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
           default:
         }
-
-        GradiusNeoGame.state[EntityField.Next + renderCommandId] = GradiusNeoGame.state[StateSlot.FreeEntityHead];
-        GradiusNeoGame.state[StateSlot.FreeEntityHead] = renderCommandId;
-        renderCommandId = nextRenderCommandId;
       }
-
-      GradiusNeoGame.state[EntityField.RenderLayerHead + layer] = -1;
     }
   }
 
   private renderBackgroundQueue(gfx: Graphics): void {
     for (let layer: int = 0; layer < 3; layer++) {
-      let renderCommandId: int = GradiusNeoGame.state[EntityField.RenderLayerHead + layer];
-
-      while (renderCommandId !== -1) {
-        let nextRenderCommandId: int = GradiusNeoGame.state[EntityField.Next + renderCommandId];
-        switch (GradiusNeoGame.state[EntityField.Type + renderCommandId]) {
+      for (const command of GradiusNeoGame.renderQueue.commands(layer)) {
+        switch (command.type) {
           case 0: {
             gfx.setColor(191, 223, 255);
             gfx.drawLine(
-              toRenderPixels(GradiusNeoGame.state[1205 + GradiusNeoGame.state[EntityField.X + renderCommandId]]),
-              toRenderPixels(
-                GradiusNeoGame.state[EntityField.Y + renderCommandId] +
-                  6 -
-                  GradiusNeoGame.state[StateSlot.CameraOffsetY],
-              ),
-              toRenderPixels(GradiusNeoGame.state[1185 + GradiusNeoGame.state[EntityField.X + renderCommandId]]),
-              toRenderPixels(
-                GradiusNeoGame.state[EntityField.Y + renderCommandId] +
-                  6 -
-                  GradiusNeoGame.state[StateSlot.CameraOffsetY],
-              ),
+              toRenderPixels(GradiusNeoGame.state[1205 + command.x]),
+              toRenderPixels(command.y + 6 - GradiusNeoGame.state[StateSlot.CameraOffsetY]),
+              toRenderPixels(GradiusNeoGame.state[1185 + command.x]),
+              toRenderPixels(command.y + 6 - GradiusNeoGame.state[StateSlot.CameraOffsetY]),
             );
             break;
           }
 
           case 1: {
-            for (
-              let var10: int = 0;
-              var10 < 4 - GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId];
-              var10++
-            ) {
+            for (let var10: int = 0; var10 < 4 - command.spriteRegion; var10++) {
               for (let var9: int = 0; var9 < 6; var9++) {
                 this.drawSpriteRegion(
                   gfx,
                   4,
                   328 - var10,
-                  toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId] + 48 - var10 * 16),
-                  toRenderPixels(GradiusNeoGame.state[EntityField.Y + renderCommandId] + var9 * 48),
+                  toRenderPixels(command.x + 48 - var10 * 16),
+                  toRenderPixels(command.y + var9 * 48),
                   20,
                 );
                 this.drawSpriteRegion(
                   gfx,
                   4,
                   329 + var10,
-                  toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId] + 176 + var10 * 16),
-                  toRenderPixels(GradiusNeoGame.state[EntityField.Y + renderCommandId] + var9 * 48),
+                  toRenderPixels(command.x + 176 + var10 * 16),
+                  toRenderPixels(command.y + var9 * 48),
                   20,
                 );
               }
@@ -797,20 +711,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
           case 2: {
             for (let var8: int = 0; var8 < 6; var8++) {
-              this.drawSpriteRegion(
-                gfx,
-                4,
-                299,
-                toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
-                toRenderPixels(-GradiusNeoGame.state[EntityField.Y + renderCommandId] + var8 * 48),
-                20,
-              );
+              this.drawSpriteRegion(gfx, 4, 299, toRenderPixels(command.x), toRenderPixels(-command.y + var8 * 48), 20);
               this.drawSpriteRegion(
                 gfx,
                 4,
                 300,
-                toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId] + 176),
-                toRenderPixels(-GradiusNeoGame.state[EntityField.Y + renderCommandId] + var8 * 48),
+                toRenderPixels(command.x + 176),
+                toRenderPixels(-command.y + var8 * 48),
                 20,
               );
             }
@@ -818,22 +725,22 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           }
 
           case 3: {
-            for (let var3: int = 0; var3 < 4 - GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId]; var3++) {
+            for (let var3: int = 0; var3 < 4 - command.spriteRegion; var3++) {
               for (let var7: int = 0; var7 < 6; var7++) {
                 this.drawSpriteRegion(
                   gfx,
                   4,
                   308 - var3,
-                  toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId] + var7 * 48),
-                  toRenderPixels(GradiusNeoGame.state[EntityField.Y + renderCommandId] + 48 - var3 * 16),
+                  toRenderPixels(command.x + var7 * 48),
+                  toRenderPixels(command.y + 48 - var3 * 16),
                   20,
                 );
                 this.drawSpriteRegion(
                   gfx,
                   4,
                   313 + var3,
-                  toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId] + var7 * 48),
-                  toRenderPixels(GradiusNeoGame.state[EntityField.Y + renderCommandId] + 160 + var3 * 16),
+                  toRenderPixels(command.x + var7 * 48),
+                  toRenderPixels(command.y + 160 + var3 * 16),
                   20,
                 );
               }
@@ -843,19 +750,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
           case 4: {
             for (let var2: int = 0; var2 < 6; var2++) {
-              this.drawSpriteRegion(
-                gfx,
-                4,
-                295,
-                toRenderPixels(-GradiusNeoGame.state[EntityField.X + renderCommandId] + var2 * 48),
-                0,
-                20,
-              );
+              this.drawSpriteRegion(gfx, 4, 295, toRenderPixels(-command.x + var2 * 48), 0, 20);
               this.drawSpriteRegion(
                 gfx,
                 4,
                 296,
-                toRenderPixels(-GradiusNeoGame.state[EntityField.X + renderCommandId] + var2 * 48),
+                toRenderPixels(-command.x + var2 * 48),
                 fromLegacyRenderPixels(120),
                 20,
               );
@@ -865,24 +765,50 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
           case 5: {
             gfx.setColor(16777215);
-            gfx.fillRect(
-              toRenderPixels(120 - GradiusNeoGame.state[EntityField.X + renderCommandId]),
-              0,
-              toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId] * 2),
-              RENDERED_GAMEPLAY_HEIGHT,
-            );
+            gfx.fillRect(toRenderPixels(120 - command.x), 0, toRenderPixels(command.x * 2), RENDERED_GAMEPLAY_HEIGHT);
           }
 
           default:
         }
-
-        GradiusNeoGame.state[EntityField.Next + renderCommandId] = GradiusNeoGame.state[StateSlot.FreeEntityHead];
-        GradiusNeoGame.state[StateSlot.FreeEntityHead] = renderCommandId;
-        renderCommandId = nextRenderCommandId;
       }
-
-      GradiusNeoGame.state[EntityField.RenderLayerHead + layer] = -1;
     }
+  }
+
+  private renderInterpolatedStarBackdrop(gfx: Graphics, alpha: number): boolean {
+    const backdropMode = GradiusNeoGame.state[41];
+    if (backdropMode < 1 || backdropMode > 3) return false;
+
+    const visualLogicFrame = this.backdropLogicFrame + alpha;
+    if (backdropMode === 1 && GradiusNeoGame.state[22] === 0) {
+      if (GradiusNeoGame.state[StateSlot.CurrentStage] === 0) {
+        this.drawSpriteRegion(gfx, 3, 283, toRenderPixels(128 - this.backdropScrollX / 16 - 16), 24, 20);
+      } else if (GradiusNeoGame.state[StateSlot.CurrentStage] === 2) {
+        this.drawSpriteRegion(gfx, 3, 292, toRenderPixels(128 - this.backdropScrollX / 48 - 16), 36, 20);
+      }
+    }
+
+    for (let starIndex = 0; starIndex < 20; starIndex++) {
+      const speed = backdropMode === 1 ? (starIndex / 2 + 1) * GradiusNeoGame.state[45] : starIndex / 2 + 1;
+      const x = (GradiusNeoGame.state[1055 + starIndex] - visualLogicFrame * speed) & 0xff;
+      const y =
+        backdropMode === 1
+          ? GradiusNeoGame.state[1075 + starIndex] & 0xff
+          : (GradiusNeoGame.state[1075 + starIndex] - GradiusNeoGame.state[StateSlot.CameraOffsetY]) & 0xff;
+      gfx.setColor(GradiusNeoGame.state[307 + starIndex]);
+      gfx.drawLine(toRenderPixels(x), toRenderPixels(y), toRenderPixels(x), toRenderPixels(y));
+
+      if (backdropMode === 1) {
+        const secondX = (x + 160) & 0xff;
+        const secondY = (GradiusNeoGame.state[1075 + starIndex] + 80) & 0xff;
+        gfx.drawLine(
+          toRenderPixels(secondX),
+          toRenderPixels(secondY),
+          toRenderPixels(secondX),
+          toRenderPixels(secondY),
+        );
+      }
+    }
+    return true;
   }
 
   public run(): void {
@@ -923,6 +849,47 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         throw var3;
       }
     }
+  }
+
+  public captureEntityMotionBeforeTick(): void {
+    this.entityMotion.captureBeforeTick();
+  }
+
+  public captureEntityMotionAfterTick(): void {
+    this.entityMotion.captureAfterTick();
+  }
+
+  public renderInterpolatedFrame(gfx: Graphics, _alpha: number): void {
+    if (
+      !GradiusNeoGame.smoothRenderingEnabled ||
+      GradiusNeoGame.screenState !== ScreenState.Gameplay ||
+      GradiusNeoGame.runtimeFlags[4] ||
+      this.gameplayBackgroundFrame === null
+    ) {
+      return;
+    }
+
+    gfx.resetFrame(this.getWidth(), this.getHeight());
+    gfx.setFont(GradiusNeoGame.bitmapFont);
+    gfx.translate(GradiusNeoGame.state[StateSlot.ViewportOffsetX], GradiusNeoGame.state[StateSlot.ViewportOffsetY]);
+    if (this.gameplayPreBackdropFrame !== null && GradiusNeoGame.state[41] >= 1 && GradiusNeoGame.state[41] <= 3) {
+      gfx.restoreFrame(this.gameplayPreBackdropFrame!);
+      this.renderInterpolatedStarBackdrop(gfx, _alpha);
+      this.renderBackgroundQueue(gfx);
+      if (GradiusNeoGame.state[41] === 3) {
+        const currentScroll = GradiusNeoGame.state[StateSlot.VisualStageScrollX];
+        GradiusNeoGame.state[StateSlot.VisualStageScrollX] = Math.trunc(
+          this.backdropScrollX + GradiusNeoGame.state[StateSlot.StageScrollSpeed] * _alpha,
+        );
+        this.renderStageTerrain(gfx);
+        GradiusNeoGame.state[StateSlot.VisualStageScrollX] = currentScroll;
+      }
+    } else {
+      gfx.restoreFrame(this.gameplayBackgroundFrame);
+    }
+    this.renderForegroundQueue(gfx, _alpha);
+    this.renderGameplayHud(gfx);
+    this.renderSoftKeyBar(gfx);
   }
 
   private renderSoftKeyBar(gfx: Graphics): void {
@@ -1279,6 +1246,21 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     return GradiusNeoGame.renderQueue.enqueue(renderType, x, y, layer, spriteRegion, packedColor);
   }
 
+  private static enqueueProjectileRenderCommand(
+    projectileIndex: int,
+    renderType: int,
+    x: int,
+    y: int,
+    layer: int,
+    spriteRegion: int,
+    packedColor: int,
+  ): int {
+    GradiusNeoGame.renderQueue.beginMotionSource(-100 - projectileIndex, 0, 'current');
+    const commandId = GradiusNeoGame.enqueueRenderCommand(renderType, x, y, layer, spriteRegion, packedColor);
+    GradiusNeoGame.renderQueue.endEntity();
+    return commandId;
+  }
+
   private static sampleTerrainCollision(worldX: int, worldY: int): int {
     worldX += 8;
     worldY += 8;
@@ -1597,7 +1579,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           GradiusNeoGame.saveData[0] = GradiusNeoGame.state[StateSlot.Difficulty] as byte;
           GradiusNeoGame.saveData[0] = (GradiusNeoGame.saveData[0] | ((GradiusNeoGame.soundMode << 4) as byte)) as byte;
           GradiusNeoGame.saveData[1] = GradiusNeoGame.state[StateSlot.AutoFireSetting] as byte;
-          GradiusNeoGame.saveData[2] = GradiusNeoGame.state[22] as byte;
+          GradiusNeoGame.saveData[2] = (GradiusNeoGame.state[22] |
+            (GradiusNeoGame.smoothRenderingEnabled ? 0 : 2)) as byte;
           GradiusNeoGame.saveData[3] = GradiusNeoGame.state[StateSlot.HighestUnlockedStage] as byte;
           GradiusNeoGame.saveData[4] = GradiusNeoGame.state[33] as byte;
           GradiusNeoGame.saveData[5] = GradiusNeoGame.state[100] as byte;
@@ -1679,7 +1662,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         GradiusNeoGame.state[StateSlot.Difficulty] = GradiusNeoGame.saveData[0] & 15;
         GradiusNeoGame.soundMode = (GradiusNeoGame.saveData[0] & 240) >> 4;
         GradiusNeoGame.state[StateSlot.AutoFireSetting] = GradiusNeoGame.saveData[1];
-        GradiusNeoGame.state[22] = GradiusNeoGame.saveData[2];
+        GradiusNeoGame.state[22] = GradiusNeoGame.saveData[2] & 1;
+        GradiusNeoGame.smoothRenderingEnabled = (GradiusNeoGame.saveData[2] & 2) === 0;
         GradiusNeoGame.state[StateSlot.HighestUnlockedStage] = GradiusNeoGame.saveData[3];
         GradiusNeoGame.state[33] = GradiusNeoGame.saveData[4];
         GradiusNeoGame.state[100] = GradiusNeoGame.saveData[5];
@@ -2054,6 +2038,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         }
       }
 
+      GradiusNeoGame.renderQueue.beginEntity(entityId);
       switch (GradiusNeoGame.state[EntityField.Type + entityId]) {
         case EntityType.DelayedBackgroundMusic: {
           age = this.updateDelayedBackgroundMusicEntity(entityId, age);
@@ -5793,6 +5778,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             var6 = 104 + (GradiusNeoGame.state[StateSlot.LogicFrame] & 3) - 1 + GradiusNeoGame.state[84] * 3;
           }
 
+          GradiusNeoGame.renderQueue.beginMotionSource(-1 - var30, 0, 'current');
           GradiusNeoGame.enqueueRenderCommand(
             1,
             GradiusNeoGame.state[1160 + var30] + 8,
@@ -5801,8 +5787,10 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             var6,
             0,
           );
+          GradiusNeoGame.renderQueue.endEntity();
         }
 
+        GradiusNeoGame.renderQueue.beginMotionSource(-1, 0, 'current');
         GradiusNeoGame.enqueueRenderCommand(
           3,
           GradiusNeoGame.state[StateSlot.PlayerX],
@@ -5811,6 +5799,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           0,
           0,
         );
+        GradiusNeoGame.renderQueue.endEntity();
         GradiusNeoGame.state[StateSlot.PlayerDamagePhase]++;
         return;
       }
@@ -6083,6 +6072,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           }
         }
 
+        GradiusNeoGame.renderQueue.beginMotionSource(-1, 0, 'current');
         GradiusNeoGame.enqueueRenderCommand(
           var1,
           GradiusNeoGame.state[StateSlot.PlayerX],
@@ -6091,6 +6081,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           0,
           0,
         );
+        GradiusNeoGame.renderQueue.endEntity();
         if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 1046784) !== 0) {
           let var14: int = 1;
 
@@ -6488,6 +6479,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             var1 = 104 + (GradiusNeoGame.state[StateSlot.LogicFrame] & 3) - 1 + GradiusNeoGame.state[84] * 3;
           }
 
+          GradiusNeoGame.renderQueue.beginMotionSource(-1 - var25, 0, 'current');
           GradiusNeoGame.enqueueRenderCommand(
             1,
             GradiusNeoGame.state[1160 + var25] + 8,
@@ -6496,6 +6488,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             var1,
             0,
           );
+          GradiusNeoGame.renderQueue.endEntity();
         }
 
         let var26: int =
@@ -6659,6 +6652,190 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         }
       }
     }
+  }
+
+  private renderStageTerrain(gfx: Graphics): void {
+    for (let screenTileRow: int = 0; screenTileRow < 15; screenTileRow++) {
+      const terrainRow = Math.trunc(GradiusNeoGame.state[StateSlot.CameraOffsetY] / 16) + screenTileRow;
+      let stageRowOffset: int = 66 * terrainRow;
+
+      for (let screenTileColumn: int = 0; screenTileColumn < 16; screenTileColumn++) {
+        let worldPixelX: int;
+        let stageTileColumn: int =
+          Math.trunc((worldPixelX = GradiusNeoGame.state[StateSlot.VisualStageScrollX] - GAME_VIEW_WIDTH) / 16) +
+          screenTileColumn;
+        if (worldPixelX < 0 && worldPixelX % 16 !== 0) {
+          stageTileColumn--;
+        }
+
+        if (
+          stageTileColumn >= 0 &&
+          (GradiusNeoGame.resourceBuffer[GradiusNeoGame.state[48] + (stageRowOffset + stageTileColumn) * 2] & 255) > 0
+        ) {
+          try {
+            GradiusNeoGame.terrainTileSourceX =
+              (((GradiusNeoGame.resourceBuffer[GradiusNeoGame.state[48] + (stageRowOffset + stageTileColumn) * 2] &
+                255) -
+                189) %
+                16) *
+              16;
+            GradiusNeoGame.terrainTileSourceY =
+              (Math.trunc(
+                ((GradiusNeoGame.resourceBuffer[GradiusNeoGame.state[48] + (stageRowOffset + stageTileColumn) * 2] &
+                  255) -
+                  189) /
+                  16,
+              ) +
+                (GradiusNeoGame.resourceBuffer[GradiusNeoGame.state[48] + (stageRowOffset + stageTileColumn) * 2 + 1] &
+                  3) *
+                  3) *
+              16;
+            if (GradiusNeoGame.terrainTileSourceX >= 0 && GradiusNeoGame.terrainTileSourceY >= 0) {
+              gfx.drawRegionScaled(
+                this.spriteSheets[4],
+                toSpriteSheetPixels(GradiusNeoGame.terrainTileSourceX),
+                toSpriteSheetPixels(GradiusNeoGame.terrainTileSourceY),
+                12,
+                12,
+                0,
+                toRenderPixels(screenTileColumn * 16 - (GradiusNeoGame.state[StateSlot.VisualStageScrollX] % 16)),
+                toRenderPixels(screenTileRow * 16 - (GradiusNeoGame.state[StateSlot.CameraOffsetY] % 16)),
+                toRenderPixels(16),
+                toRenderPixels(16),
+                20,
+              );
+            }
+          } catch (error) {
+            if (error instanceof java.lang.Throwable) {
+            } else {
+              throw error;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private renderGameplayHud(gfx: Graphics): void {
+    let powerUpSpriteId: byte = 50;
+    if (GradiusNeoGame.state[StateSlot.PlayerMoveSpeed] >= 13) {
+      powerUpSpriteId = 56;
+    }
+    if (GradiusNeoGame.state[StateSlot.SelectedPowerUp] === 1) {
+      powerUpSpriteId += 7;
+    }
+    this.drawSpriteRegion(gfx, 0, powerUpSpriteId, fromLegacyRenderPixels(12), RENDERED_GAMEPLAY_HEIGHT, 20);
+    powerUpSpriteId = 51;
+    if (GradiusNeoGame.state[StateSlot.MissileState] >= 20) {
+      powerUpSpriteId = 56;
+    }
+    if (GradiusNeoGame.state[StateSlot.SelectedPowerUp] === 2) {
+      powerUpSpriteId += 7;
+    }
+    this.drawSpriteRegion(gfx, 0, powerUpSpriteId, fromLegacyRenderPixels(24), RENDERED_GAMEPLAY_HEIGHT, 20);
+    powerUpSpriteId = 52;
+    if (GradiusNeoGame.state[StateSlot.MainWeaponState] !== 0 && GradiusNeoGame.state[StateSlot.MainWeaponState] < 8) {
+      powerUpSpriteId = 56;
+    }
+    if (GradiusNeoGame.state[StateSlot.SelectedPowerUp] === 3) {
+      powerUpSpriteId += 7;
+    }
+    this.drawSpriteRegion(gfx, 0, powerUpSpriteId, fromLegacyRenderPixels(36), RENDERED_GAMEPLAY_HEIGHT, 20);
+    powerUpSpriteId = 53;
+    if (8 <= GradiusNeoGame.state[StateSlot.MainWeaponState]) {
+      powerUpSpriteId = 56;
+    }
+    if (GradiusNeoGame.state[StateSlot.SelectedPowerUp] === 4) {
+      powerUpSpriteId += 7;
+    }
+    this.drawSpriteRegion(gfx, 0, powerUpSpriteId, fromLegacyRenderPixels(48), RENDERED_GAMEPLAY_HEIGHT, 20);
+    powerUpSpriteId = 54;
+    if (
+      GradiusNeoGame.state[84] === 2 ||
+      (GradiusNeoGame.state[71] === 0 && GradiusNeoGame.state[StateSlot.OptionCount] >= 4)
+    ) {
+      powerUpSpriteId = 56;
+    }
+    if (GradiusNeoGame.state[StateSlot.SelectedPowerUp] === 5) {
+      powerUpSpriteId += 7;
+    }
+    this.drawSpriteRegion(gfx, 0, powerUpSpriteId, fromLegacyRenderPixels(60), RENDERED_GAMEPLAY_HEIGHT, 20);
+    powerUpSpriteId = 55;
+    if (GradiusNeoGame.state[StateSlot.ShieldEnergy] >= 1) {
+      powerUpSpriteId = 56;
+    }
+    if (GradiusNeoGame.state[StateSlot.SelectedPowerUp] === 6) {
+      powerUpSpriteId += 7;
+    }
+    this.drawSpriteRegion(gfx, 0, powerUpSpriteId, fromLegacyRenderPixels(72), RENDERED_GAMEPLAY_HEIGHT, 20);
+    powerUpSpriteId = 64;
+    if (GradiusNeoGame.state[StateSlot.FormationUnlock0] === 1) {
+      powerUpSpriteId = 70;
+    }
+    if (GradiusNeoGame.state[StateSlot.SelectedFormation] === 1) {
+      powerUpSpriteId += 7;
+    }
+    this.drawSpriteRegion(gfx, 0, powerUpSpriteId, fromLegacyRenderPixels(96), RENDERED_GAMEPLAY_HEIGHT, 20);
+    powerUpSpriteId = 65;
+    if (GradiusNeoGame.state[StateSlot.FormationUnlock1] === 1) {
+      powerUpSpriteId = 70;
+    }
+    if (GradiusNeoGame.state[StateSlot.SelectedFormation] === 2) {
+      powerUpSpriteId += 7;
+    }
+    this.drawSpriteRegion(gfx, 0, powerUpSpriteId, fromLegacyRenderPixels(108), RENDERED_GAMEPLAY_HEIGHT, 20);
+    powerUpSpriteId = 66;
+    if (GradiusNeoGame.state[StateSlot.FormationUnlock2] === 1) {
+      powerUpSpriteId = 70;
+    }
+    if (GradiusNeoGame.state[StateSlot.SelectedFormation] === 3) {
+      powerUpSpriteId += 7;
+    }
+    this.drawSpriteRegion(gfx, 0, powerUpSpriteId, fromLegacyRenderPixels(120), RENDERED_GAMEPLAY_HEIGHT, 20);
+    powerUpSpriteId = 67;
+    if (GradiusNeoGame.state[StateSlot.FormationUnlock3] === 1) {
+      powerUpSpriteId = 70;
+    }
+    if (GradiusNeoGame.state[StateSlot.SelectedFormation] === 4) {
+      powerUpSpriteId += 7;
+    }
+    this.drawSpriteRegion(gfx, 0, powerUpSpriteId, fromLegacyRenderPixels(132), RENDERED_GAMEPLAY_HEIGHT, 20);
+    powerUpSpriteId = 68;
+    if (GradiusNeoGame.state[StateSlot.FormationUnlock4] === 1) {
+      powerUpSpriteId = 70;
+    }
+    if (GradiusNeoGame.state[StateSlot.SelectedFormation] === 5) {
+      powerUpSpriteId += 7;
+    }
+    this.drawSpriteRegion(gfx, 0, powerUpSpriteId, fromLegacyRenderPixels(144), RENDERED_GAMEPLAY_HEIGHT, 20);
+    powerUpSpriteId = 69;
+    if (GradiusNeoGame.state[StateSlot.FormationUnlock5] === 1) {
+      powerUpSpriteId = 70;
+    }
+    if (GradiusNeoGame.state[StateSlot.SelectedFormation] === 6) {
+      powerUpSpriteId += 7;
+    }
+    this.drawSpriteRegion(gfx, 0, powerUpSpriteId, fromLegacyRenderPixels(156), RENDERED_GAMEPLAY_HEIGHT, 20);
+    this.drawSpriteRegion(gfx, 0, 1, 0, RENDERED_GAMEPLAY_HEIGHT, 20);
+    this.drawSpriteRegion(gfx, 0, 1, fromLegacyRenderPixels(84), RENDERED_GAMEPLAY_HEIGHT, 20);
+    this.drawSpriteRegion(gfx, 0, 1, fromLegacyRenderPixels(168), RENDERED_GAMEPLAY_HEIGHT, 20);
+    this.drawBitmapNumber(
+      gfx,
+      GradiusNeoGame.state[StateSlot.Score],
+      7,
+      fromLegacyRenderPixels(140),
+      fromLegacyRenderPixels(2),
+      4,
+    );
+    this.drawSpriteRegion(gfx, 0, 43, 0, 0, 20);
+    this.drawBitmapNumber(
+      gfx,
+      GradiusNeoGame.state[StateSlot.Lives],
+      2,
+      fromLegacyRenderPixels(14),
+      fromLegacyRenderPixels(2),
+      4,
+    );
   }
 
   public paint(gfx: Graphics): void {
@@ -6956,6 +7133,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 GradiusNeoGame.state[1] = GradiusNeoGame.state[StateSlot.Difficulty];
                 GradiusNeoGame.state[2] = GradiusNeoGame.state[StateSlot.AutoFireSetting];
                 GradiusNeoGame.state[3] = GradiusNeoGame.state[22];
+                GradiusNeoGame.state[4] = GradiusNeoGame.smoothRenderingEnabled ? 1 : 0;
                 GradiusNeoGame.state[10] = 0;
               } else {
                 if (GradiusNeoGame.state[0] === 1) {
@@ -6997,29 +7175,27 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             this.drawBitmapGlyphRun(gfx, 171 + GradiusNeoGame.state[2] * 3, 3, 182, 112);
             this.drawBitmapGlyphRun(gfx, 177, 13, 28, 144);
             this.drawBitmapGlyphRun(gfx, 190 + GradiusNeoGame.state[3] * 4, 4, 168, 160);
+            this.drawBitmapText(gfx, 'FRAME RATE - ' + (GradiusNeoGame.state[4] === 1 ? '60 FPS' : '10 FPS'), 28, 176);
             this.drawBitmapGlyphRun(gfx, 198, 4, 28, 192);
             this.drawBitmapGlyphRun(gfx, 294, 7, 28, 208);
             if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2) !== 0) {
-              GradiusNeoGame.state[0] = GradiusNeoGame.state[0] + 4;
+              GradiusNeoGame.state[0] = GradiusNeoGame.state[0] + 5;
             } else {
               if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64) !== 0) {
                 GradiusNeoGame.state[0]++;
               }
             }
 
-            GradiusNeoGame.state[0] = GradiusNeoGame.state[0] % 5;
-            if (GradiusNeoGame.state[0] === 4) {
-              this.drawSpriteRegion(gfx, 0, 46 + (GradiusNeoGame.state[StateSlot.LogicFrame] & 3), 9, 154, 20);
-            } else {
-              this.drawSpriteRegion(
-                gfx,
-                0,
-                46 + (GradiusNeoGame.state[StateSlot.LogicFrame] & 3),
-                9,
-                toRenderPixels(16 * (3 + GradiusNeoGame.state[0] * 3) - 2),
-                20,
-              );
-            }
+            GradiusNeoGame.state[0] = GradiusNeoGame.state[0] % 6;
+            const gameplayOptionCursorY = [46, 94, 142, 174, 190, 206][GradiusNeoGame.state[0]]!;
+            this.drawSpriteRegion(
+              gfx,
+              0,
+              46 + (GradiusNeoGame.state[StateSlot.LogicFrame] & 3),
+              9,
+              toRenderPixels(gameplayOptionCursorY),
+              20,
+            );
 
             if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.RightSoftKey) !== 0) {
               GradiusNeoGame.screenState = ScreenState.OptionsMenu;
@@ -7042,20 +7218,25 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   } else {
                     if (GradiusNeoGame.state[0] === 2) {
                       GradiusNeoGame.state[3] = GradiusNeoGame.state[3] ^ 1;
+                    } else {
+                      if (GradiusNeoGame.state[0] === 3) {
+                        GradiusNeoGame.state[4] = GradiusNeoGame.state[4] ^ 1;
+                      }
                     }
                   }
                 }
               }
 
               if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.Fire) !== 0) {
-                if (GradiusNeoGame.state[0] === 3) {
+                if (GradiusNeoGame.state[0] === 4) {
                   GradiusNeoGame.state[StateSlot.Difficulty] = GradiusNeoGame.state[1];
                   GradiusNeoGame.state[StateSlot.AutoFireSetting] = GradiusNeoGame.state[2];
                   GradiusNeoGame.state[22] = GradiusNeoGame.state[3];
+                  GradiusNeoGame.smoothRenderingEnabled = GradiusNeoGame.state[4] === 1;
                   GradiusNeoGame.state[10] = -10;
                   GradiusNeoGame.persistSaveDataSection(SaveDataSection.SettingsAndHighScores);
                 } else {
-                  if (GradiusNeoGame.state[0] === 4) {
+                  if (GradiusNeoGame.state[0] === 5) {
                     GradiusNeoGame.screenState = ScreenState.OptionsMenu;
                     GradiusNeoGame.state[0] = 0;
                   }
@@ -8149,6 +8330,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           }
 
           case ScreenState.Gameplay: {
+            GradiusNeoGame.renderQueue.beginFrame();
             if (GradiusNeoGame.runtimeFlags[4]) {
               this.updatePauseMenu(gfx);
               if (
@@ -8452,7 +8634,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                       GradiusNeoGame.state[1245 + var38] = -1;
                     }
 
-                    GradiusNeoGame.enqueueRenderCommand(
+                    GradiusNeoGame.enqueueProjectileRenderCommand(
+                      var38,
                       1,
                       GradiusNeoGame.state[1185 + var38],
                       GradiusNeoGame.state[1205 + var38],
@@ -8483,7 +8666,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     }
 
                     if (GradiusNeoGame.state[1245 + var38] >= 0) {
-                      GradiusNeoGame.enqueueRenderCommand(
+                      GradiusNeoGame.enqueueProjectileRenderCommand(
+                        var38,
                         1,
                         GradiusNeoGame.state[1185 + var38],
                         GradiusNeoGame.state[1205 + var38],
@@ -8513,7 +8697,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     }
 
                     if (GradiusNeoGame.state[1245 + var38] >= 0) {
-                      GradiusNeoGame.enqueueRenderCommand(
+                      GradiusNeoGame.enqueueProjectileRenderCommand(
+                        var38,
                         1,
                         GradiusNeoGame.state[1185 + var38],
                         GradiusNeoGame.state[1205 + var38],
@@ -8544,7 +8729,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     }
 
                     if (GradiusNeoGame.state[1245 + var38] >= 0) {
-                      GradiusNeoGame.enqueueRenderCommand(
+                      GradiusNeoGame.enqueueProjectileRenderCommand(
+                        var38,
                         1,
                         GradiusNeoGame.state[1185 + var38],
                         GradiusNeoGame.state[1205 + var38],
@@ -8589,7 +8775,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     }
 
                     if (GradiusNeoGame.state[1245 + var38] >= 0 && 1 <= GradiusNeoGame.state[1225 + var38]) {
-                      GradiusNeoGame.enqueueRenderCommand(
+                      GradiusNeoGame.enqueueProjectileRenderCommand(
+                        var38,
                         0,
                         GradiusNeoGame.state[1185 + var38],
                         GradiusNeoGame.state[1205 + var38],
@@ -9054,6 +9241,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 }
               }
 
+              this.gameplayPreBackdropFrame = gfx.captureFrame();
+              this.backdropLogicFrame = GradiusNeoGame.state[StateSlot.LogicFrame];
+              this.backdropScrollX = GradiusNeoGame.state[StateSlot.VisualStageScrollX];
               GradiusNeoGame.state[78] = -1;
               switch (GradiusNeoGame.state[41]) {
                 case 1: {
@@ -10133,65 +10323,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               }
 
               this.updatePrimaryEntities();
+              GradiusNeoGame.renderQueue.endEntity();
               this.updateAuxiliaryEntities(gfx);
+              GradiusNeoGame.renderQueue.endEntity();
               this.renderBackgroundQueue(gfx);
               if (GradiusNeoGame.state[41] === 3) {
-                for (let var132: int = 0; var132 < 15; var132++) {
-                  const terrainRow = Math.trunc(GradiusNeoGame.state[StateSlot.CameraOffsetY] / 16) + var132;
-                  let var58: int = 66 * terrainRow;
-
-                  for (let var124: int = 0; var124 < 16; var124++) {
-                    let var97: int;
-                    let var7: int =
-                      Math.trunc((var97 = GradiusNeoGame.state[StateSlot.VisualStageScrollX] - GAME_VIEW_WIDTH) / 16) +
-                      var124;
-                    if (var97 < 0 && var97 % 16 !== 0) {
-                      var7--;
-                    }
-
-                    if (
-                      var7 >= 0 &&
-                      (GradiusNeoGame.resourceBuffer[GradiusNeoGame.state[48] + (var58 + var7) * 2] & 255) > 0
-                    ) {
-                      try {
-                        GradiusNeoGame.terrainTileSourceX =
-                          (((GradiusNeoGame.resourceBuffer[GradiusNeoGame.state[48] + (var58 + var7) * 2] & 255) -
-                            189) %
-                            16) *
-                          16;
-                        GradiusNeoGame.terrainTileSourceY =
-                          (Math.trunc(
-                            ((GradiusNeoGame.resourceBuffer[GradiusNeoGame.state[48] + (var58 + var7) * 2] & 255) -
-                              189) /
-                              16,
-                          ) +
-                            (GradiusNeoGame.resourceBuffer[GradiusNeoGame.state[48] + (var58 + var7) * 2 + 1] & 3) *
-                              3) *
-                          16;
-                        if (GradiusNeoGame.terrainTileSourceX >= 0 && GradiusNeoGame.terrainTileSourceY >= 0) {
-                          gfx.drawRegionScaled(
-                            this.spriteSheets[4],
-                            toSpriteSheetPixels(GradiusNeoGame.terrainTileSourceX),
-                            toSpriteSheetPixels(GradiusNeoGame.terrainTileSourceY),
-                            12,
-                            12,
-                            0,
-                            toRenderPixels(var124 * 16 - (GradiusNeoGame.state[StateSlot.VisualStageScrollX] % 16)),
-                            toRenderPixels(var132 * 16 - (GradiusNeoGame.state[StateSlot.CameraOffsetY] % 16)),
-                            toRenderPixels(16),
-                            toRenderPixels(16),
-                            20,
-                          );
-                        }
-                      } catch (var24) {
-                        if (var24 instanceof java.lang.Throwable) {
-                        } else {
-                          throw var24;
-                        }
-                      }
-                    }
-                  }
-                }
+                this.renderStageTerrain(gfx);
 
                 if (GradiusNeoGame.state[StateSlot.VisualStageScrollX] % 16 === 0) {
                   let var112: int =
@@ -10216,6 +10353,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 }
               }
 
+              this.gameplayBackgroundFrame = gfx.captureFrame();
               this.renderForegroundQueue(gfx);
               GradiusNeoGame.state[StateSlot.CollisionMapScrollX] =
                 GradiusNeoGame.state[StateSlot.CollisionMapScrollX] + GradiusNeoGame.state[StateSlot.StageScrollSpeed];
@@ -10248,153 +10386,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   GradiusNeoGame.state[StateSlot.NextExtraLifeScore] + 70000;
                 GradiusNeoGame.requestSoundEffect(7);
               }
+              this.renderGameplayHud(gfx);
 
-              let var60: byte = 50;
-              if (GradiusNeoGame.state[StateSlot.PlayerMoveSpeed] >= 13) {
-                var60 = 56;
-              }
-
-              if (GradiusNeoGame.state[StateSlot.SelectedPowerUp] === 1) {
-                var60 += 7;
-              }
-
-              this.drawSpriteRegion(gfx, 0, var60, fromLegacyRenderPixels(12), RENDERED_GAMEPLAY_HEIGHT, 20);
-              var60 = 51;
-              if (GradiusNeoGame.state[StateSlot.MissileState] >= 20) {
-                var60 = 56;
-              }
-
-              if (GradiusNeoGame.state[StateSlot.SelectedPowerUp] === 2) {
-                var60 += 7;
-              }
-
-              this.drawSpriteRegion(gfx, 0, var60, fromLegacyRenderPixels(24), RENDERED_GAMEPLAY_HEIGHT, 20);
-              var60 = 52;
-              if (
-                GradiusNeoGame.state[StateSlot.MainWeaponState] !== 0 &&
-                GradiusNeoGame.state[StateSlot.MainWeaponState] < 8
-              ) {
-                var60 = 56;
-              }
-
-              if (GradiusNeoGame.state[StateSlot.SelectedPowerUp] === 3) {
-                var60 += 7;
-              }
-
-              this.drawSpriteRegion(gfx, 0, var60, fromLegacyRenderPixels(36), RENDERED_GAMEPLAY_HEIGHT, 20);
-              var60 = 53;
-              if (8 <= GradiusNeoGame.state[StateSlot.MainWeaponState]) {
-                var60 = 56;
-              }
-
-              if (GradiusNeoGame.state[StateSlot.SelectedPowerUp] === 4) {
-                var60 += 7;
-              }
-
-              this.drawSpriteRegion(gfx, 0, var60, fromLegacyRenderPixels(48), RENDERED_GAMEPLAY_HEIGHT, 20);
-              var60 = 54;
-              if (
-                GradiusNeoGame.state[84] === 2 ||
-                (GradiusNeoGame.state[71] === 0 && GradiusNeoGame.state[StateSlot.OptionCount] >= 4)
-              ) {
-                var60 = 56;
-              }
-
-              if (GradiusNeoGame.state[StateSlot.SelectedPowerUp] === 5) {
-                var60 += 7;
-              }
-
-              this.drawSpriteRegion(gfx, 0, var60, fromLegacyRenderPixels(60), RENDERED_GAMEPLAY_HEIGHT, 20);
-              var60 = 55;
-              if (GradiusNeoGame.state[StateSlot.ShieldEnergy] >= 1) {
-                var60 = 56;
-              }
-
-              if (GradiusNeoGame.state[StateSlot.SelectedPowerUp] === 6) {
-                var60 += 7;
-              }
-
-              this.drawSpriteRegion(gfx, 0, var60, fromLegacyRenderPixels(72), RENDERED_GAMEPLAY_HEIGHT, 20);
-              var60 = 64;
-              if (GradiusNeoGame.state[StateSlot.FormationUnlock0] === 1) {
-                var60 = 70;
-              }
-
-              if (GradiusNeoGame.state[StateSlot.SelectedFormation] === 1) {
-                var60 += 7;
-              }
-
-              this.drawSpriteRegion(gfx, 0, var60, fromLegacyRenderPixels(96), RENDERED_GAMEPLAY_HEIGHT, 20);
-              var60 = 65;
-              if (GradiusNeoGame.state[StateSlot.FormationUnlock1] === 1) {
-                var60 = 70;
-              }
-
-              if (GradiusNeoGame.state[StateSlot.SelectedFormation] === 2) {
-                var60 += 7;
-              }
-
-              this.drawSpriteRegion(gfx, 0, var60, fromLegacyRenderPixels(108), RENDERED_GAMEPLAY_HEIGHT, 20);
-              var60 = 66;
-              if (GradiusNeoGame.state[StateSlot.FormationUnlock2] === 1) {
-                var60 = 70;
-              }
-
-              if (GradiusNeoGame.state[StateSlot.SelectedFormation] === 3) {
-                var60 += 7;
-              }
-
-              this.drawSpriteRegion(gfx, 0, var60, fromLegacyRenderPixels(120), RENDERED_GAMEPLAY_HEIGHT, 20);
-              var60 = 67;
-              if (GradiusNeoGame.state[StateSlot.FormationUnlock3] === 1) {
-                var60 = 70;
-              }
-
-              if (GradiusNeoGame.state[StateSlot.SelectedFormation] === 4) {
-                var60 += 7;
-              }
-
-              this.drawSpriteRegion(gfx, 0, var60, fromLegacyRenderPixels(132), RENDERED_GAMEPLAY_HEIGHT, 20);
-              var60 = 68;
-              if (GradiusNeoGame.state[StateSlot.FormationUnlock4] === 1) {
-                var60 = 70;
-              }
-
-              if (GradiusNeoGame.state[StateSlot.SelectedFormation] === 5) {
-                var60 += 7;
-              }
-
-              this.drawSpriteRegion(gfx, 0, var60, fromLegacyRenderPixels(144), RENDERED_GAMEPLAY_HEIGHT, 20);
-              var60 = 69;
-              if (GradiusNeoGame.state[StateSlot.FormationUnlock5] === 1) {
-                var60 = 70;
-              }
-
-              if (GradiusNeoGame.state[StateSlot.SelectedFormation] === 6) {
-                var60 += 7;
-              }
-
-              this.drawSpriteRegion(gfx, 0, var60, fromLegacyRenderPixels(156), RENDERED_GAMEPLAY_HEIGHT, 20);
-              this.drawSpriteRegion(gfx, 0, 1, 0, RENDERED_GAMEPLAY_HEIGHT, 20);
-              this.drawSpriteRegion(gfx, 0, 1, fromLegacyRenderPixels(84), RENDERED_GAMEPLAY_HEIGHT, 20);
-              this.drawSpriteRegion(gfx, 0, 1, fromLegacyRenderPixels(168), RENDERED_GAMEPLAY_HEIGHT, 20);
-              this.drawBitmapNumber(
-                gfx,
-                GradiusNeoGame.state[StateSlot.Score],
-                7,
-                fromLegacyRenderPixels(140),
-                fromLegacyRenderPixels(2),
-                4,
-              );
-              this.drawSpriteRegion(gfx, 0, 43, 0, 0, 20);
-              this.drawBitmapNumber(
-                gfx,
-                GradiusNeoGame.state[StateSlot.Lives],
-                2,
-                fromLegacyRenderPixels(14),
-                fromLegacyRenderPixels(2),
-                4,
-              );
               if (GradiusNeoGame.state[34] !== 0 && 20 < GradiusNeoGame.state[34]++) {
                 if (GradiusNeoGame.runtimeFlags[9]) {
                   GradiusNeoGame.runtimeFlags[9] = false;

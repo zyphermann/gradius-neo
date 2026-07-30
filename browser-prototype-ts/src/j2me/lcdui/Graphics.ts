@@ -80,6 +80,14 @@ export class Graphics {
     this.clipHeight = height;
   }
 
+  captureFrame(): ImageData {
+    return this.context.getImageData(0, 0, this.context.canvas.width, this.context.canvas.height);
+  }
+
+  restoreFrame(frame: ImageData): void {
+    this.context.putImageData(frame, 0, 0);
+  }
+
   setClip(x: number, y: number, width: number, height: number): void {
     this.clipX = (x + this.translateX) | 0;
     this.clipY = (y + this.translateY) | 0;

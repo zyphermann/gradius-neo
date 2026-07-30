@@ -1,11 +1,14 @@
 import { EntityField, type EntityList, GameState, StateSlot } from '../state/GameState';
 
 export class EntityPool {
+  private readonly generations = new Uint32Array(512);
+
   constructor(private readonly state: GameState) {}
 
   spawn(list: EntityList, type: number, x: number, y: number, packedParameters: number): number {
     const entityId = this.takeFreeSlot();
     if (entityId < 0) return -1;
+    this.generations[entityId] = (this.generations[entityId] ?? 0) + 1;
 
     const entity = this.state.entity(entityId);
     const headSlot = list === 'primary' ? StateSlot.PrimaryEntityHead : StateSlot.AuxiliaryEntityHead;
@@ -53,5 +56,9 @@ export class EntityPool {
   returnSlot(entityId: number): void {
     this.state.raw[EntityField.Next + entityId] = this.state.get(StateSlot.FreeEntityHead);
     this.state.set(StateSlot.FreeEntityHead, entityId);
+  }
+
+  generation(entityId: number): number {
+    return this.generations[entityId]!;
   }
 }

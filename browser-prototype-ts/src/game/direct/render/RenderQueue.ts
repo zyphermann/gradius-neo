@@ -1,5 +1,4 @@
 import { EntityPool } from '../entities/EntityPool';
-import { EntityField, GameState } from '../state/GameState';
 
 export interface RenderCommand {
   id: number;
@@ -9,48 +8,64 @@ export interface RenderCommand {
   layer: number;
   spriteRegion: number;
   color: number;
+  sourceEntityId: number | null;
+  sourceGeneration: number;
+  sourcePosition: 'previous' | 'current';
 }
 
 export class RenderQueue {
-  constructor(
-    private readonly state: GameState,
-    private readonly pool: EntityPool,
-  ) {}
+  private readonly layers: RenderCommand[][] = Array.from({ length: 18 }, () => []);
+  private nextCommandId = 0;
+  private sourceEntityId: number | null = null;
+  private sourceGeneration = 0;
+  private sourcePosition: 'previous' | 'current' = 'previous';
+
+  constructor(private readonly pool: EntityPool) {}
 
   enqueue(type: number, x: number, y: number, layer: number, spriteRegion: number, packedColor: number): number {
-    const commandId = this.pool.takeFreeSlot();
-    if (commandId < 0) return -1;
+    const commandId = this.nextCommandId++;
 
-    const raw = this.state.raw;
-    raw[EntityField.Next + commandId] = raw[EntityField.RenderLayerHead + layer]!;
-    raw[EntityField.RenderLayerHead + layer] = commandId;
-    raw[EntityField.Type + commandId] = type;
-    raw[EntityField.X + commandId] = x;
-    raw[EntityField.Y + commandId] = y;
-    raw[EntityField.Parameter0 + commandId] = spriteRegion;
-    if (type === 0) {
-      raw[EntityField.Parameter1 + commandId] = (packedColor & 0xff0000) >> 16;
-      raw[EntityField.Parameter2 + commandId] = (packedColor & 0xff00) >> 8;
-      raw[EntityField.Parameter3 + commandId] = packedColor & 0xff;
-    }
+    // Keep an independent display list in the same newest-first order as the
+    // original linked-list heads. This survives the legacy renderer returning
+    // its temporary pool slots and will become the 60 Hz render source.
+    this.layers[layer]?.unshift({
+      id: commandId,
+      type,
+      x,
+      y,
+      layer,
+      spriteRegion,
+      color: packedColor,
+      sourceEntityId: this.sourceEntityId,
+      sourceGeneration: this.sourceGeneration,
+      sourcePosition: this.sourcePosition,
+    });
     return commandId;
   }
 
   *commands(layer: number): Iterable<RenderCommand> {
-    const raw = this.state.raw;
-    for (let id = raw[EntityField.RenderLayerHead + layer]!; id !== -1; id = raw[EntityField.Next + id]!) {
-      yield {
-        id,
-        type: raw[EntityField.Type + id]!,
-        x: raw[EntityField.X + id]!,
-        y: raw[EntityField.Y + id]!,
-        layer,
-        spriteRegion: raw[EntityField.Parameter0 + id]!,
-        color:
-          (raw[EntityField.Parameter1 + id]! << 16) |
-          (raw[EntityField.Parameter2 + id]! << 8) |
-          raw[EntityField.Parameter3 + id]!,
-      };
-    }
+    yield* this.layers[layer] ?? [];
+  }
+
+  beginFrame(): void {
+    for (const layer of this.layers) layer.length = 0;
+    this.nextCommandId = 0;
+    this.endEntity();
+  }
+
+  beginEntity(entityId: number): void {
+    this.beginMotionSource(entityId, this.pool.generation(entityId));
+  }
+
+  beginMotionSource(sourceId: number, generation = 0, sourcePosition: 'previous' | 'current' = 'previous'): void {
+    this.sourceEntityId = sourceId;
+    this.sourceGeneration = generation;
+    this.sourcePosition = sourcePosition;
+  }
+
+  endEntity(): void {
+    this.sourceEntityId = null;
+    this.sourceGeneration = 0;
+    this.sourcePosition = 'previous';
   }
 }

@@ -17,9 +17,13 @@ describe('EntityPool', () => {
     expect(state.get(StateSlot.FreeEntityHead)).toBe(4);
     expect(state.get(StateSlot.PrimaryEntityHead)).toBe(3);
     expect(state.entity(3).parameter(2)).toBe(3);
+    expect(pool.generation(3)).toBe(1);
 
     pool.release('primary', 3);
     expect(state.get(StateSlot.PrimaryEntityHead)).toBe(-1);
     expect(state.get(StateSlot.FreeEntityHead)).toBe(3);
+
+    pool.spawn('primary', 18, 40, 50, 0);
+    expect(pool.generation(3)).toBe(2);
   });
 });

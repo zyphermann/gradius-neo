@@ -11,6 +11,9 @@ interface DirectLoopAccess {
   processPendingBackgroundMusic(): void;
   processPendingSoundEffect(): void;
   updateAudioPlayer(): void;
+  captureEntityMotionBeforeTick(): void;
+  captureEntityMotionAfterTick(): void;
+  renderInterpolatedFrame(graphics: Graphics, alpha: number): void;
 }
 
 const JAVA_FRAME_MS = 100;
@@ -23,7 +26,7 @@ export class DirectGameRunner {
 
   constructor(
     canvas: HTMLCanvasElement,
-    graphics: Graphics,
+    private readonly graphics: Graphics,
     resources: ResourceManager,
     private readonly onError: (error: unknown) => void,
   ) {
@@ -51,13 +54,17 @@ export class DirectGameRunner {
       this.accumulatedTime += elapsed;
 
       while (this.accumulatedTime >= JAVA_FRAME_MS && loop.running) {
+        loop.captureEntityMotionBeforeTick();
         loop.repaint();
         loop.serviceRepaints();
+        loop.captureEntityMotionAfterTick();
         loop.processPendingBackgroundMusic();
         loop.processPendingSoundEffect();
         loop.updateAudioPlayer();
         this.accumulatedTime -= JAVA_FRAME_MS;
       }
+
+      loop.renderInterpolatedFrame(this.graphics, this.accumulatedTime / JAVA_FRAME_MS);
 
       if (loop.running) this.frameHandle = requestAnimationFrame(this.onAnimationFrame);
       else this.frameHandle = null;
