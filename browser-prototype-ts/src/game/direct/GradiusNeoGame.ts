@@ -1107,7 +1107,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         toRenderPixels(y - 2),
         20,
       );
-      value /= 10;
+      value = Math.trunc(value / 10);
       digitX -= 14;
     } while ((-value & (x - digitX - 14)) < 0);
   }

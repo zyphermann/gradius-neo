@@ -45,8 +45,12 @@ h1 {
   font-style: italic;
   letter-spacing: -0.07em;
 }
-h1 span {
+h1 .title-neo {
   color: #ef394e;
+}
+
+h1 .title-ts {
+  color: #ffd83d;
 }
 
 .display-shell {
