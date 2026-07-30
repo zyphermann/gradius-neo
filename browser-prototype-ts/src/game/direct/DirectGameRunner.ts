@@ -8,9 +8,9 @@ interface DirectLoopAccess {
   running: boolean;
   repaint(): void;
   serviceRepaints(): void;
-  k__void(): void;
-  j__void(): void;
-  l__void(): void;
+  processPendingBackgroundMusic(): void;
+  processPendingSoundEffect(): void;
+  updateAudioPlayer(): void;
 }
 
 const JAVA_FRAME_MS = 100;
@@ -53,9 +53,9 @@ export class DirectGameRunner {
       while (this.accumulatedTime >= JAVA_FRAME_MS && loop.running) {
         loop.repaint();
         loop.serviceRepaints();
-        loop.k__void();
-        loop.j__void();
-        loop.l__void();
+        loop.processPendingBackgroundMusic();
+        loop.processPendingSoundEffect();
+        loop.updateAudioPlayer();
         this.accumulatedTime -= JAVA_FRAME_MS;
       }
 
