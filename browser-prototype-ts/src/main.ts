@@ -65,7 +65,7 @@ async function preloadResources(): Promise<void> {
     inputLabel.textContent = `Resources: ${loaded}/${total}`;
   });
   await J2MEImage.preloadResources(resources);
-  inputLabel.textContent = 'Starting direct b.java port …';
+  inputLabel.textContent = 'Starting Gradius Neo …';
   const { DirectGameRunner } = await import('./game/direct/DirectGameRunner');
   const runner = new DirectGameRunner(canvas, graphics, resources, (error) => {
     inputLabel.textContent = `Direct error: ${error instanceof Error ? error.message : String(error)}`;

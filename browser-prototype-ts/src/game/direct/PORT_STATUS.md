@@ -2,7 +2,7 @@
 
 Quelle: `../../../decompiled/src/b.java` (8.713 Zeilen)
 
-Die vollständige mechanische Transkription liegt in `generated/b.ts` vor (rund 9.500 Zeilen). Sie wird mit `npm run generate:b-direct` reproduzierbar aus der Javaquelle erzeugt und anschließend rein syntaktisch nachbearbeitet.
+Die vollständige Portierung liegt jetzt als reguläre Quelle in `GradiusNeoGame.ts` vor. Die frühere Generator-/Postprocessor-Stufe ist nicht mehr Teil des Builds; weitere Refactorings erfolgen direkt an dieser Datei und werden über Git versioniert.
 
 Die direkte Fassung ist über `?direct=1` separat startbar. Ohne diesen Parameter bleibt der bisherige, spielbare Prototyp aktiv.
 

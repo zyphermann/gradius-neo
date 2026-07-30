@@ -1,6 +1,6 @@
 # Symbolkatalog der direkten `b.java`-Portierung
 
-Diese Datei dokumentiert nur Namen, deren Bedeutung durch Datenfluss und Aufrufer bestätigt ist. Die Umbenennungen werden in `tools/postprocess-b-direct.mjs` ausgeführt; `generated/b.ts` bleibt reproduzierbar.
+Diese Datei dokumentiert nur Namen, deren Bedeutung durch Datenfluss und Aufrufer bestätigt ist. Die aktive Spielquelle ist `GradiusNeoGame.ts`; weitere Umbenennungen werden direkt dort vorgenommen und über Git versioniert.
 
 ## Zentrale Felder
 
@@ -21,6 +21,9 @@ Diese Datei dokumentiert nur Namen, deren Bedeutung durch Datenfluss und Aufrufe
 | `this.n` | `this.endingCreditsPages` | Abschlussmeldung, Staff-Credits und letzte „See You Again“-Seite |
 | `this.d` | `this.bgmTrackTitles` | Angezeigte Titel der neun BGM-Stücke im Sound-Test |
 | `this.f` | `this.spriteSheets` | Sechs geladene Bildatlanten, aus denen `spriteRegions` gezeichnet werden |
+| `b.E` | `b.softKeyCommands` | MIDP-Command-Definitionen für die beiden Softkey-Beschriftungen |
+| `this.F` | `this.leftSoftKeyLabel` | Text des linken Softkeys |
+| `this.G` | `this.rightSoftKeyLabel` | Text des rechten Softkeys |
 
 ## Bestätigte Bildschirmzustände
 
@@ -30,10 +33,34 @@ Diese Datei dokumentiert nur Namen, deren Bedeutung durch Datenfluss und Aufrufe
 | `2` | Titelressourcen laden |
 | `5` | Hauptmenü vorbereiten |
 | `6` | Hauptmenü |
+| `7` | Menü-Übergangsanimation |
+| `8` | Instructions |
+| `9` | Options-Menü |
+| `10` | Gameplay-Optionen |
+| `11` | Highscores |
+| `12` | Steuerungs-/Power-up-Optionen |
+| `13` | Neues Spiel / Stage-Auswahl |
+| `14` | Continue-/Ergebnisablauf |
+| `15` | Neuen Spieldurchlauf initialisieren |
+| `16–17` | Gespeichertes Spiel laden und bestätigen |
+| `18–19` | Stage-Ladeanzeige und Stage initialisieren |
 | `20` | Aktives Gameplay |
+| `21–22` | Game Over / Continue |
+| `23–24` | Ending und Credits |
+| `26` | Sound-Test |
+| `191` | Stage-Startanzeige |
+| `200` | About-Seite |
+| `201` | Exit-Abfrage im Hauptmenü |
+| `203–205` | Pause-/Exit-Ablauf während des Gameplays |
 | `206` | Initialisierung/KONAMI laden |
 | `207` | KONAMI-Logo anzeigen |
 | `208` | Übergang zum GRADIUS-NEO-Titel |
+| `999` | Anwendung beenden |
+
+Diese Werte stehen im Code als `ScreenState`, beispielsweise
+`ScreenState.Gameplay` und `ScreenState.EndingCredits`. Einige Fälle fallen
+absichtlich in den nächsten Zustand durch, etwa Laden-Anzeige `18` → Stage
+initialisieren `19`.
 
 ## Eingabebits in `state`
 
@@ -45,6 +72,14 @@ Diese Datei dokumentiert nur Namen, deren Bedeutung durch Datenfluss und Aufrufe
 | `13` | Sammelpuffer aus `keyPressed()` |
 
 Wichtige Bits: `2/64/4/32` = hoch/runter/links/rechts, `256` = FIRE/Bestätigen, `1024` = Taste 0/Schuss, `4194304` = linkes Power-up, `8388608` = rechtes Power-up.
+
+Diese Werte stehen im generierten Code jetzt als `StateSlot` und `InputBit`, beispielsweise:
+
+```ts
+(b.state[StateSlot.PressedInputBits] & InputBit.RightSoftKey) !== 0
+```
+
+`InputBit.RightSoftKey` entspricht MIDP-Keycode `-7`, im Browser also `F2` oder `W`.
 
 ## Spielerzustand in `state`
 
@@ -108,6 +143,12 @@ Das obere Byte eines Scriptwortes enthält Opcode bzw. Entity-Typ. Untere Bits e
 | `a__int_String(int,String)` | `loadSpriteSheet(slot,name)`: Bildatlas und zugehörige `csv_*`-Regionen laden |
 | `a__int_int_int_int(type,x,y,params)` | `spawnEntity(...)`: freien Entity-Slot belegen und initialisieren |
 | `b__int_int_int_int(type,x,y,params)` | `spawnAuxiliaryEntity(...)`: gekoppeltes Spezialobjekt in der zweiten Liste anlegen |
+| `c__Graphics(Graphics)` | `renderSoftKeyBar(...)`: untere Softkey-Leiste zeichnen |
+| `a__int_int(left,right)` | `setSoftKeyLabels(...)`: Beschriftungen aus den MIDP-Commands wählen |
+| `f__Graphics(Graphics)` | `renderExitConfirmationOptions(...)`: EXIT/YES/NO zeichnen |
+| `g__Graphics(Graphics)` | `updateMainMenuExitConfirmation(...)` |
+| `h__Graphics(Graphics)` | `updateGameplayExitConfirmation(...)` |
+| `g__int(keyCode)` | `keyCodeToInputBit(...)` |
 
 ### Von `spawnEntity` initialisierte Entity-Felder
 
