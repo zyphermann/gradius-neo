@@ -173,8 +173,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
   private static timestamps: BigInt64Array = new BigInt64Array(5);
   public static screenState: int;
   public static requestedBgmId: int;
-  private static v: java.io.InputStream;
-  private w: GradiusNeo;
+  private static resourceInputStream: java.io.InputStream;
+  private midletHost: GradiusNeo;
   private static recordStore: RecordStore;
   private static resourceBuffer: Int8Array = new Int8Array(25112);
   protected bgmTrackTitles: java.lang.String[][] = [
@@ -189,14 +189,14 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
     ['        NEO Ending '],
   ];
   public soundTestActive: boolean = false;
-  private static z: int;
-  private static A: int;
+  private static canvasWidth: int;
+  private static canvasHeight: int;
   protected spriteSheets: Image[] = new Array<Image>(6);
   private static spriteRegions: Int32Array = new Int32Array(409);
-  private static C: int;
-  private static D: int;
-  protected g: long = 0n;
-  protected h: long = 0n;
+  private static terrainTileSourceX: int;
+  private static terrainTileSourceY: int;
+  protected loopIterationCount: long = 0n;
+  protected lastFrameDurationMillis: long = 0n;
   private static softKeyCommands: Command[] = [
     new Command('M on', 1, 1),
     new Command('Moff', 1, 1),
@@ -211,15 +211,15 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
   private static saveData: Int8Array = new Int8Array(78);
   protected heldInputBits: int = 0;
   protected releasedInputBits: int = 0;
-  private static I: int;
-  private static J: int;
+  private static entityDirectionSign: int;
+  private static spawnedEntityCount: int;
   private instructionsText: java.lang.String =
     'GAME SYSTEM\nChoosing Game Start, will begin a new game, or start from previously completed stages. By Choosing Continue, the game will start where the previous saved game ended.  The degree of Difficulty, Auto-fire option, or Screen Set-up can be changed in GAME SETTING. \nPressing # key or back/CLR key during game play will display the PAUSE MENU.  Pressing RESUME from PAUSE MENU will continue the game.\n\nCONTROLS\nShip movement is controlled by the D-pad.  If Auto-fire is set to OFF press the 0 key to fire. \n\nPOWER UP\nDestroying red enemies or enemy formations will result in the appearance of red capsules.  Obtaining these red capsules will highlight one of the power-ups on the lower left gauge.  At this time, pressing the left soft key will activate the highlighted power-up from the lower left gauge.\nObtaining a green capsule will highlight one of the formations in the lower right gauge.  At this time, pressing the right soft key will activate the highlighted formation from the lower right gauge.\n\nFORMATION\nKeys 1 to 6 will enable the different formations. Keys 7 to 9 reset the formation to normal.  When 4 option power-ups and the Laser power up are activated, special striking performance will be enabled.\n\nEXTRA MODE\nEXTRA MODE is a score attack mode.  Each stage has a minimum score.  Clearing the minimum score and the stage will unlock new weapons in OPTIONS - SELECT WEAPON section.\n\nPower-ups:\nS: Speed\nM: Missle\nD: Double shot\nL: Lasers\nO: Option\n?: Shield\n\nFormations:\nR: Rotate\nC: Center\nF: Forward\nW: Wing\nI: In-line\nA: Advance';
-  private L: java.lang.String[] = null;
-  private M: java.lang.String[] = null;
-  protected k: int = 0;
-  protected l: int = 0;
-  private N: java.lang.String[] = null;
+  private instructionsLines: java.lang.String[] = null;
+  private exitPromptLines: java.lang.String[] = null;
+  protected infoReturnScreen: int = 0;
+  protected textScrollOffset: int = 0;
+  private aboutLines: java.lang.String[] = null;
   public running: boolean = true;
   protected endingCreditsPages: java.lang.String[][] = [
     ['- GRADIUS NEO -', 'Final Stage Cleared!', 'Try next round!!'],
@@ -238,20 +238,73 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
     ['', 'Dedicated in', 'loving memory', 'to friend and', 'co-worker,', 'Daniel', 'Westmoreland.', '1980-2006'],
     ['See You Again in', 'GRADIUS NEO', '- IMPERIAL -', '', 'Press OK', 'to continue'],
   ];
-  private static O: Font = Font.getFont(32, 0, 0);
+  private static bitmapFont: Font = Font.getFont(32, 0, 0);
   private konamiLogoImage: Image;
   private introPhaseDeadlineMillis: long;
   public static soundMode: int = 0;
-  protected p: long = 0n;
-  protected q: boolean = false;
-  private R: java.lang.String = null;
-  private S: int = 0;
-  private T: int = 3;
-  private U: Player = null;
-  private V: java.util.Hashtable = new java.util.Hashtable();
-  protected static r: boolean = false;
+  protected audioResumeDeadlineMillis: long = 0n;
+  protected audioResumePending: boolean = false;
+  private queuedAudioPath: java.lang.String = null;
+  private queuedAudioLoopCount: int = 0;
+  private audioPlayerState: int = 3;
+  private activeAudioPlayer: Player = null;
+  private audioPlayerCache: java.util.Hashtable = new java.util.Hashtable();
+  protected static appSuspended: boolean = false;
 
-  private d__void(): void {
+  public constructor(midletHost: GradiusNeo) {
+    super(false);
+
+    try {
+      this.midletHost = midletHost;
+      this.setFullScreenMode(true);
+      GradiusNeoGame.canvasWidth = this.getWidth();
+      GradiusNeoGame.canvasHeight = this.getHeight();
+      if (GradiusNeoGame.canvasHeight < GradiusNeoGame.canvasWidth) {
+        GradiusNeoGame.canvasHeight = GradiusNeoGame.canvasWidth;
+      }
+
+      GradiusNeoGame.state[StateSlot.ViewportOffsetX] = (GradiusNeoGame.canvasWidth - RENDERED_GAME_VIEW_WIDTH) / 2;
+      GradiusNeoGame.state[StateSlot.ViewportOffsetY] = (GradiusNeoGame.canvasHeight - RENDERED_GAME_VIEW_WIDTH) / 2;
+      GradiusNeoGame.state[9729] = 20;
+      GradiusNeoGame.state[9727] = 18;
+      GradiusNeoGame.state[9726] = 16;
+      GradiusNeoGame.state[9728] = 14;
+      GradiusNeoGame.state[9730] = 12;
+      GradiusNeoGame.state[2017] = 2;
+      GradiusNeoGame.state[2018] = 2;
+      GradiusNeoGame.state[2019] = 64;
+      GradiusNeoGame.state[2020] = 64;
+      GradiusNeoGame.state[2021] = 4;
+      GradiusNeoGame.state[2022] = 32;
+      GradiusNeoGame.state[2023] = 4;
+      GradiusNeoGame.state[2024] = 32;
+      GradiusNeoGame.state[2025] = 32768;
+      GradiusNeoGame.state[2026] = 131072;
+      GradiusNeoGame.state[2027] = 8192;
+      GradiusNeoGame.state[9771] = 40000;
+      GradiusNeoGame.state[9772] = 55000;
+      GradiusNeoGame.state[9773] = 70000;
+      GradiusNeoGame.state[9774] = 35000;
+      GradiusNeoGame.state[9775] = 200000;
+      GradiusNeoGame.state[9781] = 15;
+      GradiusNeoGame.state[9782] = 18;
+      GradiusNeoGame.state[9783] = 21;
+      GradiusNeoGame.state[9784] = 24;
+      GradiusNeoGame.state[9785] = 27;
+      GradiusNeoGame.state[9786] = 12;
+      GradiusNeoGame.state[9787] = 30;
+      GradiusNeoGame.state[9788] = 33;
+      GradiusNeoGame.state[9789] = 36;
+      GradiusNeoGame.screenState = ScreenState.Boot;
+    } catch (var3) {
+      if (var3 instanceof java.lang.Throwable) {
+      } else {
+        throw var3;
+      }
+    }
+  }
+
+  private unloadStageSpriteSheets(): void {
     for (let var1: int = 2; var1 < 6; var1++) {
       this.spriteSheets[var1] = null;
     }
@@ -259,14 +312,14 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
     java.lang.System.gc();
   }
 
-  private loadSpriteSheet(var1: int, var2: java.lang.String): void {
-    this.spriteSheets[var1] = null;
+  private loadSpriteSheet(sheetIndex: int, resourceName: java.lang.String): void {
+    this.spriteSheets[sheetIndex] = null;
     java.lang.System.gc();
 
     try {
-      this.spriteSheets[var1] = Image.createImage('/img_' + var2);
+      this.spriteSheets[sheetIndex] = Image.createImage('/img_' + resourceName);
       if (new URLSearchParams(window.location.search).has('dumpSprites')) {
-        this.spriteSheets[var1].downloadAsPng(`img_${var2}.png`);
+        this.spriteSheets[sheetIndex].downloadAsPng(`img_${resourceName}.png`);
       }
     } catch (var4) {
       if (var4 instanceof java.lang.Throwable) {
@@ -276,7 +329,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
       }
     }
 
-    this.a__String('csv_' + var2);
+    this.loadResourceIntoBuffer('csv_' + resourceName);
 
     for (
       let var3: int = 0;
@@ -323,69 +376,73 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
   }
 
   private renderForegroundQueue(gfx: Graphics): void {
-    for (let var6: int = 4; var6 < 18; var6++) {
-      let var4: int = GradiusNeoGame.state[EntityField.RenderLayerHead + var6];
+    for (let layer: int = 4; layer < 18; layer++) {
+      let renderCommandId: int = GradiusNeoGame.state[EntityField.RenderLayerHead + layer];
 
-      while (var4 !== -1) {
-        let var5: int = GradiusNeoGame.state[EntityField.Next + var4];
-        switch (GradiusNeoGame.state[EntityField.Type + var4]) {
+      while (renderCommandId !== -1) {
+        let nextRenderCommandId: int = GradiusNeoGame.state[EntityField.Next + renderCommandId];
+        switch (GradiusNeoGame.state[EntityField.Type + renderCommandId]) {
           case 0: {
-            if (GradiusNeoGame.state[EntityField.Parameter0 + var4] <= 147) {
+            if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 147) {
               this.drawSpriteRegion(
                 gfx,
                 0,
-                GradiusNeoGame.state[EntityField.Parameter0 + var4],
-                toRenderPixels(GradiusNeoGame.state[EntityField.X + var4]),
+                GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
+                toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
                 toRenderPixels(
-                  GradiusNeoGame.state[EntityField.Y + var4] - GradiusNeoGame.state[StateSlot.CameraOffsetY],
+                  GradiusNeoGame.state[EntityField.Y + renderCommandId] - GradiusNeoGame.state[StateSlot.CameraOffsetY],
                 ),
                 20,
               );
             } else {
-              if (GradiusNeoGame.state[EntityField.Parameter0 + var4] <= 282) {
+              if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 282) {
                 this.drawSpriteRegion(
                   gfx,
                   1,
-                  GradiusNeoGame.state[EntityField.Parameter0 + var4],
-                  toRenderPixels(GradiusNeoGame.state[EntityField.X + var4]),
+                  GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
+                  toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
                   toRenderPixels(
-                    GradiusNeoGame.state[EntityField.Y + var4] - GradiusNeoGame.state[StateSlot.CameraOffsetY],
+                    GradiusNeoGame.state[EntityField.Y + renderCommandId] -
+                      GradiusNeoGame.state[StateSlot.CameraOffsetY],
                   ),
                   20,
                 );
               } else {
-                if (GradiusNeoGame.state[EntityField.Parameter0 + var4] <= 292) {
+                if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 292) {
                   this.drawSpriteRegion(
                     gfx,
                     3,
-                    GradiusNeoGame.state[EntityField.Parameter0 + var4],
-                    toRenderPixels(GradiusNeoGame.state[EntityField.X + var4]),
+                    GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
+                    toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
                     toRenderPixels(
-                      GradiusNeoGame.state[EntityField.Y + var4] - GradiusNeoGame.state[StateSlot.CameraOffsetY],
+                      GradiusNeoGame.state[EntityField.Y + renderCommandId] -
+                        GradiusNeoGame.state[StateSlot.CameraOffsetY],
                     ),
                     20,
                   );
                 } else {
-                  if (GradiusNeoGame.state[EntityField.Parameter0 + var4] <= 348) {
+                  if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 348) {
                     this.drawSpriteRegion(
                       gfx,
                       4,
-                      GradiusNeoGame.state[EntityField.Parameter0 + var4],
-                      toRenderPixels(GradiusNeoGame.state[EntityField.X + var4]),
+                      GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
+                      toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
                       toRenderPixels(
-                        GradiusNeoGame.state[EntityField.Y + var4] - GradiusNeoGame.state[StateSlot.CameraOffsetY],
+                        GradiusNeoGame.state[EntityField.Y + renderCommandId] -
+                          GradiusNeoGame.state[StateSlot.CameraOffsetY],
                       ),
                       20,
                     );
                   } else {
-                    if (GradiusNeoGame.state[EntityField.Parameter0 + var4] <= 408) {
+                    if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 408) {
                       this.drawSpriteRegion(
                         gfx,
                         2,
-                        GradiusNeoGame.state[EntityField.Parameter0 + var4],
-                        toRenderPixels(GradiusNeoGame.state[EntityField.X + var4]),
+                        GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
+                        toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
                         toRenderPixels(
-                          GradiusNeoGame.state[EntityField.Y + var4] - GradiusNeoGame.state[StateSlot.CameraOffsetY],
+                          GradiusNeoGame.state[EntityField.Y + renderCommandId] -
+                            GradiusNeoGame.state[StateSlot.CameraOffsetY],
                         ),
                         20,
                       );
@@ -399,62 +456,66 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           }
 
           case 1: {
-            if (GradiusNeoGame.state[EntityField.Parameter0 + var4] <= 147) {
+            if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 147) {
               this.drawSpriteRegion(
                 gfx,
                 0,
-                GradiusNeoGame.state[EntityField.Parameter0 + var4],
-                toRenderPixels(GradiusNeoGame.state[EntityField.X + var4]),
+                GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
+                toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
                 toRenderPixels(
-                  GradiusNeoGame.state[EntityField.Y + var4] - GradiusNeoGame.state[StateSlot.CameraOffsetY],
+                  GradiusNeoGame.state[EntityField.Y + renderCommandId] - GradiusNeoGame.state[StateSlot.CameraOffsetY],
                 ),
                 20,
               );
             } else {
-              if (GradiusNeoGame.state[EntityField.Parameter0 + var4] <= 282) {
+              if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 282) {
                 this.drawSpriteRegion(
                   gfx,
                   1,
-                  GradiusNeoGame.state[EntityField.Parameter0 + var4],
-                  toRenderPixels(GradiusNeoGame.state[EntityField.X + var4]),
+                  GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
+                  toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
                   toRenderPixels(
-                    GradiusNeoGame.state[EntityField.Y + var4] - GradiusNeoGame.state[StateSlot.CameraOffsetY],
+                    GradiusNeoGame.state[EntityField.Y + renderCommandId] -
+                      GradiusNeoGame.state[StateSlot.CameraOffsetY],
                   ),
                   20,
                 );
               } else {
-                if (GradiusNeoGame.state[EntityField.Parameter0 + var4] <= 292) {
+                if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 292) {
                   this.drawSpriteRegion(
                     gfx,
                     3,
-                    GradiusNeoGame.state[EntityField.Parameter0 + var4],
-                    toRenderPixels(GradiusNeoGame.state[EntityField.X + var4]),
+                    GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
+                    toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
                     toRenderPixels(
-                      GradiusNeoGame.state[EntityField.Y + var4] - GradiusNeoGame.state[StateSlot.CameraOffsetY],
+                      GradiusNeoGame.state[EntityField.Y + renderCommandId] -
+                        GradiusNeoGame.state[StateSlot.CameraOffsetY],
                     ),
                     20,
                   );
                 } else {
-                  if (GradiusNeoGame.state[EntityField.Parameter0 + var4] <= 348) {
+                  if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 348) {
                     this.drawSpriteRegion(
                       gfx,
                       4,
-                      GradiusNeoGame.state[EntityField.Parameter0 + var4],
-                      toRenderPixels(GradiusNeoGame.state[EntityField.X + var4]),
+                      GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
+                      toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
                       toRenderPixels(
-                        GradiusNeoGame.state[EntityField.Y + var4] - GradiusNeoGame.state[StateSlot.CameraOffsetY],
+                        GradiusNeoGame.state[EntityField.Y + renderCommandId] -
+                          GradiusNeoGame.state[StateSlot.CameraOffsetY],
                       ),
                       20,
                     );
                   } else {
-                    if (GradiusNeoGame.state[EntityField.Parameter0 + var4] <= 408) {
+                    if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 408) {
                       this.drawSpriteRegion(
                         gfx,
                         2,
-                        GradiusNeoGame.state[EntityField.Parameter0 + var4],
-                        toRenderPixels(GradiusNeoGame.state[EntityField.X + var4]),
+                        GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
+                        toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
                         toRenderPixels(
-                          GradiusNeoGame.state[EntityField.Y + var4] - GradiusNeoGame.state[StateSlot.CameraOffsetY],
+                          GradiusNeoGame.state[EntityField.Y + renderCommandId] -
+                            GradiusNeoGame.state[StateSlot.CameraOffsetY],
                         ),
                         20,
                       );
@@ -468,62 +529,66 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           }
 
           case 2: {
-            if (GradiusNeoGame.state[EntityField.Parameter0 + var4] <= 147) {
+            if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 147) {
               this.drawSpriteRegion(
                 gfx,
                 0,
-                GradiusNeoGame.state[EntityField.Parameter0 + var4],
-                toRenderPixels(GradiusNeoGame.state[EntityField.X + var4]),
+                GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
+                toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
                 toRenderPixels(
-                  GradiusNeoGame.state[EntityField.Y + var4] - GradiusNeoGame.state[StateSlot.CameraOffsetY],
+                  GradiusNeoGame.state[EntityField.Y + renderCommandId] - GradiusNeoGame.state[StateSlot.CameraOffsetY],
                 ),
                 20,
               );
             } else {
-              if (GradiusNeoGame.state[EntityField.Parameter0 + var4] <= 282) {
+              if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 282) {
                 this.drawSpriteRegion(
                   gfx,
                   1,
-                  GradiusNeoGame.state[EntityField.Parameter0 + var4],
-                  toRenderPixels(GradiusNeoGame.state[EntityField.X + var4]),
+                  GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
+                  toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
                   toRenderPixels(
-                    GradiusNeoGame.state[EntityField.Y + var4] - GradiusNeoGame.state[StateSlot.CameraOffsetY],
+                    GradiusNeoGame.state[EntityField.Y + renderCommandId] -
+                      GradiusNeoGame.state[StateSlot.CameraOffsetY],
                   ),
                   20,
                 );
               } else {
-                if (GradiusNeoGame.state[EntityField.Parameter0 + var4] <= 292) {
+                if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 292) {
                   this.drawSpriteRegion(
                     gfx,
                     3,
-                    GradiusNeoGame.state[EntityField.Parameter0 + var4],
-                    toRenderPixels(GradiusNeoGame.state[EntityField.X + var4]),
+                    GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
+                    toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
                     toRenderPixels(
-                      GradiusNeoGame.state[EntityField.Y + var4] - GradiusNeoGame.state[StateSlot.CameraOffsetY],
+                      GradiusNeoGame.state[EntityField.Y + renderCommandId] -
+                        GradiusNeoGame.state[StateSlot.CameraOffsetY],
                     ),
                     20,
                   );
                 } else {
-                  if (GradiusNeoGame.state[EntityField.Parameter0 + var4] <= 348) {
+                  if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 348) {
                     this.drawSpriteRegion(
                       gfx,
                       4,
-                      GradiusNeoGame.state[EntityField.Parameter0 + var4],
-                      toRenderPixels(GradiusNeoGame.state[EntityField.X + var4]),
+                      GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
+                      toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
                       toRenderPixels(
-                        GradiusNeoGame.state[EntityField.Y + var4] - GradiusNeoGame.state[StateSlot.CameraOffsetY],
+                        GradiusNeoGame.state[EntityField.Y + renderCommandId] -
+                          GradiusNeoGame.state[StateSlot.CameraOffsetY],
                       ),
                       20,
                     );
                   } else {
-                    if (GradiusNeoGame.state[EntityField.Parameter0 + var4] <= 408) {
+                    if (GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId] <= 408) {
                       this.drawSpriteRegion(
                         gfx,
                         2,
-                        GradiusNeoGame.state[EntityField.Parameter0 + var4],
-                        toRenderPixels(GradiusNeoGame.state[EntityField.X + var4]),
+                        GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId],
+                        toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
                         toRenderPixels(
-                          GradiusNeoGame.state[EntityField.Y + var4] - GradiusNeoGame.state[StateSlot.CameraOffsetY],
+                          GradiusNeoGame.state[EntityField.Y + renderCommandId] -
+                            GradiusNeoGame.state[StateSlot.CameraOffsetY],
                         ),
                         20,
                       );
@@ -544,9 +609,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                 gfx,
                 0,
                 var2,
-                toRenderPixels(GradiusNeoGame.state[EntityField.X + var4] + 6 + var11 * 1 - 16),
+                toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId] + 6 + var11 * 1 - 16),
                 toRenderPixels(
-                  GradiusNeoGame.state[EntityField.Y + var4] +
+                  GradiusNeoGame.state[EntityField.Y + renderCommandId] +
                     -8 +
                     var11 * 1 -
                     1 -
@@ -558,9 +623,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                 gfx,
                 0,
                 var2 + 1,
-                toRenderPixels(GradiusNeoGame.state[EntityField.X + var4] + 6 - var11 * 1 + 8),
+                toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId] + 6 - var11 * 1 + 8),
                 toRenderPixels(
-                  GradiusNeoGame.state[EntityField.Y + var4] +
+                  GradiusNeoGame.state[EntityField.Y + renderCommandId] +
                     -8 +
                     var11 * 1 -
                     1 -
@@ -572,9 +637,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                 gfx,
                 0,
                 var2 + 2,
-                toRenderPixels(GradiusNeoGame.state[EntityField.X + var4] + 6 + var11 * 1 - 16),
+                toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId] + 6 + var11 * 1 - 16),
                 toRenderPixels(
-                  GradiusNeoGame.state[EntityField.Y + var4] +
+                  GradiusNeoGame.state[EntityField.Y + renderCommandId] +
                     -8 -
                     var11 * 1 +
                     16 -
@@ -587,9 +652,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                 gfx,
                 0,
                 var2 + 1 + 2,
-                toRenderPixels(GradiusNeoGame.state[EntityField.X + var4] + 6 - var11 * 1 + 8),
+                toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId] + 6 - var11 * 1 + 8),
                 toRenderPixels(
-                  GradiusNeoGame.state[EntityField.Y + var4] +
+                  GradiusNeoGame.state[EntityField.Y + renderCommandId] +
                     -8 -
                     var11 * 1 +
                     16 -
@@ -629,9 +694,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               gfx,
               0,
               var7,
-              toRenderPixels(GradiusNeoGame.state[EntityField.X + var4]),
+              toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
               toRenderPixels(
-                GradiusNeoGame.state[EntityField.Y + var4] - 2 - GradiusNeoGame.state[StateSlot.CameraOffsetY],
+                GradiusNeoGame.state[EntityField.Y + renderCommandId] -
+                  2 -
+                  GradiusNeoGame.state[StateSlot.CameraOffsetY],
               ),
               20,
             );
@@ -644,9 +711,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               gfx,
               0,
               var7,
-              toRenderPixels(GradiusNeoGame.state[EntityField.X + var4] - 8),
+              toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId] - 8),
               toRenderPixels(
-                GradiusNeoGame.state[EntityField.Y + var4] - 2 - GradiusNeoGame.state[StateSlot.CameraOffsetY],
+                GradiusNeoGame.state[EntityField.Y + renderCommandId] -
+                  2 -
+                  GradiusNeoGame.state[StateSlot.CameraOffsetY],
               ),
               20,
             );
@@ -654,8 +723,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           }
 
           case 4: {
-            if (GradiusNeoGame.state[EntityField.Y + var4] >= 0) {
-              if (GradiusNeoGame.state[EntityField.Y + var4] <= 2) {
+            if (GradiusNeoGame.state[EntityField.Y + renderCommandId] >= 0) {
+              if (GradiusNeoGame.state[EntityField.Y + renderCommandId] <= 2) {
                 for (let var10: int = 0; var10 < 9; var10++) {
                   this.drawSpriteRegion(
                     gfx,
@@ -664,12 +733,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                     toRenderPixels(
                       GradiusNeoGame.state[StateSlot.PlayerX] +
                         8 * (5 + (var10 % 3) * 2) +
-                        (1 - (var10 % 3)) * 4 * (2 - GradiusNeoGame.state[EntityField.Y + var4]),
+                        (1 - (var10 % 3)) * 4 * (2 - GradiusNeoGame.state[EntityField.Y + renderCommandId]),
                     ),
                     toRenderPixels(
                       GradiusNeoGame.state[StateSlot.PlayerY] +
                         16 * (var10 / 3 - 1) +
-                        (1 - var10 / 3) * 4 * (2 - GradiusNeoGame.state[EntityField.Y + var4]) -
+                        (1 - var10 / 3) * 4 * (2 - GradiusNeoGame.state[EntityField.Y + renderCommandId]) -
                         GradiusNeoGame.state[StateSlot.CameraOffsetY],
                     ),
                     20,
@@ -717,7 +786,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                     toRenderPixels(
                       GradiusNeoGame.state[StateSlot.PlayerY] +
                         -16 +
-                        4 * (5 - GradiusNeoGame.state[EntityField.Y + var4]) -
+                        4 * (5 - GradiusNeoGame.state[EntityField.Y + renderCommandId]) -
                         GradiusNeoGame.state[StateSlot.CameraOffsetY],
                     ),
                     20,
@@ -730,7 +799,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                     toRenderPixels(
                       GradiusNeoGame.state[StateSlot.PlayerY] +
                         16 -
-                        4 * (5 - GradiusNeoGame.state[EntityField.Y + var4]) -
+                        4 * (5 - GradiusNeoGame.state[EntityField.Y + renderCommandId]) -
                         GradiusNeoGame.state[StateSlot.CameraOffsetY],
                     ),
                     20,
@@ -743,54 +812,62 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           default:
         }
 
-        GradiusNeoGame.state[EntityField.Next + var4] = GradiusNeoGame.state[StateSlot.FreeEntityHead];
-        GradiusNeoGame.state[StateSlot.FreeEntityHead] = var4;
-        var4 = var5;
+        GradiusNeoGame.state[EntityField.Next + renderCommandId] = GradiusNeoGame.state[StateSlot.FreeEntityHead];
+        GradiusNeoGame.state[StateSlot.FreeEntityHead] = renderCommandId;
+        renderCommandId = nextRenderCommandId;
       }
 
-      GradiusNeoGame.state[EntityField.RenderLayerHead + var6] = -1;
+      GradiusNeoGame.state[EntityField.RenderLayerHead + layer] = -1;
     }
   }
 
   private renderBackgroundQueue(gfx: Graphics): void {
-    for (let var6: int = 0; var6 < 3; var6++) {
-      let var4: int = GradiusNeoGame.state[EntityField.RenderLayerHead + var6];
+    for (let layer: int = 0; layer < 3; layer++) {
+      let renderCommandId: int = GradiusNeoGame.state[EntityField.RenderLayerHead + layer];
 
-      while (var4 !== -1) {
-        let var5: int = GradiusNeoGame.state[EntityField.Next + var4];
-        switch (GradiusNeoGame.state[EntityField.Type + var4]) {
+      while (renderCommandId !== -1) {
+        let nextRenderCommandId: int = GradiusNeoGame.state[EntityField.Next + renderCommandId];
+        switch (GradiusNeoGame.state[EntityField.Type + renderCommandId]) {
           case 0: {
             gfx.setColor(191, 223, 255);
             gfx.drawLine(
-              toRenderPixels(GradiusNeoGame.state[1205 + GradiusNeoGame.state[EntityField.X + var4]]),
+              toRenderPixels(GradiusNeoGame.state[1205 + GradiusNeoGame.state[EntityField.X + renderCommandId]]),
               toRenderPixels(
-                GradiusNeoGame.state[EntityField.Y + var4] + 6 - GradiusNeoGame.state[StateSlot.CameraOffsetY],
+                GradiusNeoGame.state[EntityField.Y + renderCommandId] +
+                  6 -
+                  GradiusNeoGame.state[StateSlot.CameraOffsetY],
               ),
-              toRenderPixels(GradiusNeoGame.state[1185 + GradiusNeoGame.state[EntityField.X + var4]]),
+              toRenderPixels(GradiusNeoGame.state[1185 + GradiusNeoGame.state[EntityField.X + renderCommandId]]),
               toRenderPixels(
-                GradiusNeoGame.state[EntityField.Y + var4] + 6 - GradiusNeoGame.state[StateSlot.CameraOffsetY],
+                GradiusNeoGame.state[EntityField.Y + renderCommandId] +
+                  6 -
+                  GradiusNeoGame.state[StateSlot.CameraOffsetY],
               ),
             );
             break;
           }
 
           case 1: {
-            for (let var10: int = 0; var10 < 4 - GradiusNeoGame.state[EntityField.Parameter0 + var4]; var10++) {
+            for (
+              let var10: int = 0;
+              var10 < 4 - GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId];
+              var10++
+            ) {
               for (let var9: int = 0; var9 < 6; var9++) {
                 this.drawSpriteRegion(
                   gfx,
                   4,
                   328 - var10,
-                  toRenderPixels(GradiusNeoGame.state[EntityField.X + var4] + 48 - var10 * 16),
-                  toRenderPixels(GradiusNeoGame.state[EntityField.Y + var4] + var9 * 48),
+                  toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId] + 48 - var10 * 16),
+                  toRenderPixels(GradiusNeoGame.state[EntityField.Y + renderCommandId] + var9 * 48),
                   20,
                 );
                 this.drawSpriteRegion(
                   gfx,
                   4,
                   329 + var10,
-                  toRenderPixels(GradiusNeoGame.state[EntityField.X + var4] + 176 + var10 * 16),
-                  toRenderPixels(GradiusNeoGame.state[EntityField.Y + var4] + var9 * 48),
+                  toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId] + 176 + var10 * 16),
+                  toRenderPixels(GradiusNeoGame.state[EntityField.Y + renderCommandId] + var9 * 48),
                   20,
                 );
               }
@@ -804,16 +881,16 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                 gfx,
                 4,
                 299,
-                toRenderPixels(GradiusNeoGame.state[EntityField.X + var4]),
-                toRenderPixels(-GradiusNeoGame.state[EntityField.Y + var4] + var8 * 48),
+                toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId]),
+                toRenderPixels(-GradiusNeoGame.state[EntityField.Y + renderCommandId] + var8 * 48),
                 20,
               );
               this.drawSpriteRegion(
                 gfx,
                 4,
                 300,
-                toRenderPixels(GradiusNeoGame.state[EntityField.X + var4] + 176),
-                toRenderPixels(-GradiusNeoGame.state[EntityField.Y + var4] + var8 * 48),
+                toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId] + 176),
+                toRenderPixels(-GradiusNeoGame.state[EntityField.Y + renderCommandId] + var8 * 48),
                 20,
               );
             }
@@ -821,22 +898,22 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           }
 
           case 3: {
-            for (let var3: int = 0; var3 < 4 - GradiusNeoGame.state[EntityField.Parameter0 + var4]; var3++) {
+            for (let var3: int = 0; var3 < 4 - GradiusNeoGame.state[EntityField.Parameter0 + renderCommandId]; var3++) {
               for (let var7: int = 0; var7 < 6; var7++) {
                 this.drawSpriteRegion(
                   gfx,
                   4,
                   308 - var3,
-                  toRenderPixels(GradiusNeoGame.state[EntityField.X + var4] + var7 * 48),
-                  toRenderPixels(GradiusNeoGame.state[EntityField.Y + var4] + 48 - var3 * 16),
+                  toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId] + var7 * 48),
+                  toRenderPixels(GradiusNeoGame.state[EntityField.Y + renderCommandId] + 48 - var3 * 16),
                   20,
                 );
                 this.drawSpriteRegion(
                   gfx,
                   4,
                   313 + var3,
-                  toRenderPixels(GradiusNeoGame.state[EntityField.X + var4] + var7 * 48),
-                  toRenderPixels(GradiusNeoGame.state[EntityField.Y + var4] + 160 + var3 * 16),
+                  toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId] + var7 * 48),
+                  toRenderPixels(GradiusNeoGame.state[EntityField.Y + renderCommandId] + 160 + var3 * 16),
                   20,
                 );
               }
@@ -850,7 +927,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                 gfx,
                 4,
                 295,
-                toRenderPixels(-GradiusNeoGame.state[EntityField.X + var4] + var2 * 48),
+                toRenderPixels(-GradiusNeoGame.state[EntityField.X + renderCommandId] + var2 * 48),
                 0,
                 20,
               );
@@ -858,7 +935,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                 gfx,
                 4,
                 296,
-                toRenderPixels(-GradiusNeoGame.state[EntityField.X + var4] + var2 * 48),
+                toRenderPixels(-GradiusNeoGame.state[EntityField.X + renderCommandId] + var2 * 48),
                 fromLegacyRenderPixels(120),
                 20,
               );
@@ -869,9 +946,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           case 5: {
             gfx.setColor(16777215);
             gfx.fillRect(
-              toRenderPixels(120 - GradiusNeoGame.state[EntityField.X + var4]),
+              toRenderPixels(120 - GradiusNeoGame.state[EntityField.X + renderCommandId]),
               0,
-              toRenderPixels(GradiusNeoGame.state[EntityField.X + var4] * 2),
+              toRenderPixels(GradiusNeoGame.state[EntityField.X + renderCommandId] * 2),
               RENDERED_GAMEPLAY_HEIGHT,
             );
           }
@@ -879,72 +956,19 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           default:
         }
 
-        GradiusNeoGame.state[EntityField.Next + var4] = GradiusNeoGame.state[StateSlot.FreeEntityHead];
-        GradiusNeoGame.state[StateSlot.FreeEntityHead] = var4;
-        var4 = var5;
+        GradiusNeoGame.state[EntityField.Next + renderCommandId] = GradiusNeoGame.state[StateSlot.FreeEntityHead];
+        GradiusNeoGame.state[StateSlot.FreeEntityHead] = renderCommandId;
+        renderCommandId = nextRenderCommandId;
       }
 
-      GradiusNeoGame.state[EntityField.RenderLayerHead + var6] = -1;
-    }
-  }
-
-  public constructor(var1: GradiusNeo) {
-    super(false);
-
-    try {
-      this.w = var1;
-      this.setFullScreenMode(true);
-      GradiusNeoGame.z = this.getWidth();
-      GradiusNeoGame.A = this.getHeight();
-      if (GradiusNeoGame.A < GradiusNeoGame.z) {
-        GradiusNeoGame.A = GradiusNeoGame.z;
-      }
-
-      GradiusNeoGame.state[StateSlot.ViewportOffsetX] = (GradiusNeoGame.z - RENDERED_GAME_VIEW_WIDTH) / 2;
-      GradiusNeoGame.state[StateSlot.ViewportOffsetY] = (GradiusNeoGame.A - RENDERED_GAME_VIEW_WIDTH) / 2;
-      GradiusNeoGame.state[9729] = 20;
-      GradiusNeoGame.state[9727] = 18;
-      GradiusNeoGame.state[9726] = 16;
-      GradiusNeoGame.state[9728] = 14;
-      GradiusNeoGame.state[9730] = 12;
-      GradiusNeoGame.state[2017] = 2;
-      GradiusNeoGame.state[2018] = 2;
-      GradiusNeoGame.state[2019] = 64;
-      GradiusNeoGame.state[2020] = 64;
-      GradiusNeoGame.state[2021] = 4;
-      GradiusNeoGame.state[2022] = 32;
-      GradiusNeoGame.state[2023] = 4;
-      GradiusNeoGame.state[2024] = 32;
-      GradiusNeoGame.state[2025] = 32768;
-      GradiusNeoGame.state[2026] = 131072;
-      GradiusNeoGame.state[2027] = 8192;
-      GradiusNeoGame.state[9771] = 40000;
-      GradiusNeoGame.state[9772] = 55000;
-      GradiusNeoGame.state[9773] = 70000;
-      GradiusNeoGame.state[9774] = 35000;
-      GradiusNeoGame.state[9775] = 200000;
-      GradiusNeoGame.state[9781] = 15;
-      GradiusNeoGame.state[9782] = 18;
-      GradiusNeoGame.state[9783] = 21;
-      GradiusNeoGame.state[9784] = 24;
-      GradiusNeoGame.state[9785] = 27;
-      GradiusNeoGame.state[9786] = 12;
-      GradiusNeoGame.state[9787] = 30;
-      GradiusNeoGame.state[9788] = 33;
-      GradiusNeoGame.state[9789] = 36;
-      GradiusNeoGame.screenState = ScreenState.Boot;
-    } catch (var3) {
-      if (var3 instanceof java.lang.Throwable) {
-      } else {
-        throw var3;
-      }
+      GradiusNeoGame.state[EntityField.RenderLayerHead + layer] = -1;
     }
   }
 
   public run(): void {
     try {
       while (this.running) {
-        this.g++;
+        this.loopIterationCount++;
         GradiusNeoGame.timestamps[0] = java.lang.System.currentTimeMillis();
         this.repaint();
         this.serviceRepaints();
@@ -956,10 +980,10 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           GradiusNeoGame.screenState !== ScreenState.LoadStage &&
           GradiusNeoGame.screenState !== ScreenState.InitializeNewGame
         ) {
-          this.h = java.lang.System.currentTimeMillis() - GradiusNeoGame.timestamps[0];
-          if (this.h < 100n && this.h > 0n) {
+          this.lastFrameDurationMillis = java.lang.System.currentTimeMillis() - GradiusNeoGame.timestamps[0];
+          if (this.lastFrameDurationMillis < 100n && this.lastFrameDurationMillis > 0n) {
             try {
-              java.lang.Thread.sleep(100n - this.h);
+              java.lang.Thread.sleep(100n - this.lastFrameDurationMillis);
             } catch (var2) {
               if (var2 instanceof java.lang.Throwable) {
               } else {
@@ -970,8 +994,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
         }
       }
 
-      this.w.destroyApp(false);
-      this.w.notifyDestroyed();
+      this.midletHost.destroyApp(false);
+      this.midletHost.notifyDestroyed();
     } catch (var3) {
       if (var3 instanceof java.lang.Throwable) {
         GameSupport.a('main loop error ' + var3, 1);
@@ -986,9 +1010,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
     gfx.translate(-gfx.getTranslateX(), -gfx.getTranslateY());
     gfx.setClip(0, 0, this.getWidth(), this.getHeight());
     gfx.setColor(0);
-    gfx.fillRect(0, var2, GradiusNeoGame.z, GradiusNeoGame.A);
-    this.a__Graphics_String_int_int(gfx, this.leftSoftKeyLabel, GradiusNeoGame.state[StateSlot.ViewportOffsetX], var2);
-    this.a__Graphics_String_int_int(
+    gfx.fillRect(0, var2, GradiusNeoGame.canvasWidth, GradiusNeoGame.canvasHeight);
+    this.drawBitmapText(gfx, this.leftSoftKeyLabel, GradiusNeoGame.state[StateSlot.ViewportOffsetX], var2);
+    this.drawBitmapText(
       gfx,
       this.rightSoftKeyLabel,
       GAME_VIEW_WIDTH - this.rightSoftKeyLabel.length * 14 + GradiusNeoGame.state[StateSlot.ViewportOffsetX] + -3,
@@ -996,71 +1020,79 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
     );
   }
 
-  private setSoftKeyLabels(var1: int, var2: int): void {
+  private setSoftKeyLabels(leftCommandIndex: int, rightCommandIndex: int): void {
     this.leftSoftKeyLabel = ' ';
     this.rightSoftKeyLabel = ' ';
-    this.leftSoftKeyLabel = GradiusNeoGame.softKeyCommands[var1].getLabel();
-    this.rightSoftKeyLabel = GradiusNeoGame.softKeyCommands[var2].getLabel();
+    this.leftSoftKeyLabel = GradiusNeoGame.softKeyCommands[leftCommandIndex].getLabel();
+    this.rightSoftKeyLabel = GradiusNeoGame.softKeyCommands[rightCommandIndex].getLabel();
   }
 
-  private static b__int_int(var0: int, var1: int): int {
-    var0 = GradiusNeoGame.state[StateSlot.PlayerX] - var0;
+  private static calculateDirectionToPlayer(sourceX: int, sourceY: int): int {
+    sourceX = GradiusNeoGame.state[StateSlot.PlayerX] - sourceX;
 
-    for (var1 = GradiusNeoGame.state[StateSlot.PlayerY] - var1; ((var1 + 8) | (8 - var1)) < 0; var1 /= 2) {
-      var0 /= 2;
+    for (
+      sourceY = GradiusNeoGame.state[StateSlot.PlayerY] - sourceY;
+      ((sourceY + 8) | (8 - sourceY)) < 0;
+      sourceY /= 2
+    ) {
+      sourceX /= 2;
     }
 
-    if (0 <= var0) {
-      while (8 <= var0) {
-        var0 /= 2;
-        var1 /= 2;
+    if (0 <= sourceX) {
+      while (8 <= sourceX) {
+        sourceX /= 2;
+        sourceY /= 2;
       }
 
-      return 0 <= var1 ? GradiusNeoGame.state[327 + var0 + var1 * 8] : 32 - GradiusNeoGame.state[327 + var0 - var1 * 8];
+      return 0 <= sourceY
+        ? GradiusNeoGame.state[327 + sourceX + sourceY * 8]
+        : 32 - GradiusNeoGame.state[327 + sourceX - sourceY * 8];
     } else {
-      while (-8 >= var0) {
-        var0 /= 2;
-        var1 /= 2;
+      while (-8 >= sourceX) {
+        sourceX /= 2;
+        sourceY /= 2;
       }
 
-      return 0 <= var1
-        ? 64 - GradiusNeoGame.state[327 - var0 + var1 * 8]
-        : 32 + GradiusNeoGame.state[327 - var0 - var1 * 8];
+      return 0 <= sourceY
+        ? 64 - GradiusNeoGame.state[327 - sourceX + sourceY * 8]
+        : 32 + GradiusNeoGame.state[327 - sourceX - sourceY * 8];
     }
   }
 
-  private static a__int_int_int(var0: int, var1: int, var2: int): int {
-    let var3: int;
-    if ((var3 = GradiusNeoGame.b__int_int(var0 >> 4, var1 >> 4) - var2) > 32) {
-      var3 -= 64;
+  private static rotateDirectionTowardPlayer(xFixed: int, yFixed: int, currentDirection: int): int {
+    let directionDelta: int;
+    if (
+      (directionDelta = GradiusNeoGame.calculateDirectionToPlayer(xFixed >> 4, yFixed >> 4) - currentDirection) > 32
+    ) {
+      directionDelta -= 64;
     }
 
-    if (var3 < -32) {
-      var3 += 64;
+    if (directionDelta < -32) {
+      directionDelta += 64;
     }
 
-    if (var3 === 0) {
-      return var2;
+    if (directionDelta === 0) {
+      return currentDirection;
     } else {
-      return var3 > 0 ? ++var2 % 64 : (var2 + 64 - 1) % 64;
+      return directionDelta > 0 ? ++currentDirection % 64 : (currentDirection + 64 - 1) % 64;
     }
   }
 
-  private static b__int_int_int(var0: int, var1: int, var2: int): int {
+  private static advanceEntityX(entityId: int, direction: int, speed: int): int {
     return (
-      (GradiusNeoGame.state[EntityField.XFixed + var0] =
-        GradiusNeoGame.state[EntityField.XFixed + var0] + GradiusNeoGame.state[455 + var1] * var2) >> 4
+      (GradiusNeoGame.state[EntityField.XFixed + entityId] =
+        GradiusNeoGame.state[EntityField.XFixed + entityId] + GradiusNeoGame.state[455 + direction] * speed) >> 4
     );
   }
 
-  private static c__int_int_int(var0: int, var1: int, var2: int): int {
+  private static advanceEntityY(entityId: int, direction: int, speed: int): int {
     return (
-      (GradiusNeoGame.state[EntityField.YFixed + var0] =
-        GradiusNeoGame.state[EntityField.YFixed + var0] + GradiusNeoGame.state[471 + var1] * var2) >> 4
+      (GradiusNeoGame.state[EntityField.YFixed + entityId] =
+        GradiusNeoGame.state[EntityField.YFixed + entityId] + GradiusNeoGame.state[471 + direction] * speed) >> 4
     );
   }
 
-  private static e__void(): void {
+  private static updateAdaptiveDifficulty(): void {
     if (2 <= GradiusNeoGame.state[StateSlot.Difficulty]) {
       GradiusNeoGame.state[25] = GradiusNeoGame.state[24];
       GradiusNeoGame.state[25] = GradiusNeoGame.state[25] + (GradiusNeoGame.state[StateSlot.PlayerMoveSpeed] - 5) / 2;
@@ -1087,93 +1119,100 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
     }
   }
 
-  private a__Graphics_int_int_int_int(gfx: Graphics, var2: int, var3: int, var4: int, var5: int): void {
-    let var6: int = 0;
+  private drawBitmapGlyphRun(gfx: Graphics, firstGlyphIndex: int, glyphCount: int, x: int, y: int): void {
+    let glyphOffset: int = 0;
 
-    while (var6 < var3) {
-      if (GradiusNeoGame.state[599 + var2 + var6] >= 0) {
+    while (glyphOffset < glyphCount) {
+      if (GradiusNeoGame.state[599 + firstGlyphIndex + glyphOffset] >= 0) {
         this.drawSpriteRegion(
           gfx,
           0,
-          GradiusNeoGame.state[599 + var2 + var6],
-          toRenderPixels(var4 - 2),
-          toRenderPixels(var5 - 2),
+          GradiusNeoGame.state[599 + firstGlyphIndex + glyphOffset],
+          toRenderPixels(x - 2),
+          toRenderPixels(y - 2),
           20,
         );
       }
 
-      var6++;
-      var4 += 14;
+      glyphOffset++;
+      x += 14;
     }
   }
 
-  private a__Graphics_String_int_int(gfx: Graphics, var2: java.lang.String, var3: int, var4: int): void {
-    let var5: int = 0;
-    let var7: int = 0;
+  private drawBitmapText(gfx: Graphics, text: java.lang.String, x: int, y: int): void {
+    let glyphIndex: int = 0;
+    let characterIndex: int = 0;
 
-    while (var7 < var2.length) {
-      var5 = 0;
-      let var6: char;
-      if ((var6 = var2.charCodeAt(var7)) >= 65 && var6 <= 90) {
-        var5 = var6 - 65 + 14;
+    while (characterIndex < text.length) {
+      glyphIndex = 0;
+      let characterCode: char;
+      if ((characterCode = text.charCodeAt(characterIndex)) >= 65 && characterCode <= 90) {
+        glyphIndex = characterCode - 65 + 14;
       }
 
-      if (var6 >= 48 && var6 <= 57) {
-        var5 = var6 - 48 + 4;
+      if (characterCode >= 48 && characterCode <= 57) {
+        glyphIndex = characterCode - 48 + 4;
       }
 
-      if (var6 === 42) {
-        var5 = 40;
+      if (characterCode === 42) {
+        glyphIndex = 40;
       }
 
-      if (var6 === 35) {
-        var5 = 41;
+      if (characterCode === 35) {
+        glyphIndex = 41;
       }
 
-      if (var6 === 45) {
-        var5 = 42;
+      if (characterCode === 45) {
+        glyphIndex = 42;
       }
 
-      if (var5 !== 0) {
-        this.drawSpriteRegion(gfx, 0, var5, toRenderPixels(var3 - 2), toRenderPixels(var4 - 2), 20);
+      if (glyphIndex !== 0) {
+        this.drawSpriteRegion(gfx, 0, glyphIndex, toRenderPixels(x - 2), toRenderPixels(y - 2), 20);
       }
 
-      var7++;
-      var3 += 14;
+      characterIndex++;
+      x += 14;
     }
   }
 
-  private a__Graphics_int_int_int_int_int(gfx: Graphics, var2: int, var3: int, var4: int, var5: int, var6: int): void {
-    var3 = var4 + (var3 - 1) * 14;
+  private drawBitmapNumber(gfx: Graphics, value: int, digitCount: int, x: int, y: int, firstDigitGlyph: int): void {
+    let digitX = x + (digitCount - 1) * 14;
 
     do {
-      this.drawSpriteRegion(gfx, 0, (var2 % 10) + var6, toRenderPixels(var3 - 2), toRenderPixels(var5 - 2), 20);
-      var2 /= 10;
-      var3 -= 14;
-    } while ((-var2 & (var4 - var3 - 14)) < 0);
+      this.drawSpriteRegion(
+        gfx,
+        0,
+        (value % 10) + firstDigitGlyph,
+        toRenderPixels(digitX - 2),
+        toRenderPixels(y - 2),
+        20,
+      );
+      value /= 10;
+      digitX -= 14;
+    } while ((-value & (x - digitX - 14)) < 0);
   }
 
-  private a__Graphics_int_int(gfx: Graphics, var2: int, var3: int): void {
-    this.drawSpriteRegion(gfx, 0, 42, 40, toRenderPixels(var3 - 2), 20);
-    this.drawSpriteRegion(gfx, 0, 42, 124, toRenderPixels(var3 - 2), 20);
-    if (var2 === 0) {
-      this.a__Graphics_int_int_int_int(gfx, 135 + var2 * 7, 7, 70, var3);
+  private drawDifficultyLabel(gfx: Graphics, difficulty: int, y: int): void {
+    this.drawSpriteRegion(gfx, 0, 42, 40, toRenderPixels(y - 2), 20);
+    this.drawSpriteRegion(gfx, 0, 42, 124, toRenderPixels(y - 2), 20);
+    if (difficulty === 0) {
+      this.drawBitmapGlyphRun(gfx, 135 + difficulty * 7, 7, 70, y);
     } else {
-      if (var2 === 1) {
-        this.a__Graphics_int_int_int_int(gfx, 135 + var2 * 7, 7, 49, var3);
+      if (difficulty === 1) {
+        this.drawBitmapGlyphRun(gfx, 135 + difficulty * 7, 7, 49, y);
       } else {
-        if (var2 === 2) {
-          this.a__Graphics_int_int_int_int(gfx, 135 + var2 * 7, 7, 63, var3);
+        if (difficulty === 2) {
+          this.drawBitmapGlyphRun(gfx, 135 + difficulty * 7, 7, 63, y);
         } else {
-          if (var2 === 3) {
-            this.a__Graphics_int_int_int_int(gfx, 135 + var2 * 7, 7, 49, var3);
+          if (difficulty === 3) {
+            this.drawBitmapGlyphRun(gfx, 135 + difficulty * 7, 7, 49, y);
           }
         }
       }
     }
   }
 
-  private static f__void(): void {
+  private static synchronizeFormationWeapon(): void {
     if (GradiusNeoGame.state[StateSlot.OptionCount] >= 4 && GradiusNeoGame.state[StateSlot.MainWeaponState] >= 8) {
       switch (GradiusNeoGame.state[81]) {
         case 0: {
@@ -1221,11 +1260,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
     }
   }
 
-  private a__String(var1: java.lang.String): void {
+  private loadResourceIntoBuffer(resourcePath: java.lang.String): void {
     try {
-      GradiusNeoGame.v = this.getClass().getResourceAsStream('/' + var1);
-      GradiusNeoGame.v.read(GradiusNeoGame.resourceBuffer);
-      GradiusNeoGame.v.close();
+      GradiusNeoGame.resourceInputStream = this.getClass().getResourceAsStream('/' + resourcePath);
+      GradiusNeoGame.resourceInputStream.read(GradiusNeoGame.resourceBuffer);
+      GradiusNeoGame.resourceInputStream.close();
     } catch (var3) {
       if (var3 instanceof java.lang.Throwable) {
       } else {
@@ -1328,7 +1367,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
 
     GradiusNeoGame.state[EntityField.Next + entityId] = GradiusNeoGame.state[StateSlot.FreeEntityHead];
     GradiusNeoGame.state[StateSlot.FreeEntityHead] = entityId;
-    GradiusNeoGame.J++;
+    GradiusNeoGame.spawnedEntityCount++;
   }
 
   private static removeAuxiliaryEntity(entityId: int): void {
@@ -1346,7 +1385,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
 
     GradiusNeoGame.state[EntityField.Next + entityId] = GradiusNeoGame.state[StateSlot.FreeEntityHead];
     GradiusNeoGame.state[StateSlot.FreeEntityHead] = entityId;
-    GradiusNeoGame.J++;
+    GradiusNeoGame.spawnedEntityCount++;
   }
 
   private static enqueueRenderCommand(
@@ -2040,9 +2079,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
     this.resumeAfterAppShow();
   }
 
-  private d__Graphics(gfx: Graphics): void {
-    if (this.L === null) {
-      this.L = GameSupport.a(172, this.instructionsText, gfx.getFont());
+  private renderInstructionsScreen(gfx: Graphics): void {
+    if (this.instructionsLines === null) {
+      this.instructionsLines = GameSupport.a(172, this.instructionsText, gfx.getFont());
     }
 
     gfx.setColor(65535);
@@ -2051,35 +2090,35 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
     gfx.setColor(16777215);
 
     for (let var2: int = 0; var2 < 8; var2++) {
-      gfx.drawString(this.L[this.l + var2], 93, toRenderPixels(3 + 26 * (var2 + 1)), 17);
+      gfx.drawString(this.instructionsLines[this.textScrollOffset + var2], 93, toRenderPixels(3 + 26 * (var2 + 1)), 17);
     }
 
-    GameSupport.a(gfx, 0, 21, 156, 7, this.l * 19, this.L.length * 19);
+    GameSupport.a(gfx, 0, 21, 156, 7, this.textScrollOffset * 19, this.instructionsLines.length * 19);
     if ((GradiusNeoGame.state[StateSlot.HeldInputBits] & 6) !== 0) {
-      this.l--;
+      this.textScrollOffset--;
     } else {
       if ((GradiusNeoGame.state[StateSlot.HeldInputBits] & 96) !== 0) {
-        this.l++;
+        this.textScrollOffset++;
       }
     }
 
-    if (this.l < 0) {
-      this.l = 0;
+    if (this.textScrollOffset < 0) {
+      this.textScrollOffset = 0;
     }
 
-    if (this.l > this.L.length - 8) {
-      this.l = this.L.length - 8;
+    if (this.textScrollOffset > this.instructionsLines.length - 8) {
+      this.textScrollOffset = this.instructionsLines.length - 8;
     }
 
     if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.RightSoftKey) !== 0) {
-      GradiusNeoGame.screenState = this.k;
+      GradiusNeoGame.screenState = this.infoReturnScreen;
     }
   }
 
-  private e__Graphics(gfx: Graphics): void {
-    if (this.N === null) {
-      let var2: java.lang.String = this.w.getAppProperty('MIDlet-Version');
-      this.N = GameSupport.a(
+  private renderAboutScreen(gfx: Graphics): void {
+    if (this.aboutLines === null) {
+      let var2: java.lang.String = this.midletHost.getAppProperty('MIDlet-Version');
+      this.aboutLines = GameSupport.a(
         172,
         'Gradius Neo\n\n© 2004 2006 KONAMI\nAll Rights Reserved.\n\nPublished by Konami Digital Entertainment\n\nv' +
           var2 +
@@ -2093,24 +2132,24 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
     gfx.setColor(16777215);
 
     for (let var3: int = 0; var3 < 8; var3++) {
-      gfx.drawString(this.N[this.l + var3], 93, toRenderPixels(3 + 26 * (var3 + 1)), 17);
+      gfx.drawString(this.aboutLines[this.textScrollOffset + var3], 93, toRenderPixels(3 + 26 * (var3 + 1)), 17);
     }
 
-    GameSupport.a(gfx, 0, 21, 156, 7, this.l * 19, this.N.length * 19);
+    GameSupport.a(gfx, 0, 21, 156, 7, this.textScrollOffset * 19, this.aboutLines.length * 19);
     if ((GradiusNeoGame.state[StateSlot.HeldInputBits] & 6) !== 0) {
-      this.l--;
+      this.textScrollOffset--;
     } else {
       if ((GradiusNeoGame.state[StateSlot.HeldInputBits] & 96) !== 0) {
-        this.l++;
+        this.textScrollOffset++;
       }
     }
 
-    if (this.l < 0) {
-      this.l = 0;
+    if (this.textScrollOffset < 0) {
+      this.textScrollOffset = 0;
     }
 
-    if (this.l > this.N.length - 8) {
-      this.l = this.N.length - 8;
+    if (this.textScrollOffset > this.aboutLines.length - 8) {
+      this.textScrollOffset = this.aboutLines.length - 8;
     }
 
     if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.RightSoftKey) !== 0) {
@@ -2119,9 +2158,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
   }
 
   private renderExitConfirmationOptions(gfx: Graphics): void {
-    this.a__Graphics_String_int_int(gfx, 'EXIT', 92, 96);
-    this.a__Graphics_String_int_int(gfx, 'YES', 92, 112);
-    this.a__Graphics_String_int_int(gfx, 'NO', 92, 128);
+    this.drawBitmapText(gfx, 'EXIT', 92, 96);
+    this.drawBitmapText(gfx, 'YES', 92, 112);
+    this.drawBitmapText(gfx, 'NO', 92, 128);
     if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2) !== 0) {
       GradiusNeoGame.state[0]++;
     } else {
@@ -2212,13 +2251,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
     }
   }
 
-  private i__Graphics(gfx: Graphics): void {
-    this.a__Graphics_int_int_int_int(gfx, 219, 5, 85, 80);
-    this.a__Graphics_String_int_int(gfx, 'RESUME', 43, 96);
+  private updatePauseMenu(gfx: Graphics): void {
+    this.drawBitmapGlyphRun(gfx, 219, 5, 85, 80);
+    this.drawBitmapText(gfx, 'RESUME', 43, 96);
     let var10: java.lang.String[] = ['NONE', 'BGM', 'SFX'];
-    this.a__Graphics_String_int_int(gfx, 'SOUND - ' + var10[GradiusNeoGame.soundMode], 43, 112);
-    this.a__Graphics_String_int_int(gfx, 'HELP', 43, 128);
-    this.a__Graphics_String_int_int(gfx, 'EXIT', 43, 144);
+    this.drawBitmapText(gfx, 'SOUND - ' + var10[GradiusNeoGame.soundMode], 43, 112);
+    this.drawBitmapText(gfx, 'HELP', 43, 128);
+    this.drawBitmapText(gfx, 'EXIT', 43, 144);
     if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2) !== 0) {
       GradiusNeoGame.state[0] = GradiusNeoGame.state[0] + 3;
     } else {
@@ -2259,10 +2298,10 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
       }
 
       if (GradiusNeoGame.state[0] === 2) {
-        this.k = 205;
+        this.infoReturnScreen = 205;
         this.setSoftKeyLabels(6, 3);
         GradiusNeoGame.screenState = ScreenState.Instructions;
-        this.l = 0;
+        this.textScrollOffset = 0;
         return;
       }
 
@@ -2272,7 +2311,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
     }
   }
 
-  private g__void(): void {
+  private updatePrimaryEntities(): void {
     let var5: int = GradiusNeoGame.state[StateSlot.PrimaryEntityHead];
 
     while (var5 !== -1) {
@@ -2280,9 +2319,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
       let var7: int = GradiusNeoGame.state[EntityField.X + var5];
       let var8: int = GradiusNeoGame.state[EntityField.Y + var5];
       let var9: int = GradiusNeoGame.state[EntityField.Age + var5];
-      GradiusNeoGame.I = -1;
-      let var10: int = (GradiusNeoGame.I + 1) / 2;
-      GradiusNeoGame.J = 0;
+      GradiusNeoGame.entityDirectionSign = -1;
+      let var10: int = (GradiusNeoGame.entityDirectionSign + 1) / 2;
+      GradiusNeoGame.spawnedEntityCount = 0;
       if (GradiusNeoGame.state[StateSlot.StageWorldHeight] > GAME_VIEW_WIDTH) {
         if (((var7 + 48) | (272 - var7)) < 0) {
           GradiusNeoGame.removePrimaryEntity(var5);
@@ -2384,16 +2423,19 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           } else {
             if (a[8]) {
               if (GradiusNeoGame.state[EntityField.Parameter0 + var5] == 0) {
-                GradiusNeoGame.state[4606 + var5] = GradiusNeoGame.state[4606 + var5] + (GradiusNeoGame.I * 16 * 9) / 2;
+                GradiusNeoGame.state[4606 + var5] =
+                  GradiusNeoGame.state[4606 + var5] + (GradiusNeoGame.entityDirectionSign * 16 * 9) / 2;
                 if (var9 == 4) {
                   GradiusNeoGame.state[EntityField.Parameter0 + var5]++;
                 } else {
                   GradiusNeoGame.state[5118 + var5] =
-                    GradiusNeoGame.state[5118 + var5] + (GradiusNeoGame.I * 16 * 7) / 1;
+                    GradiusNeoGame.state[5118 + var5] + (GradiusNeoGame.entityDirectionSign * 16 * 7) / 1;
                 }
               } else if (GradiusNeoGame.state[EntityField.Parameter0 + var5] == 1) {
-                GradiusNeoGame.state[4606 + var5] = GradiusNeoGame.state[4606 + var5] + (GradiusNeoGame.I * 16 * 1) / 2;
-                GradiusNeoGame.state[5118 + var5] = GradiusNeoGame.state[5118 + var5] + GradiusNeoGame.I * 16 * 1;
+                GradiusNeoGame.state[4606 + var5] =
+                  GradiusNeoGame.state[4606 + var5] + (GradiusNeoGame.entityDirectionSign * 16 * 1) / 2;
+                GradiusNeoGame.state[5118 + var5] =
+                  GradiusNeoGame.state[5118 + var5] + GradiusNeoGame.entityDirectionSign * 16 * 1;
                 if (GradiusNeoGame.state[4606 + var5] <= -72) {
                   GradiusNeoGame.state[4606 + var5] = 0;
                 }
@@ -2403,8 +2445,10 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                 }
               }
             } else {
-              GradiusNeoGame.state[4606 + var5] = GradiusNeoGame.state[4606 + var5] + (GradiusNeoGame.I * 16 * 1) / 2;
-              GradiusNeoGame.state[5118 + var5] = GradiusNeoGame.state[5118 + var5] + GradiusNeoGame.I * 16 * 1;
+              GradiusNeoGame.state[4606 + var5] =
+                GradiusNeoGame.state[4606 + var5] + (GradiusNeoGame.entityDirectionSign * 16 * 1) / 2;
+              GradiusNeoGame.state[5118 + var5] =
+                GradiusNeoGame.state[5118 + var5] + GradiusNeoGame.entityDirectionSign * 16 * 1;
               if (GradiusNeoGame.state[4606 + var5] + 48 + 288 <= 0) {
                 GradiusNeoGame.removePrimaryEntity(var5);
               }
@@ -2432,7 +2476,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               );
             }
 
-            var7 -= GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.I;
+            var7 -= GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.entityDirectionSign;
           }
           break;
         case 8:
@@ -2442,7 +2486,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             GradiusNeoGame.removePrimaryEntity(var5);
           }
 
-          var7 -= GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.I;
+          var7 -= GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.entityDirectionSign;
           break;
         case 11:
           let var62: int;
@@ -2453,11 +2497,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
 
           let var31: int = 131 + (GradiusNeoGame.state[StateSlot.LogicFrame] % 2) * 2;
           GradiusNeoGame.enqueueRenderCommand(0, var7 - 24, var8 - 24, 9, var31, 263176);
-          GradiusNeoGame.I = 0;
+          GradiusNeoGame.entityDirectionSign = 0;
           GradiusNeoGame.removePrimaryEntity(var5);
           break;
         case 13:
-          GradiusNeoGame.I = 0;
+          GradiusNeoGame.entityDirectionSign = 0;
         case 14:
           let var30: int = 121 + (GradiusNeoGame.state[EntityField.Type + var5] - 13) * 2;
           GradiusNeoGame.enqueueRenderCommand(1, var7, var8, 16, var30 + var9, 0);
@@ -2517,7 +2561,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           break;
         case 21:
           if (var9 == 0) {
-            GradiusNeoGame.state[EntityField.Parameter0 + var5] = GradiusNeoGame.b__int_int(var7, var8);
+            GradiusNeoGame.state[EntityField.Parameter0 + var5] = GradiusNeoGame.calculateDirectionToPlayer(var7, var8);
           }
         case 22:
           if (GradiusNeoGame.state[StateSlot.Difficulty] == 0) {
@@ -2531,8 +2575,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               GradiusNeoGame.removePrimaryEntity(var5);
             }
 
-            var7 = GradiusNeoGame.b__int_int_int(var5, GradiusNeoGame.state[EntityField.Parameter0 + var5], 6);
-            var8 = GradiusNeoGame.c__int_int_int(var5, GradiusNeoGame.state[EntityField.Parameter0 + var5], 6);
+            var7 = GradiusNeoGame.advanceEntityX(var5, GradiusNeoGame.state[EntityField.Parameter0 + var5], 6);
+            var8 = GradiusNeoGame.advanceEntityY(var5, GradiusNeoGame.state[EntityField.Parameter0 + var5], 6);
           }
           break;
         case 23:
@@ -2564,7 +2608,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
         case 29:
         case 30:
         case 31:
-          GradiusNeoGame.I = ((GradiusNeoGame.state[EntityField.Type + var5] - 24) % 2) * 2 - 1;
+          GradiusNeoGame.entityDirectionSign = ((GradiusNeoGame.state[EntityField.Type + var5] - 24) % 2) * 2 - 1;
           GradiusNeoGame.state[0] = 16;
           if (GradiusNeoGame.state[EntityField.Type + var5] <= 25) {
             GradiusNeoGame.state[0] = GradiusNeoGame.state[EntityField.Parameter1 + var5];
@@ -2589,12 +2633,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
 
           let var66: int;
           var7 =
-            (var66 = var7 + GradiusNeoGame.I * GradiusNeoGame.state[EntityField.Parameter0 + var5]) -
-            GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.I;
+            (var66 = var7 + GradiusNeoGame.entityDirectionSign * GradiusNeoGame.state[EntityField.Parameter0 + var5]) -
+            GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.entityDirectionSign;
           break;
         case 38:
           if (var9 == 0) {
-            GradiusNeoGame.state[EntityField.Parameter0 + var5] = GradiusNeoGame.b__int_int(var7, var8);
+            GradiusNeoGame.state[EntityField.Parameter0 + var5] = GradiusNeoGame.calculateDirectionToPlayer(var7, var8);
           }
         case 39:
           if (GradiusNeoGame.state[StateSlot.Difficulty] == 0) {
@@ -2613,15 +2657,15 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             );
             GradiusNeoGame.state[EntityField.XFixed + var5] =
               GradiusNeoGame.state[EntityField.XFixed + var5] +
-              ((GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.I) << 4);
+              ((GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.entityDirectionSign) << 4);
             if (GradiusNeoGame.sampleTerrainCollision(var7, var8 - GradiusNeoGame.state[StateSlot.CameraOffsetY]) < 0) {
               GradiusNeoGame.removePrimaryEntity(var5);
             } else {
               GradiusNeoGame.applyEntityCollisionDamage(var5, var7 + 4, var8 + 4, 8, 8, 13);
             }
 
-            var7 = GradiusNeoGame.b__int_int_int(var5, GradiusNeoGame.state[EntityField.Parameter0 + var5], 6);
-            var8 = GradiusNeoGame.c__int_int_int(var5, GradiusNeoGame.state[EntityField.Parameter0 + var5], 6);
+            var7 = GradiusNeoGame.advanceEntityX(var5, GradiusNeoGame.state[EntityField.Parameter0 + var5], 6);
+            var8 = GradiusNeoGame.advanceEntityY(var5, GradiusNeoGame.state[EntityField.Parameter0 + var5], 6);
           } else {
             GradiusNeoGame.removePrimaryEntity(var5);
           }
@@ -2633,14 +2677,14 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
 
           GradiusNeoGame.enqueueRenderCommand(1, var7, var8, 16, 373 + (var9 & 1), 0);
           GradiusNeoGame.applyEntityCollisionDamage(var5, var7, var8, 16, 16, 16);
-          var7 = GradiusNeoGame.b__int_int_int(var5, GradiusNeoGame.state[EntityField.Parameter0 + var5], 6);
-          var8 = GradiusNeoGame.c__int_int_int(var5, GradiusNeoGame.state[EntityField.Parameter0 + var5], 6);
+          var7 = GradiusNeoGame.advanceEntityX(var5, GradiusNeoGame.state[EntityField.Parameter0 + var5], 6);
+          var8 = GradiusNeoGame.advanceEntityY(var5, GradiusNeoGame.state[EntityField.Parameter0 + var5], 6);
           break;
         case 43:
         case 44:
-          GradiusNeoGame.I = (var10 = GradiusNeoGame.state[EntityField.Type + var5] - 43) * 2 - 1;
+          GradiusNeoGame.entityDirectionSign = (var10 = GradiusNeoGame.state[EntityField.Type + var5] - 43) * 2 - 1;
           if (var9 == 0) {
-            if (GradiusNeoGame.I == 1) {
+            if (GradiusNeoGame.entityDirectionSign == 1) {
               var7 = -32;
             }
 
@@ -2663,11 +2707,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             GradiusNeoGame.removePrimaryEntity(var5);
           }
 
-          var7 -= GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.I;
+          var7 -= GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.entityDirectionSign;
           break;
         case 47:
         case 48:
-          GradiusNeoGame.I = (var10 = GradiusNeoGame.state[EntityField.Type + var5] - 47) * 2 - 1;
+          GradiusNeoGame.entityDirectionSign = (var10 = GradiusNeoGame.state[EntityField.Type + var5] - 47) * 2 - 1;
           let var27: int = 229 + var10 * 2;
           if (GradiusNeoGame.state[EntityField.Parameter3 + var5] == 1) {
             var27 = 232 + var10 * 4;
@@ -2679,7 +2723,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
 
           switch (GradiusNeoGame.state[EntityField.Parameter1 + var5]) {
             case 0:
-              var7 += GradiusNeoGame.I * (5 + GradiusNeoGame.state[25] / 6);
+              var7 += GradiusNeoGame.entityDirectionSign * (5 + GradiusNeoGame.state[25] / 6);
               break;
             case 1:
               GradiusNeoGame.state[0] = GradiusNeoGame.state[EntityField.Parameter1 + var5] - 2;
@@ -2688,13 +2732,17 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               }
 
               if (GradiusNeoGame.state[4606 + var5] == 0) {
-                var7 += GradiusNeoGame.I * (5 + GradiusNeoGame.state[25] / 6);
-                if ((var10 * GAME_VIEW_WIDTH - GradiusNeoGame.I * 180 - var7 - 16) * GradiusNeoGame.I < 0) {
+                var7 += GradiusNeoGame.entityDirectionSign * (5 + GradiusNeoGame.state[25] / 6);
+                if (
+                  (var10 * GAME_VIEW_WIDTH - GradiusNeoGame.entityDirectionSign * 180 - var7 - 16) *
+                    GradiusNeoGame.entityDirectionSign <
+                  0
+                ) {
                   GradiusNeoGame.state[4606 + var5]++;
                 }
               } else {
                 if (GradiusNeoGame.state[4606 + var5] == 2) {
-                  GradiusNeoGame.state[5118 + var5] = GradiusNeoGame.b__int_int(var7, var8);
+                  GradiusNeoGame.state[5118 + var5] = GradiusNeoGame.calculateDirectionToPlayer(var7, var8);
                   GradiusNeoGame.state[EntityField.XFixed + var5] = var7 << 4;
                   GradiusNeoGame.state[EntityField.YFixed + var5] = var8 << 4;
                 }
@@ -2722,8 +2770,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               }
 
               if (GradiusNeoGame.state[4606 + var5] == 0) {
-                var7 += GradiusNeoGame.I * (5 + GradiusNeoGame.state[25] / 6);
-                if ((var10 * GAME_VIEW_WIDTH - GradiusNeoGame.I * 60 - var7 - 16) * GradiusNeoGame.I < 0) {
+                var7 += GradiusNeoGame.entityDirectionSign * (5 + GradiusNeoGame.state[25] / 6);
+                if (
+                  (var10 * GAME_VIEW_WIDTH - GradiusNeoGame.entityDirectionSign * 60 - var7 - 16) *
+                    GradiusNeoGame.entityDirectionSign <
+                  0
+                ) {
                   GradiusNeoGame.state[4606 + var5]++;
                 }
               } else {
@@ -2735,7 +2787,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                   var8 += var84 * (5 + GradiusNeoGame.state[25] / 6);
                 }
 
-                var7 -= GradiusNeoGame.I * (5 + GradiusNeoGame.state[25] / 6);
+                var7 -= GradiusNeoGame.entityDirectionSign * (5 + GradiusNeoGame.state[25] / 6);
               }
               break;
             case 4:
@@ -2748,7 +2800,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
 
               GradiusNeoGame.state[4606 + var5] = GradiusNeoGame.state[4606 + var5] - 16;
               GradiusNeoGame.state[EntityField.XFixed + var5] =
-                GradiusNeoGame.state[EntityField.XFixed + var5] + GradiusNeoGame.I * GradiusNeoGame.state[4606 + var5];
+                GradiusNeoGame.state[EntityField.XFixed + var5] +
+                GradiusNeoGame.entityDirectionSign * GradiusNeoGame.state[4606 + var5];
               GradiusNeoGame.state[EntityField.YFixed + var5] =
                 GradiusNeoGame.state[EntityField.YFixed + var5] + var83 * 32;
               var7 = GradiusNeoGame.state[EntityField.XFixed + var5] >> 4;
@@ -2763,7 +2816,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               }
 
               var8 += var82 * (5 + GradiusNeoGame.state[25] / 6 - 1);
-              var7 += GradiusNeoGame.I * (5 + GradiusNeoGame.state[25] / 6 - 1);
+              var7 += GradiusNeoGame.entityDirectionSign * (5 + GradiusNeoGame.state[25] / 6 - 1);
               break;
             case 8:
             case 9:
@@ -2771,9 +2824,15 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               let var81: int = GradiusNeoGame.state[0] * 2 - 1;
               let var12: int;
               if ((var9 / 16) % 2 == 0) {
-                var12 = (GradiusNeoGame.state[0] * 64) / 2 - (var9 % 16) * 2 * GradiusNeoGame.I * var81 + 64;
+                var12 =
+                  (GradiusNeoGame.state[0] * 64) / 2 -
+                  (var9 % 16) * 2 * GradiusNeoGame.entityDirectionSign * var81 +
+                  64;
               } else {
-                var12 = (GradiusNeoGame.state[0] * 64) / 2 - (16 - (var9 % 16)) * 2 * GradiusNeoGame.I * var81 + 64;
+                var12 =
+                  (GradiusNeoGame.state[0] * 64) / 2 -
+                  (16 - (var9 % 16)) * 2 * GradiusNeoGame.entityDirectionSign * var81 +
+                  64;
               }
 
               GradiusNeoGame.state[EntityField.XFixed + var5] =
@@ -2799,7 +2858,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             GradiusNeoGame.spawnEntity(114, var7 + 8, var8, 0);
           }
 
-          var7 -= GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.I;
+          var7 -= GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.entityDirectionSign;
           break;
         case 49:
         case 50:
@@ -2807,7 +2866,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
         case 52:
         case 53:
         case 54:
-          GradiusNeoGame.I = (var10 = (GradiusNeoGame.state[EntityField.Type + var5] - 49) % 2) * 2 - 1;
+          GradiusNeoGame.entityDirectionSign =
+            (var10 = (GradiusNeoGame.state[EntityField.Type + var5] - 49) % 2) * 2 - 1;
           let var79: int = ((GradiusNeoGame.state[EntityField.Type + var5] - 49) / 2) * 2 - 1;
           let var26: int = 152 + var10 * 8;
           if (GradiusNeoGame.state[EntityField.Parameter0 + var5] != 0) {
@@ -2835,13 +2895,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             }
           } else {
             if (var9 == 0) {
-              if (GradiusNeoGame.I == 1) {
+              if (GradiusNeoGame.entityDirectionSign == 1) {
                 var7 = -32;
               }
               break;
             }
 
-            var7 += GradiusNeoGame.I * (4 + GradiusNeoGame.state[25] / 6);
+            var7 += GradiusNeoGame.entityDirectionSign * (4 + GradiusNeoGame.state[25] / 6);
             if (GradiusNeoGame.state[EntityField.Parameter1 + var5] == 1) {
               var79 = -1;
               if (var8 < GradiusNeoGame.state[StateSlot.PlayerY]) {
@@ -2878,7 +2938,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
         case 56:
         case 57:
         case 58:
-          GradiusNeoGame.I = ((GradiusNeoGame.state[EntityField.Type + var5] - 55) % 2) * 2 - 1;
+          GradiusNeoGame.entityDirectionSign = ((GradiusNeoGame.state[EntityField.Type + var5] - 55) % 2) * 2 - 1;
           let var25: short = 180;
           if (GradiusNeoGame.state[EntityField.Parameter0 + var5] != 0) {
             var25 -= 16;
@@ -2886,7 +2946,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
 
           if (var9 == 0 && GradiusNeoGame.state[EntityField.Type + var5] <= 56) {
             GradiusNeoGame.state[EntityField.Parameter1 + var5] = 48;
-            if (GradiusNeoGame.I == 1) {
+            if (GradiusNeoGame.entityDirectionSign == 1) {
               var7 = -16;
               GradiusNeoGame.state[EntityField.XFixed + var5] = -256;
               GradiusNeoGame.state[EntityField.Parameter1 + var5] = 16;
@@ -2896,17 +2956,17 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               GradiusNeoGame.spawnEntity(21, var7, var8, 0);
             }
 
-            GradiusNeoGame.state[EntityField.Parameter1 + var5] = GradiusNeoGame.a__int_int_int(
+            GradiusNeoGame.state[EntityField.Parameter1 + var5] = GradiusNeoGame.rotateDirectionTowardPlayer(
               GradiusNeoGame.state[EntityField.XFixed + var5],
               GradiusNeoGame.state[EntityField.YFixed + var5],
               GradiusNeoGame.state[EntityField.Parameter1 + var5],
             );
-            var7 = GradiusNeoGame.b__int_int_int(
+            var7 = GradiusNeoGame.advanceEntityX(
               var5,
               GradiusNeoGame.state[EntityField.Parameter1 + var5],
               4 + GradiusNeoGame.state[25] / 8,
             );
-            var8 = GradiusNeoGame.c__int_int_int(
+            var8 = GradiusNeoGame.advanceEntityY(
               var5,
               GradiusNeoGame.state[EntityField.Parameter1 + var5],
               4 + GradiusNeoGame.state[25] / 8,
@@ -2926,7 +2986,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               GradiusNeoGame.spawnEntity(114, var7, var8, 0);
             }
 
-            if (GradiusNeoGame.state[86] >= 3 && GradiusNeoGame.J == 0) {
+            if (GradiusNeoGame.state[86] >= 3 && GradiusNeoGame.spawnedEntityCount == 0) {
               GradiusNeoGame.requestSoundEffect(0);
               GradiusNeoGame.spawnEntity(16, var7, var8, 0);
               GradiusNeoGame.removePrimaryEntity(var5);
@@ -2939,7 +2999,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
         case 62:
         case 63:
         case 64:
-          GradiusNeoGame.I = ((GradiusNeoGame.state[EntityField.Type + var5] - 59) % 2) * 2 - 1;
+          GradiusNeoGame.entityDirectionSign = ((GradiusNeoGame.state[EntityField.Type + var5] - 59) % 2) * 2 - 1;
           let var78: int = ((GradiusNeoGame.state[EntityField.Type + var5] - 59) / 2) * 2 - 1;
           if (GradiusNeoGame.state[EntityField.Type + var5] >= 63) {
             var78 = (GradiusNeoGame.state[EntityField.Type + var5] - 63) * 2 - 1;
@@ -2958,7 +3018,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           if (var9 == 0) {
             GradiusNeoGame.state[4606 + var5] = 0;
             GradiusNeoGame.state[EntityField.Health + var5] = 8 + GradiusNeoGame.state[25] / 2;
-            if (GradiusNeoGame.I == 1) {
+            if (GradiusNeoGame.entityDirectionSign == 1) {
               var7 = -32;
               GradiusNeoGame.state[EntityField.XFixed + var5] = -512;
             }
@@ -2966,13 +3026,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             if (GradiusNeoGame.state[EntityField.Parameter2 + var5] == 0) {
               if (GradiusNeoGame.state[EntityField.Parameter1 + var5] == 0) {
                 GradiusNeoGame.state[EntityField.XFixed + var5] =
-                  GradiusNeoGame.state[EntityField.XFixed + var5] + GradiusNeoGame.I * 96;
+                  GradiusNeoGame.state[EntityField.XFixed + var5] + GradiusNeoGame.entityDirectionSign * 96;
                 GradiusNeoGame.state[EntityField.YFixed + var5] =
                   GradiusNeoGame.state[EntityField.YFixed + var5] + var78 * ((var9 << 4) >> 2);
                 if ((var9 - 1) % (40 - GradiusNeoGame.state[25]) == 0) {
                   GradiusNeoGame.spawnEntity(
                     26 + var72,
-                    var7 + (GradiusNeoGame.I * 16) / 2,
+                    var7 + (GradiusNeoGame.entityDirectionSign * 16) / 2,
                     var8 - 8,
                     4 + GradiusNeoGame.state[25] / 4,
                   );
@@ -2981,7 +3041,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                 if (GradiusNeoGame.state[EntityField.Type + var5] >= 63) {
                   if (
                     (GradiusNeoGame.state[StateSlot.PlayerX] - (GradiusNeoGame.state[EntityField.XFixed + var5] >> 4)) *
-                      GradiusNeoGame.I <
+                      GradiusNeoGame.entityDirectionSign <
                       112 &&
                     0 <= var7 &&
                     var7 <= 144
@@ -2991,7 +3051,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                   }
                 } else if (
                   (GradiusNeoGame.state[StateSlot.PlayerX] - (GradiusNeoGame.state[EntityField.XFixed + var5] >> 4)) *
-                    GradiusNeoGame.I <
+                    GradiusNeoGame.entityDirectionSign <
                     112 &&
                   GradiusNeoGame.state[EntityField.Parameter3 + var5] * 16 <= var7 &&
                   var7 <= GAME_VIEW_WIDTH - (2 + GradiusNeoGame.state[EntityField.Parameter3 + var5]) * 16
@@ -3002,7 +3062,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               } else {
                 GradiusNeoGame.state[EntityField.XFixed + var5] =
                   GradiusNeoGame.state[EntityField.XFixed + var5] +
-                  GradiusNeoGame.I * ((6 + GradiusNeoGame.state[25] / 12) << 4);
+                  GradiusNeoGame.entityDirectionSign * ((6 + GradiusNeoGame.state[25] / 12) << 4);
                 if (var9 % (13 - GradiusNeoGame.state[25] / 4) == 0) {
                   GradiusNeoGame.spawnEntity(
                     21,
@@ -3012,9 +3072,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                   );
                 }
 
-                if ((120 - (GradiusNeoGame.state[EntityField.XFixed + var5] >> 4) - 16) * GradiusNeoGame.I <= 0) {
+                if (
+                  (120 - (GradiusNeoGame.state[EntityField.XFixed + var5] >> 4) - 16) *
+                    GradiusNeoGame.entityDirectionSign <=
+                  0
+                ) {
                   GradiusNeoGame.state[EntityField.Parameter2 + var5]++;
-                  GradiusNeoGame.state[4606 + var5] = GradiusNeoGame.I * 16;
+                  GradiusNeoGame.state[4606 + var5] = GradiusNeoGame.entityDirectionSign * 16;
                   var9 = 0;
                 }
               }
@@ -3098,7 +3162,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                   );
                 }
               } else {
-                GradiusNeoGame.state[4606 + var5] = GradiusNeoGame.state[4606 + var5] + -GradiusNeoGame.I * var78;
+                GradiusNeoGame.state[4606 + var5] =
+                  GradiusNeoGame.state[4606 + var5] + -GradiusNeoGame.entityDirectionSign * var78;
                 GradiusNeoGame.state[EntityField.XFixed + var5] =
                   GradiusNeoGame.state[EntityField.XFixed + var5] +
                   GradiusNeoGame.state[455 + GradiusNeoGame.state[4606 + var5]] * (6 + GradiusNeoGame.state[25] / 12);
@@ -3114,7 +3179,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               if ((var9 - 1) % (40 - GradiusNeoGame.state[25]) == 0) {
                 GradiusNeoGame.spawnEntity(
                   26 + var72,
-                  var7 + (GradiusNeoGame.I * 16) / 2,
+                  var7 + (GradiusNeoGame.entityDirectionSign * 16) / 2,
                   var8 - 8,
                   4 + GradiusNeoGame.state[25] / 4,
                 );
@@ -3122,11 +3187,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             } else {
               if (GradiusNeoGame.state[EntityField.Parameter1 + var5] == 0) {
                 GradiusNeoGame.state[EntityField.XFixed + var5] =
-                  GradiusNeoGame.state[EntityField.XFixed + var5] + -GradiusNeoGame.I * 96;
+                  GradiusNeoGame.state[EntityField.XFixed + var5] + -GradiusNeoGame.entityDirectionSign * 96;
                 GradiusNeoGame.state[EntityField.YFixed + var5] =
                   GradiusNeoGame.state[EntityField.YFixed + var5] + -var78 * ((var9 << 4) >> 2);
               } else {
-                GradiusNeoGame.state[4606 + var5] = GradiusNeoGame.state[4606 + var5] + GradiusNeoGame.I * var78;
+                GradiusNeoGame.state[4606 + var5] =
+                  GradiusNeoGame.state[4606 + var5] + GradiusNeoGame.entityDirectionSign * var78;
                 GradiusNeoGame.state[EntityField.XFixed + var5] =
                   GradiusNeoGame.state[EntityField.XFixed + var5] +
                   GradiusNeoGame.state[455 + GradiusNeoGame.state[4606 + var5]] * (6 + GradiusNeoGame.state[25] / 12);
@@ -3169,17 +3235,17 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             GradiusNeoGame.state[0] = GradiusNeoGame.state[EntityField.Parameter1 + var5];
           }
 
-          GradiusNeoGame.state[EntityField.Parameter0 + var5] = GradiusNeoGame.a__int_int_int(
+          GradiusNeoGame.state[EntityField.Parameter0 + var5] = GradiusNeoGame.rotateDirectionTowardPlayer(
             GradiusNeoGame.state[EntityField.XFixed + var5],
             GradiusNeoGame.state[EntityField.YFixed + var5],
             GradiusNeoGame.state[EntityField.Parameter0 + var5],
           );
-          var7 = GradiusNeoGame.b__int_int_int(
+          var7 = GradiusNeoGame.advanceEntityX(
             var5,
             GradiusNeoGame.state[EntityField.Parameter0 + var5],
             GradiusNeoGame.state[0],
           );
-          var8 = GradiusNeoGame.c__int_int_int(
+          var8 = GradiusNeoGame.advanceEntityY(
             var5,
             GradiusNeoGame.state[EntityField.Parameter0 + var5],
             GradiusNeoGame.state[0],
@@ -3199,7 +3265,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             GradiusNeoGame.applyEntityCollisionDamage(var5, var7 + 2, var8 + 2, 12, 12, 16);
           }
 
-          if (GradiusNeoGame.state[86] >= 3 && GradiusNeoGame.J == 0) {
+          if (GradiusNeoGame.state[86] >= 3 && GradiusNeoGame.spawnedEntityCount == 0) {
             GradiusNeoGame.requestSoundEffect(2);
             GradiusNeoGame.spawnEntity(16, var7, var8, 0);
             GradiusNeoGame.removePrimaryEntity(var5);
@@ -3213,7 +3279,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
         case 71:
         case 72:
         case 73:
-          GradiusNeoGame.I = (var10 = (GradiusNeoGame.state[EntityField.Type + var5] - 66) % 2) * 2 - 1;
+          GradiusNeoGame.entityDirectionSign =
+            (var10 = (GradiusNeoGame.state[EntityField.Type + var5] - 66) % 2) * 2 - 1;
           GradiusNeoGame.state[0] = (GradiusNeoGame.state[EntityField.Type + var5] - 66) / 4;
           let var23: int =
             212 + GradiusNeoGame.state[EntityField.Parameter0 + var5] * 2 + var10 * 4 + GradiusNeoGame.state[0] * 1;
@@ -3248,9 +3315,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                 if (
                   var9 == 5 &&
                   GradiusNeoGame.state[EntityField.Parameter1 + var5] == 1 &&
-                  (GradiusNeoGame.state[StateSlot.PlayerX] - var7) * GradiusNeoGame.I > 32
+                  (GradiusNeoGame.state[StateSlot.PlayerX] - var7) * GradiusNeoGame.entityDirectionSign > 32
                 ) {
-                  GradiusNeoGame.state[2] = GradiusNeoGame.b__int_int(var7, var8);
+                  GradiusNeoGame.state[2] = GradiusNeoGame.calculateDirectionToPlayer(var7, var8);
                   if (18 <= GradiusNeoGame.state[2] && GradiusNeoGame.state[2] <= 46) {
                     GradiusNeoGame.state[5118 + var5] = -1;
                   } else if (50 <= GradiusNeoGame.state[2] || GradiusNeoGame.state[2] <= 14) {
@@ -3259,7 +3326,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                 }
               }
 
-              var7 += GradiusNeoGame.I * GradiusNeoGame.state[1] - GradiusNeoGame.state[5118 + var5] * 2;
+              var7 +=
+                GradiusNeoGame.entityDirectionSign * GradiusNeoGame.state[1] - GradiusNeoGame.state[5118 + var5] * 2;
               var8 += GradiusNeoGame.state[5118 + var5] * 4;
             }
 
@@ -3270,7 +3338,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                 var7 +
                   32 -
                   var10 * 16 * 3 +
-                  GradiusNeoGame.I * (1 - GradiusNeoGame.state[EntityField.Parameter0 + var5]) * 6,
+                  GradiusNeoGame.entityDirectionSign * (1 - GradiusNeoGame.state[EntityField.Parameter0 + var5]) * 6,
                 var8,
                 16,
                 var2,
@@ -3285,14 +3353,14 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
         case 75:
           if (var9 == 0) {
             GradiusNeoGame.state[EntityField.Parameter2 + var5] = 48;
-            GradiusNeoGame.I = (GradiusNeoGame.state[EntityField.Type + var5] - 74) * 2 - 1;
-            if (GradiusNeoGame.I == 1) {
+            GradiusNeoGame.entityDirectionSign = (GradiusNeoGame.state[EntityField.Type + var5] - 74) * 2 - 1;
+            if (GradiusNeoGame.entityDirectionSign == 1) {
               var7 = -32;
               GradiusNeoGame.state[EntityField.XFixed + var5] = -512;
               GradiusNeoGame.state[EntityField.Parameter2 + var5] = 16;
             }
           } else {
-            GradiusNeoGame.state[0] = GradiusNeoGame.b__int_int(var7 + 8, var8 + 8);
+            GradiusNeoGame.state[0] = GradiusNeoGame.calculateDirectionToPlayer(var7 + 8, var8 + 8);
             if ((GradiusNeoGame.state[0] - 32) * (GradiusNeoGame.state[EntityField.Parameter2 + var5] - 32) < 0) {
               GradiusNeoGame.state[EntityField.Parameter2 + var5] = GradiusNeoGame.state[0];
             }
@@ -3303,13 +3371,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             }
 
             let var22: int = GAME_VIEW_WIDTH + var70 * 2 + GradiusNeoGame.state[EntityField.Parameter0 + var5] * 1;
-            GradiusNeoGame.state[EntityField.Parameter2 + var5] = GradiusNeoGame.a__int_int_int(
+            GradiusNeoGame.state[EntityField.Parameter2 + var5] = GradiusNeoGame.rotateDirectionTowardPlayer(
               GradiusNeoGame.state[EntityField.XFixed + var5],
               GradiusNeoGame.state[EntityField.YFixed + var5],
               GradiusNeoGame.state[EntityField.Parameter2 + var5],
             );
-            var7 = GradiusNeoGame.b__int_int_int(var5, GradiusNeoGame.state[EntityField.Parameter2 + var5], 4);
-            var8 = GradiusNeoGame.c__int_int_int(var5, GradiusNeoGame.state[EntityField.Parameter2 + var5], 4);
+            var7 = GradiusNeoGame.advanceEntityX(var5, GradiusNeoGame.state[EntityField.Parameter2 + var5], 4);
+            var8 = GradiusNeoGame.advanceEntityY(var5, GradiusNeoGame.state[EntityField.Parameter2 + var5], 4);
             GradiusNeoGame.enqueueRenderCommand(0, var7, var8, 13, var22, 131586);
             if (GradiusNeoGame.applyEntityCollisionDamage(var5, var7, var8 + 6, 32, 20, 16)) {
               if (GradiusNeoGame.state[EntityField.Parameter0 + var5] == 1) {
@@ -3334,7 +3402,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               }
             }
 
-            if (GradiusNeoGame.state[86] >= 3 && GradiusNeoGame.J == 0) {
+            if (GradiusNeoGame.state[86] >= 3 && GradiusNeoGame.spawnedEntityCount == 0) {
               GradiusNeoGame.requestSoundEffect(2);
               GradiusNeoGame.spawnEntity(16, var7 + 8, var8 + 8, 0);
               GradiusNeoGame.removePrimaryEntity(var5);
@@ -3405,7 +3473,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                   16777216 |
                     ((10 - (GradiusNeoGame.state[25] / 10) * 2) << 16) |
                     ((3 + (GradiusNeoGame.state[25] / 10) * 2) << 8) |
-                    (16 - (GradiusNeoGame.I * 64) / 2),
+                    (16 - (GradiusNeoGame.entityDirectionSign * 64) / 2),
                 );
               }
             }
@@ -3427,14 +3495,14 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               var69 = 1;
             }
 
-            GradiusNeoGame.I = var69 * 2 - 1;
+            GradiusNeoGame.entityDirectionSign = var69 * 2 - 1;
             let var20: int = 288 + var69 * 1;
             if (GradiusNeoGame.state[EntityField.Parameter0 + var5] == -1) {
-              var7 += GradiusNeoGame.I * 4;
+              var7 += GradiusNeoGame.entityDirectionSign * 4;
               if (GradiusNeoGame.state[EntityField.Type + var5] == 78) {
                 if (
-                  var7 * GradiusNeoGame.I >= 176 * GradiusNeoGame.I ||
-                  16 * GradiusNeoGame.I <= var7 * GradiusNeoGame.I
+                  var7 * GradiusNeoGame.entityDirectionSign >= 176 * GradiusNeoGame.entityDirectionSign ||
+                  16 * GradiusNeoGame.entityDirectionSign <= var7 * GradiusNeoGame.entityDirectionSign
                 ) {
                   GradiusNeoGame.state[EntityField.Parameter0 + var5] = 1 + var69 * 2;
                   GradiusNeoGame.state[EntityField.Parameter2 + var5] = 1 + (1 - var69) * 2;
@@ -3535,7 +3603,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             GradiusNeoGame.state[EntityField.Health + var5] = 64 + GradiusNeoGame.state[25] * 4;
             GradiusNeoGame.state[EntityField.Parameter3 + var5] = 3;
           } else {
-            GradiusNeoGame.I = -1;
+            GradiusNeoGame.entityDirectionSign = -1;
             let var19: int = 284 + GradiusNeoGame.state[EntityField.Parameter3 + var5] * 1;
             if (GradiusNeoGame.state[EntityField.Parameter0 + var5] == 0) {
               var7 -= 4;
@@ -3680,14 +3748,14 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           }
 
           if (var9 == 0) {
-            GradiusNeoGame.state[EntityField.Parameter1 + var5] = GradiusNeoGame.b__int_int(var7, var8);
+            GradiusNeoGame.state[EntityField.Parameter1 + var5] = GradiusNeoGame.calculateDirectionToPlayer(var7, var8);
           }
 
           if (var9 <= 4) {
             var18 += 4 - var9;
           } else {
-            var7 = GradiusNeoGame.b__int_int_int(var5, GradiusNeoGame.state[EntityField.Parameter1 + var5], 4);
-            var8 = GradiusNeoGame.c__int_int_int(var5, GradiusNeoGame.state[EntityField.Parameter1 + var5], 4);
+            var7 = GradiusNeoGame.advanceEntityX(var5, GradiusNeoGame.state[EntityField.Parameter1 + var5], 4);
+            var8 = GradiusNeoGame.advanceEntityY(var5, GradiusNeoGame.state[EntityField.Parameter1 + var5], 4);
             if (
               GradiusNeoGame.applyEntityCollisionDamage(var5, var7, var8, 16, 16, 16) &&
               GradiusNeoGame.state[EntityField.Parameter0 + var5] > 0
@@ -3702,7 +3770,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           }
 
           GradiusNeoGame.enqueueRenderCommand(1, var7, var8, 13, var18, 0);
-          if (GradiusNeoGame.state[86] >= 3 && GradiusNeoGame.J == 0) {
+          if (GradiusNeoGame.state[86] >= 3 && GradiusNeoGame.spawnedEntityCount == 0) {
             GradiusNeoGame.requestSoundEffect(0);
             GradiusNeoGame.spawnEntity(16, var7, var8, 0);
             GradiusNeoGame.removePrimaryEntity(var5);
@@ -3838,7 +3906,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           }
           break;
         case 88:
-          GradiusNeoGame.I = 0;
+          GradiusNeoGame.entityDirectionSign = 0;
           if (var9 >= 120) {
             GradiusNeoGame.removePrimaryEntity(var5);
           } else if (
@@ -3876,8 +3944,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             var8 + 16 >= GradiusNeoGame.state[StateSlot.CameraOffsetY] &&
             GradiusNeoGame.state[StateSlot.CameraOffsetY] + GAMEPLAY_HEIGHT >= var8
           ) {
-            var7 = GradiusNeoGame.b__int_int_int(var5, GradiusNeoGame.state[EntityField.Parameter0 + var5], 8);
-            var8 = GradiusNeoGame.c__int_int_int(var5, GradiusNeoGame.state[EntityField.Parameter0 + var5], 8);
+            var7 = GradiusNeoGame.advanceEntityX(var5, GradiusNeoGame.state[EntityField.Parameter0 + var5], 8);
+            var8 = GradiusNeoGame.advanceEntityY(var5, GradiusNeoGame.state[EntityField.Parameter0 + var5], 8);
             let var17: int = 365 + GradiusNeoGame.state[EntityField.Parameter1 + var5] * 2;
             GradiusNeoGame.enqueueRenderCommand(2, var7, var8, 13, var17 + (var9 & 1) * 1, 0);
             if (GradiusNeoGame.sampleTerrainCollision(var7, var8 - GradiusNeoGame.state[StateSlot.CameraOffsetY]) < 0) {
@@ -3898,7 +3966,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             var8 + 48 >= GradiusNeoGame.state[StateSlot.CameraOffsetY] &&
             GradiusNeoGame.state[StateSlot.CameraOffsetY] + GAMEPLAY_HEIGHT >= var8
           ) {
-            GradiusNeoGame.state[0] = GradiusNeoGame.b__int_int(var7 + 8, var8 + 8);
+            GradiusNeoGame.state[0] = GradiusNeoGame.calculateDirectionToPlayer(var7 + 8, var8 + 8);
             GradiusNeoGame.state[EntityField.Parameter3 + var5] = -1;
             if (GradiusNeoGame.state[0] <= 32) {
               GradiusNeoGame.state[EntityField.Parameter3 + var5] = 1;
@@ -3953,21 +4021,21 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             var8 + 32 >= GradiusNeoGame.state[StateSlot.CameraOffsetY] &&
             GradiusNeoGame.state[StateSlot.CameraOffsetY] + GAMEPLAY_HEIGHT >= var8 + 16
           ) {
-            GradiusNeoGame.state[0] = GradiusNeoGame.b__int_int(var7, var8);
+            GradiusNeoGame.state[0] = GradiusNeoGame.calculateDirectionToPlayer(var7, var8);
             if (GradiusNeoGame.state[EntityField.Parameter1 + var5] > 0) {
-              var7 = GradiusNeoGame.b__int_int_int(var5, GradiusNeoGame.state[EntityField.Parameter2 + var5], 6);
-              var8 = GradiusNeoGame.c__int_int_int(var5, GradiusNeoGame.state[EntityField.Parameter2 + var5], 6);
+              var7 = GradiusNeoGame.advanceEntityX(var5, GradiusNeoGame.state[EntityField.Parameter2 + var5], 6);
+              var8 = GradiusNeoGame.advanceEntityY(var5, GradiusNeoGame.state[EntityField.Parameter2 + var5], 6);
               GradiusNeoGame.state[EntityField.Parameter1 + var5]--;
             } else if (var9 <= 80) {
-              GradiusNeoGame.state[EntityField.Parameter2 + var5] = GradiusNeoGame.a__int_int_int(
+              GradiusNeoGame.state[EntityField.Parameter2 + var5] = GradiusNeoGame.rotateDirectionTowardPlayer(
                 GradiusNeoGame.state[EntityField.XFixed + var5],
                 GradiusNeoGame.state[EntityField.YFixed + var5],
                 GradiusNeoGame.state[EntityField.Parameter2 + var5],
               );
-              var7 = GradiusNeoGame.b__int_int_int(var5, GradiusNeoGame.state[EntityField.Parameter2 + var5], 4);
-              var8 = GradiusNeoGame.c__int_int_int(var5, GradiusNeoGame.state[EntityField.Parameter2 + var5], 4);
+              var7 = GradiusNeoGame.advanceEntityX(var5, GradiusNeoGame.state[EntityField.Parameter2 + var5], 4);
+              var8 = GradiusNeoGame.advanceEntityY(var5, GradiusNeoGame.state[EntityField.Parameter2 + var5], 4);
             } else {
-              var7 += GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.I;
+              var7 += GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.entityDirectionSign;
               var8 += ((GradiusNeoGame.state[StateSlot.LogicFrame] & 1) * 2 - 1) * 2;
             }
 
@@ -3985,7 +4053,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           break;
         case 92:
         case 93:
-          var10 = (GradiusNeoGame.I + 1) / 2;
+          var10 = (GradiusNeoGame.entityDirectionSign + 1) / 2;
           let var14: short = 349;
           if (GradiusNeoGame.state[EntityField.Type + var5] == 93) {
             var14 = 350;
@@ -4012,7 +4080,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               GradiusNeoGame.state[4606 + var5] = 192;
             }
 
-            if (GradiusNeoGame.I == 1) {
+            if (GradiusNeoGame.entityDirectionSign == 1) {
               var7 = -GradiusNeoGame.state[4606 + var5];
             }
           } else {
@@ -4030,7 +4098,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             }
 
             if (GradiusNeoGame.state[EntityField.Parameter0 + var5] == 0) {
-              var7 += (GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.I * -1) / 2;
+              var7 += (GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.entityDirectionSign * -1) / 2;
             }
 
             if (GradiusNeoGame.state[EntityField.Parameter2 + var5] == 0 && var9 % 16 == 0) {
@@ -4041,16 +4109,19 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                   var8 + 24,
                   262144 |
                     ((1 + (GradiusNeoGame.state[25] / 10) * 2) << 8) |
-                    GradiusNeoGame.b__int_int(var7 + 88, var8 + 24),
+                    GradiusNeoGame.calculateDirectionToPlayer(var7 + 88, var8 + 24),
                 );
               } else {
                 GradiusNeoGame.spawnEntity(
                   23,
-                  var7 + 56 - GradiusNeoGame.I * 16 * 2,
+                  var7 + 56 - GradiusNeoGame.entityDirectionSign * 16 * 2,
                   var8 + 24,
                   262144 |
                     ((1 + (GradiusNeoGame.state[25] / 10) * 2) << 8) |
-                    GradiusNeoGame.b__int_int(var7 + 56 - GradiusNeoGame.I * 16 * 2, var8 + 24),
+                    GradiusNeoGame.calculateDirectionToPlayer(
+                      var7 + 56 - GradiusNeoGame.entityDirectionSign * 16 * 2,
+                      var8 + 24,
+                    ),
                 );
               }
             } else if (
@@ -4060,16 +4131,16 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               if (GradiusNeoGame.state[EntityField.Type + var5] == 93) {
                 GradiusNeoGame.spawnEntity(
                   53 + var10,
-                  var7 + 80 + GradiusNeoGame.I * 16,
+                  var7 + 80 + GradiusNeoGame.entityDirectionSign * 16,
                   var8 + 16,
-                  1048576 | ((32 - GradiusNeoGame.I * 8) << 8),
+                  1048576 | ((32 - GradiusNeoGame.entityDirectionSign * 8) << 8),
                 );
               } else {
                 GradiusNeoGame.spawnEntity(
                   53 + var10,
                   var7 + 48,
                   var8 + 40,
-                  1048576 | ((32 + GradiusNeoGame.I * 24) << 8),
+                  1048576 | ((32 + GradiusNeoGame.entityDirectionSign * 24) << 8),
                 );
               }
             } else if (
@@ -4079,9 +4150,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               if (GradiusNeoGame.state[EntityField.Type + var5] == 93) {
                 GradiusNeoGame.spawnEntity(
                   57,
-                  var7 + 88 + (GradiusNeoGame.I * 16 * 3) / 2,
+                  var7 + 88 + (GradiusNeoGame.entityDirectionSign * 16 * 3) / 2,
                   var8 + 16,
-                  (32 - GradiusNeoGame.I * 8) << 8,
+                  (32 - GradiusNeoGame.entityDirectionSign * 8) << 8,
                 );
               } else {
                 GradiusNeoGame.spawnEntity(57, var7 + 56, var8 + 48, 0);
@@ -4130,7 +4201,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                 GradiusNeoGame.spawnEntity(19, var7 + 96, var8 + 16, 0);
                 GradiusNeoGame.spawnEntity(20, var7 + 96, var8 + 16, 5246984);
                 GradiusNeoGame.requestSoundEffect(9);
-                GradiusNeoGame.spawnEntity(115, var7 + 88 - GradiusNeoGame.I * 16 * 3, var8 + 16, 0);
+                GradiusNeoGame.spawnEntity(115, var7 + 88 - GradiusNeoGame.entityDirectionSign * 16 * 3, var8 + 16, 0);
               }
             } else {
               GradiusNeoGame.enqueueRenderCommand(0, var7, var8, 12, var14, 525064);
@@ -4143,7 +4214,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                 GradiusNeoGame.spawnEntity(19, var7 + 64, var8 + 28, 0);
                 GradiusNeoGame.spawnEntity(20, var7 + 72, var8 + 28, 3672072);
                 GradiusNeoGame.requestSoundEffect(3);
-                GradiusNeoGame.spawnEntity(114, var7 + 56 - GradiusNeoGame.I * 16 * 2, var8 + 24, 0);
+                GradiusNeoGame.spawnEntity(114, var7 + 56 - GradiusNeoGame.entityDirectionSign * 16 * 2, var8 + 24, 0);
               }
             }
 
@@ -4517,7 +4588,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                   23,
                   var7 + 96,
                   var8 + 32,
-                  262144 | ((1 + (GradiusNeoGame.state[25] / 8) * 2) << 8) | GradiusNeoGame.b__int_int(var7, var8),
+                  262144 |
+                    ((1 + (GradiusNeoGame.state[25] / 8) * 2) << 8) |
+                    GradiusNeoGame.calculateDirectionToPlayer(var7, var8),
                 );
               }
 
@@ -4559,7 +4632,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           break;
         case 99:
           if (var9 == 0) {
-            var7 += (-GradiusNeoGame.I * GAME_VIEW_WIDTH) / 2;
+            var7 += (-GradiusNeoGame.entityDirectionSign * GAME_VIEW_WIDTH) / 2;
             GradiusNeoGame.state[4606 + var5] = 0;
             GradiusNeoGame.state[EntityField.Parameter0 + var5] = -4;
             GradiusNeoGame.state[EntityField.Health + var5] = 128 + GradiusNeoGame.state[25] * 4;
@@ -4577,7 +4650,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               if (var9 % (24 - GradiusNeoGame.state[25] / 2) == 0) {
                 GradiusNeoGame.spawnAuxiliaryEntity(
                   33,
-                  GradiusNeoGame.state[103 + GradiusNeoGame.state[5]] + GradiusNeoGame.I * 16,
+                  GradiusNeoGame.state[103 + GradiusNeoGame.state[5]] + GradiusNeoGame.entityDirectionSign * 16,
                   GradiusNeoGame.state[127 + GradiusNeoGame.state[5]],
                   4,
                 );
@@ -4632,7 +4705,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                   GradiusNeoGame.state[103 + GradiusNeoGame.state[0]],
                   GradiusNeoGame.state[127 + GradiusNeoGame.state[0]],
                   262912 |
-                    GradiusNeoGame.b__int_int(
+                    GradiusNeoGame.calculateDirectionToPlayer(
                       GradiusNeoGame.state[103 + GradiusNeoGame.state[0]],
                       GradiusNeoGame.state[127 + GradiusNeoGame.state[0]],
                     ),
@@ -4641,12 +4714,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
 
               if (var9 % 128 == 0) {
                 GradiusNeoGame.state[EntityField.Parameter0 + var5]++;
-                GradiusNeoGame.state[5118 + var5] = GradiusNeoGame.I;
+                GradiusNeoGame.state[5118 + var5] = GradiusNeoGame.entityDirectionSign;
               }
             } else if (GradiusNeoGame.state[EntityField.Parameter0 + var5] == -1) {
               GradiusNeoGame.state[4606 + var5] =
                 GradiusNeoGame.state[4606 + var5] + GradiusNeoGame.state[5118 + var5] * 2;
-              if (0 >= GradiusNeoGame.I * GradiusNeoGame.state[4606 + var5]) {
+              if (0 >= GradiusNeoGame.entityDirectionSign * GradiusNeoGame.state[4606 + var5]) {
                 GradiusNeoGame.state[EntityField.Parameter0 + var5]--;
                 let var92: int =
                   GradiusNeoGame.state[StateSlot.PlayerX] +
@@ -4656,7 +4729,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                   (GradiusNeoGame.state[1055 + (var92 & 63)] & 15) % 3;
                 GradiusNeoGame.state[5] = (GradiusNeoGame.state[1055 + ((var92 + 1) & 63)] & 15) % 5;
                 GradiusNeoGame.state[6] = (GradiusNeoGame.state[1055 + ((var92 + 2) & 63)] & 1) * 2 - 1;
-              } else if (16 <= GradiusNeoGame.I * GradiusNeoGame.state[4606 + var5]) {
+              } else if (16 <= GradiusNeoGame.entityDirectionSign * GradiusNeoGame.state[4606 + var5]) {
                 GradiusNeoGame.state[EntityField.Parameter0 + var5]++;
                 GradiusNeoGame.state[EntityField.Parameter2 + var5] = 1;
               }
@@ -4689,7 +4762,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                 ) {
                   GradiusNeoGame.enqueueRenderCommand(
                     0,
-                    var7 + (GradiusNeoGame.I * 16 * 5) / 2,
+                    var7 + (GradiusNeoGame.entityDirectionSign * 16 * 5) / 2,
                     96,
                     8,
                     274 + (GradiusNeoGame.state[EntityField.Parameter0 + var5] - 8) * 1,
@@ -4714,7 +4787,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                   GradiusNeoGame.enqueueRenderCommand(0, 128, 48, 8, 281, 197635);
                   GradiusNeoGame.enqueueRenderCommand(0, 128, 112, 8, 282, 197635);
                   GradiusNeoGame.resolveEntityCollisions(32, 0, 48, 144, 128);
-                  GradiusNeoGame.resolveEntityCollisions(32, var7 + GradiusNeoGame.I * 16, 64, 16, 96);
+                  GradiusNeoGame.resolveEntityCollisions(
+                    32,
+                    var7 + GradiusNeoGame.entityDirectionSign * 16,
+                    64,
+                    16,
+                    96,
+                  );
                   GradiusNeoGame.resolveEntityCollisions(32, var7, 80, 16, 64);
                 }
               }
@@ -4729,7 +4808,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               if (GradiusNeoGame.state[EntityField.Parameter0 + var5] <= 0) {
                 GradiusNeoGame.state[EntityField.Parameter2 + var5] = -1;
                 GradiusNeoGame.state[EntityField.Parameter0 + var5]--;
-                GradiusNeoGame.state[5118 + var5] = -GradiusNeoGame.I;
+                GradiusNeoGame.state[5118 + var5] = -GradiusNeoGame.entityDirectionSign;
               }
 
               GradiusNeoGame.applyEntityCollisionDamage(var5, var7 + 8 + (var10 * 16) / 2, 48, 40, 128, 10);
@@ -4772,7 +4851,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             if (GradiusNeoGame.state[EntityField.Parameter3 + var5] < 6) {
               GradiusNeoGame.enqueueRenderCommand(
                 0,
-                var7 - GradiusNeoGame.I * 16 + GradiusNeoGame.state[4606 + var5],
+                var7 - GradiusNeoGame.entityDirectionSign * 16 + GradiusNeoGame.state[4606 + var5],
                 var8 + 16,
                 10,
                 355,
@@ -4981,7 +5060,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             if (
               GradiusNeoGame.state[EntityField.Parameter3 + var5] >=
                 12 * (GradiusNeoGame.state[EntityField.Parameter0 + var5] + 1) &&
-              GradiusNeoGame.J == 0
+              GradiusNeoGame.spawnedEntityCount == 0
             ) {
               GradiusNeoGame.removePrimaryEntity(var5);
               GradiusNeoGame.state[95]++;
@@ -5250,7 +5329,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             GradiusNeoGame.removePrimaryEntity(var5);
           }
 
-          if (GradiusNeoGame.state[86] >= 3 && GradiusNeoGame.J == 0) {
+          if (GradiusNeoGame.state[86] >= 3 && GradiusNeoGame.spawnedEntityCount == 0) {
             GradiusNeoGame.requestSoundEffect(0);
             GradiusNeoGame.spawnEntity(17, var7, var8, 0);
             GradiusNeoGame.removePrimaryEntity(var5);
@@ -5367,7 +5446,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               for (let var34: int = 3; var34 <= GradiusNeoGame.state[EntityField.Parameter3 + var5]; var34++) {
                 GradiusNeoGame.enqueueRenderCommand(
                   1,
-                  var7 + 16 + GradiusNeoGame.I * 4 * (var34 - 3),
+                  var7 + 16 + GradiusNeoGame.entityDirectionSign * 4 * (var34 - 3),
                   var8 + 24,
                   10 + GradiusNeoGame.state[EntityField.Parameter2 + var5],
                   388,
@@ -5435,7 +5514,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               if (3 <= GradiusNeoGame.state[EntityField.Parameter3 + var5]) {
                 GradiusNeoGame.spawnEntity(
                   16,
-                  var7 + 16 + GradiusNeoGame.I * 4 * (GradiusNeoGame.state[EntityField.Parameter3 + var5] - 3),
+                  var7 +
+                    16 +
+                    GradiusNeoGame.entityDirectionSign * 4 * (GradiusNeoGame.state[EntityField.Parameter3 + var5] - 3),
                   var8 + 24,
                   0,
                 );
@@ -5445,7 +5526,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                   var8 + 24,
                   262144 |
                     ((1 + 2 * (GradiusNeoGame.state[25] / 7)) << 8) |
-                    GradiusNeoGame.b__int_int(var7 + 16, var8 + 24),
+                    GradiusNeoGame.calculateDirectionToPlayer(var7 + 16, var8 + 24),
                 );
               } else if (2 <= GradiusNeoGame.state[EntityField.Parameter3 + var5]) {
                 GradiusNeoGame.spawnEntity(16, var7 + 25, var8 + 24, 0);
@@ -5455,7 +5536,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                   var8 + 24,
                   262144 |
                     ((1 + 2 * (GradiusNeoGame.state[25] / 7)) << 8) |
-                    GradiusNeoGame.b__int_int(var7 + 16, var8 + 24),
+                    GradiusNeoGame.calculateDirectionToPlayer(var7 + 16, var8 + 24),
                 );
               } else if (1 <= GradiusNeoGame.state[EntityField.Parameter3 + var5]) {
                 GradiusNeoGame.spawnEntity(16, var7 + 42, var8 + 24, 0);
@@ -5730,9 +5811,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           }
       }
 
-      if (GradiusNeoGame.J === 0) {
+      if (GradiusNeoGame.spawnedEntityCount === 0) {
         GradiusNeoGame.state[EntityField.X + var5] =
-          var7 + GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.I;
+          var7 + GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.entityDirectionSign;
         GradiusNeoGame.state[EntityField.Y + var5] = var8;
         GradiusNeoGame.state[EntityField.Age + var5] = ++var9;
       }
@@ -5741,7 +5822,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
     }
   }
 
-  private j__Graphics(gfx: Graphics): void {
+  private updateAuxiliaryEntities(gfx: Graphics): void {
     let var4: int = GradiusNeoGame.state[StateSlot.AuxiliaryEntityHead];
 
     while (var4 !== -1) {
@@ -5749,9 +5830,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
       let var6: int = GradiusNeoGame.state[EntityField.X + var4];
       let var7: int = GradiusNeoGame.state[EntityField.Y + var4];
       let var8: int = GradiusNeoGame.state[EntityField.Age + var4];
-      GradiusNeoGame.I = -1;
-      let var9: int = (GradiusNeoGame.I + 1) / 2;
-      GradiusNeoGame.J = 0;
+      GradiusNeoGame.entityDirectionSign = -1;
+      let var9: int = (GradiusNeoGame.entityDirectionSign + 1) / 2;
+      GradiusNeoGame.spawnedEntityCount = 0;
       switch (GradiusNeoGame.state[EntityField.Type + var4]) {
         case 33:
         case 34:
@@ -5817,9 +5898,10 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               );
 
               for (
-                let var21: int = var6 + GradiusNeoGame.I * 16;
-                GradiusNeoGame.I * var21 <= 120 + (GradiusNeoGame.I * GAME_VIEW_WIDTH) / 2;
-                var21 += GradiusNeoGame.I * 16
+                let var21: int = var6 + GradiusNeoGame.entityDirectionSign * 16;
+                GradiusNeoGame.entityDirectionSign * var21 <=
+                120 + (GradiusNeoGame.entityDirectionSign * GAME_VIEW_WIDTH) / 2;
+                var21 += GradiusNeoGame.entityDirectionSign * 16
               ) {
                 GradiusNeoGame.enqueueRenderCommand(
                   1,
@@ -5835,7 +5917,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                 var4,
                 var9 * var6,
                 var7,
-                GradiusNeoGame.I * (var9 * GAME_VIEW_WIDTH - var6) + 16,
+                GradiusNeoGame.entityDirectionSign * (var9 * GAME_VIEW_WIDTH - var6) + 16,
                 16 + GradiusNeoGame.state[5118 + var4] * 16,
               );
               if (GradiusNeoGame.state[4606 + var4]++ >= GradiusNeoGame.state[EntityField.Parameter0 + var4]) {
@@ -6162,7 +6244,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             }
 
             if (GradiusNeoGame.state[EntityField.Parameter1 + var4] === 0) {
-              if (var6 <= GradiusNeoGame.I * 16 * 3) {
+              if (var6 <= GradiusNeoGame.entityDirectionSign * 16 * 3) {
                 GradiusNeoGame.state[StateSlot.StageScrollSpeed] = 0;
                 GradiusNeoGame.state[StateSlot.VisualStageScrollX] = 0;
                 GradiusNeoGame.state[EntityField.Parameter1 + var4]++;
@@ -6607,9 +6689,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
         default:
       }
 
-      if (GradiusNeoGame.J === 0) {
+      if (GradiusNeoGame.spawnedEntityCount === 0) {
         GradiusNeoGame.state[EntityField.X + var4] =
-          var6 + GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.I;
+          var6 + GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.entityDirectionSign;
         GradiusNeoGame.state[EntityField.Y + var4] = var7;
         GradiusNeoGame.state[EntityField.Age + var4] = ++var8;
       }
@@ -6618,7 +6700,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
     }
   }
 
-  private h__void(): void {
+  private updatePlayerWeaponsAndCollisions(): void {
     if (GradiusNeoGame.state[StateSlot.PlayerDamagePhase] < -40) {
       if (GradiusNeoGame.state[StateSlot.PlayerDamagePhase] === -52) {
         GradiusNeoGame.requestSoundEffect(10);
@@ -6676,7 +6758,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           GradiusNeoGame.state[1143 + var9] = 112;
         }
 
-        GradiusNeoGame.e__void();
+        GradiusNeoGame.updateAdaptiveDifficulty();
         if (--GradiusNeoGame.state[StateSlot.Lives] < 0) {
           GradiusNeoGame.screenState = ScreenState.PrepareGameOver;
           GradiusNeoGame.state[StateSlot.Lives] = 0;
@@ -6824,8 +6906,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             default:
           }
 
-          GradiusNeoGame.f__void();
-          GradiusNeoGame.e__void();
+          GradiusNeoGame.synchronizeFormationWeapon();
+          GradiusNeoGame.updateAdaptiveDifficulty();
         }
 
         if (
@@ -7183,7 +7265,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                         GradiusNeoGame.state[1170 + var17] +
                         GradiusNeoGame.state[
                           455 +
-                            GradiusNeoGame.b__int_int(
+                            GradiusNeoGame.calculateDirectionToPlayer(
                               GradiusNeoGame.state[1170 + var17] >> 4,
                               GradiusNeoGame.state[1175 + var17] >> 4,
                             )
@@ -7193,7 +7275,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                         GradiusNeoGame.state[1175 + var17] +
                         GradiusNeoGame.state[
                           471 +
-                            GradiusNeoGame.b__int_int(
+                            GradiusNeoGame.calculateDirectionToPlayer(
                               GradiusNeoGame.state[1170 + var17] >> 4,
                               GradiusNeoGame.state[1175 + var17] >> 4,
                             )
@@ -7232,7 +7314,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                 GradiusNeoGame.state[1170 + var23] +
                 GradiusNeoGame.state[
                   455 +
-                    GradiusNeoGame.b__int_int(
+                    GradiusNeoGame.calculateDirectionToPlayer(
                       GradiusNeoGame.state[1170 + var23] >> 4,
                       GradiusNeoGame.state[1175 + var23] >> 4,
                     )
@@ -7242,7 +7324,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                 GradiusNeoGame.state[1175 + var23] +
                 GradiusNeoGame.state[
                   471 +
-                    GradiusNeoGame.b__int_int(
+                    GradiusNeoGame.calculateDirectionToPlayer(
                       GradiusNeoGame.state[1170 + var23] >> 4,
                       GradiusNeoGame.state[1175 + var23] >> 4,
                     )
@@ -7388,7 +7470,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             }
 
             if (GradiusNeoGame.state[82] === 0) {
-              GradiusNeoGame.f__void();
+              GradiusNeoGame.synchronizeFormationWeapon();
             }
           }
 
@@ -7590,11 +7672,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
         // clear left stale rows after switching to the native 240×224 world.
         gfx.fillRect(0, 0, this.getWidth(), this.getHeight());
 
-        gfx.setFont(GradiusNeoGame.O);
+        gfx.setFont(GradiusNeoGame.bitmapFont);
         if (GradiusNeoGame.screenState === ScreenState.MainMenu) {
           gfx.translate(
             GradiusNeoGame.state[StateSlot.ViewportOffsetX],
-            (GradiusNeoGame.A - fromLegacyRenderPixels(192)) / 2,
+            (GradiusNeoGame.canvasHeight - fromLegacyRenderPixels(192)) / 2,
           );
         } else {
           gfx.translate(
@@ -7656,7 +7738,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             GradiusNeoGame.state[70] = GradiusNeoGame.saveData[56];
             GradiusNeoGame.state[71] = GradiusNeoGame.saveData[57];
             gfx.drawImage(this.konamiLogoImage, fromLegacyRenderPixels(90), fromLegacyRenderPixels(90), 3);
-            this.a__Graphics_String_int_int(gfx, 'LOADING', 71, 162);
+            this.drawBitmapText(gfx, 'LOADING', 71, 162);
             GradiusNeoGame.screenState++;
             break;
           }
@@ -7672,7 +7754,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             }
 
             this.loadSpriteSheet(1, 'c2');
-            this.a__String('c');
+            this.loadResourceIntoBuffer('c');
             let var109: int = (GradiusNeoGame.resourceBuffer[4] << 8) | (GradiusNeoGame.resourceBuffer[5] & 255);
 
             for (let var92: int = 0; var92 < 20; var92++) {
@@ -7691,7 +7773,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             GradiusNeoGame.state[3] = 0;
             this.loadSpriteSheet(2, 'title');
             gfx.drawImage(this.konamiLogoImage, fromLegacyRenderPixels(90), fromLegacyRenderPixels(90), 3);
-            this.a__Graphics_String_int_int(gfx, 'LOADING', 71, 162);
+            this.drawBitmapText(gfx, 'LOADING', 71, 162);
             GradiusNeoGame.screenState = ScreenState.KonamiLogo;
             break;
           }
@@ -7720,25 +7802,30 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
 
           case ScreenState.MainMenu: {
             gfx.setColor(0);
-            gfx.fillRect(-gfx.getTranslateX(), -gfx.getTranslateY(), GradiusNeoGame.z * 2, GradiusNeoGame.A * 2);
+            gfx.fillRect(
+              -gfx.getTranslateX(),
+              -gfx.getTranslateY(),
+              GradiusNeoGame.canvasWidth * 2,
+              GradiusNeoGame.canvasHeight * 2,
+            );
             let var135: boolean = false;
             this.drawSpriteRegion(gfx, 2, 349, 0, fromLegacyRenderPixels(24), 20);
-            this.a__Graphics_int_int_int_int(gfx, 212, 7, 8, 9);
-            this.a__Graphics_int_int_int_int_int(gfx, GradiusNeoGame.state[97], 7, 134, 9, 4);
+            this.drawBitmapGlyphRun(gfx, 212, 7, 8, 9);
+            this.drawBitmapNumber(gfx, GradiusNeoGame.state[97], 7, 134, 9, 4);
             let var145: boolean = false;
             let var146: boolean = false;
             let var147: boolean = false;
-            this.a__Graphics_int_int_int_int(gfx, 7, 10, 43, 120);
+            this.drawBitmapGlyphRun(gfx, 7, 10, 43, 120);
             let var137: boolean = false;
-            this.a__Graphics_int_int_int_int(gfx, 17, 8, 43, 136);
-            this.a__Graphics_int_int_int_int(gfx, 37, 10, 43, 152);
-            this.a__Graphics_int_int_int_int(gfx, 47, 12, 43, 168);
+            this.drawBitmapGlyphRun(gfx, 17, 8, 43, 136);
+            this.drawBitmapGlyphRun(gfx, 37, 10, 43, 152);
+            this.drawBitmapGlyphRun(gfx, 47, 12, 43, 168);
             let var138: boolean = false;
-            this.a__Graphics_int_int_int_int(gfx, 59, 11, 43, 184);
+            this.drawBitmapGlyphRun(gfx, 59, 11, 43, 184);
             let var143: boolean = false;
             let var139: boolean = false;
-            this.a__Graphics_String_int_int(gfx, 'ABOUT', 43, 200);
-            this.a__Graphics_String_int_int(gfx, 'EXIT', 43, 216);
+            this.drawBitmapText(gfx, 'ABOUT', 43, 200);
+            this.drawBitmapText(gfx, 'EXIT', 43, 216);
             if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2) !== 0) {
               GradiusNeoGame.state[0] = GradiusNeoGame.state[0] + 6;
             } else {
@@ -7776,9 +7863,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                   } else {
                     if (GradiusNeoGame.state[0] === 3) {
                       this.setSoftKeyLabels(6, 3);
-                      this.k = 5;
+                      this.infoReturnScreen = 5;
                       GradiusNeoGame.screenState = ScreenState.Instructions;
-                      this.l = 0;
+                      this.textScrollOffset = 0;
                     } else {
                       if (GradiusNeoGame.state[0] === 4) {
                         GradiusNeoGame.screenState = ScreenState.MenuTransition;
@@ -7786,7 +7873,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                         if (GradiusNeoGame.state[0] === 5) {
                           this.setSoftKeyLabels(6, 3);
                           GradiusNeoGame.screenState = ScreenState.About;
-                          this.l = 0;
+                          this.textScrollOffset = 0;
                         } else {
                           if (GradiusNeoGame.state[0] === 6) {
                             this.setSoftKeyLabels(6, 3);
@@ -7824,32 +7911,32 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           }
 
           case ScreenState.Instructions: {
-            this.d__Graphics(gfx);
+            this.renderInstructionsScreen(gfx);
             break;
           }
 
           case ScreenState.OptionsMenu: {
             this.drawSpriteRegion(gfx, 2, 349, 0, 12, 20);
             let var134: boolean = false;
-            this.a__Graphics_int_int_int_int(gfx, 59, 11, 43, 112);
+            this.drawBitmapGlyphRun(gfx, 59, 11, 43, 112);
             let var142: boolean = false;
-            this.a__Graphics_int_int_int_int(gfx, 70, 12, 42, 144);
+            this.drawBitmapGlyphRun(gfx, 70, 12, 42, 144);
             let var136: boolean = false;
-            this.a__Graphics_int_int_int_int(gfx, 82, 13, 42, 160);
-            this.a__Graphics_int_int_int_int(gfx, 95, 10, 42, 176);
+            this.drawBitmapGlyphRun(gfx, 82, 13, 42, 160);
+            this.drawBitmapGlyphRun(gfx, 95, 10, 42, 176);
             let var144: java.lang.String[] = ['NONE', 'BGM', 'SFX'];
-            this.a__Graphics_String_int_int(gfx, 'SOUND - ' + var144[GradiusNeoGame.soundMode], 42, 192);
+            this.drawBitmapText(gfx, 'SOUND - ' + var144[GradiusNeoGame.soundMode], 42, 192);
             let var15: byte;
             let var16: byte;
             if (GradiusNeoGame.state[33] > 0) {
               var15 = 4;
-              this.a__Graphics_int_int_int_int(gfx, 105, 10, 42, 208);
+              this.drawBitmapGlyphRun(gfx, 105, 10, 42, 208);
               var16 = 5;
-              this.a__Graphics_int_int_int_int(gfx, 294, 7, 42, GAMEPLAY_HEIGHT);
+              this.drawBitmapGlyphRun(gfx, 294, 7, 42, GAMEPLAY_HEIGHT);
             } else {
               var15 = -1;
               var16 = 4;
-              this.a__Graphics_int_int_int_int(gfx, 294, 7, 42, 208);
+              this.drawBitmapGlyphRun(gfx, 294, 7, 42, 208);
             }
 
             if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2) !== 0) {
@@ -7915,15 +8002,15 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           }
 
           case ScreenState.GameplayOptions: {
-            this.a__Graphics_int_int_int_int(gfx, 70, 12, 36, 16);
-            this.a__Graphics_int_int_int_int(gfx, 125, 10, 28, 48);
-            this.a__Graphics_int_int_int_int(gfx, 135 + GradiusNeoGame.state[1] * 7, 7, 126, 64);
-            this.a__Graphics_int_int_int_int(gfx, 163, 8, 28, 96);
-            this.a__Graphics_int_int_int_int(gfx, 171 + GradiusNeoGame.state[2] * 3, 3, 182, 112);
-            this.a__Graphics_int_int_int_int(gfx, 177, 13, 28, 144);
-            this.a__Graphics_int_int_int_int(gfx, 190 + GradiusNeoGame.state[3] * 4, 4, 168, 160);
-            this.a__Graphics_int_int_int_int(gfx, 198, 4, 28, 192);
-            this.a__Graphics_int_int_int_int(gfx, 294, 7, 28, 208);
+            this.drawBitmapGlyphRun(gfx, 70, 12, 36, 16);
+            this.drawBitmapGlyphRun(gfx, 125, 10, 28, 48);
+            this.drawBitmapGlyphRun(gfx, 135 + GradiusNeoGame.state[1] * 7, 7, 126, 64);
+            this.drawBitmapGlyphRun(gfx, 163, 8, 28, 96);
+            this.drawBitmapGlyphRun(gfx, 171 + GradiusNeoGame.state[2] * 3, 3, 182, 112);
+            this.drawBitmapGlyphRun(gfx, 177, 13, 28, 144);
+            this.drawBitmapGlyphRun(gfx, 190 + GradiusNeoGame.state[3] * 4, 4, 168, 160);
+            this.drawBitmapGlyphRun(gfx, 198, 4, 28, 192);
+            this.drawBitmapGlyphRun(gfx, 294, 7, 28, 208);
             if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2) !== 0) {
               GradiusNeoGame.state[0] = GradiusNeoGame.state[0] + 4;
             } else {
@@ -7987,31 +8074,31 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                 }
               }
             } else {
-              this.a__Graphics_int_int_int_int(gfx, 202, 5, 120, 192);
+              this.drawBitmapGlyphRun(gfx, 202, 5, 120, 192);
               GradiusNeoGame.state[10]++;
             }
             break;
           }
 
           case ScreenState.HighScores: {
-            this.a__Graphics_int_int_int_int(gfx, 95, 10, 50, 16);
-            this.a__Graphics_int_int_int_int(gfx, 115, 3, 14, 48);
-            this.a__Graphics_int_int_int_int(gfx, 118, 3, 14, 96);
-            this.a__Graphics_int_int_int_int(gfx, 121, 3, 14, 144);
-            this.a__Graphics_int_int_int_int(gfx, 294, 7, 42, 192);
+            this.drawBitmapGlyphRun(gfx, 95, 10, 50, 16);
+            this.drawBitmapGlyphRun(gfx, 115, 3, 14, 48);
+            this.drawBitmapGlyphRun(gfx, 118, 3, 14, 96);
+            this.drawBitmapGlyphRun(gfx, 121, 3, 14, 144);
+            this.drawBitmapGlyphRun(gfx, 294, 7, 42, 192);
             this.drawSpriteRegion(gfx, 0, 46 + (GradiusNeoGame.state[StateSlot.LogicFrame] & 3), 19, 142, 20);
-            this.a__Graphics_int_int_int_int_int(gfx, GradiusNeoGame.state[97], 9, 84, 64, 4);
-            this.a__Graphics_int_int_int_int_int(gfx, GradiusNeoGame.state[100] / 5 + 1, 1, 28, 64, 4);
-            this.a__Graphics_int_int_int_int(gfx, 124, 1, 42, 64);
-            this.a__Graphics_int_int_int_int_int(gfx, (GradiusNeoGame.state[100] % 5) + 1, 1, 56, 64, 4);
-            this.a__Graphics_int_int_int_int_int(gfx, GradiusNeoGame.state[98], 9, 84, 112, 4);
-            this.a__Graphics_int_int_int_int_int(gfx, GradiusNeoGame.state[101] / 5 + 1, 1, 28, 112, 4);
-            this.a__Graphics_int_int_int_int(gfx, 124, 1, 42, 112);
-            this.a__Graphics_int_int_int_int_int(gfx, (GradiusNeoGame.state[101] % 5) + 1, 1, 56, 112, 4);
-            this.a__Graphics_int_int_int_int_int(gfx, GradiusNeoGame.state[99], 9, 84, 160, 4);
-            this.a__Graphics_int_int_int_int_int(gfx, GradiusNeoGame.state[102] / 5 + 1, 1, 28, 160, 4);
-            this.a__Graphics_int_int_int_int(gfx, 124, 1, 42, 160);
-            this.a__Graphics_int_int_int_int_int(gfx, (GradiusNeoGame.state[102] % 5) + 1, 1, 56, 160, 4);
+            this.drawBitmapNumber(gfx, GradiusNeoGame.state[97], 9, 84, 64, 4);
+            this.drawBitmapNumber(gfx, GradiusNeoGame.state[100] / 5 + 1, 1, 28, 64, 4);
+            this.drawBitmapGlyphRun(gfx, 124, 1, 42, 64);
+            this.drawBitmapNumber(gfx, (GradiusNeoGame.state[100] % 5) + 1, 1, 56, 64, 4);
+            this.drawBitmapNumber(gfx, GradiusNeoGame.state[98], 9, 84, 112, 4);
+            this.drawBitmapNumber(gfx, GradiusNeoGame.state[101] / 5 + 1, 1, 28, 112, 4);
+            this.drawBitmapGlyphRun(gfx, 124, 1, 42, 112);
+            this.drawBitmapNumber(gfx, (GradiusNeoGame.state[101] % 5) + 1, 1, 56, 112, 4);
+            this.drawBitmapNumber(gfx, GradiusNeoGame.state[99], 9, 84, 160, 4);
+            this.drawBitmapNumber(gfx, GradiusNeoGame.state[102] / 5 + 1, 1, 28, 160, 4);
+            this.drawBitmapGlyphRun(gfx, 124, 1, 42, 160);
+            this.drawBitmapNumber(gfx, (GradiusNeoGame.state[102] % 5) + 1, 1, 56, 160, 4);
             if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 8388864) !== 0) {
               GradiusNeoGame.screenState = ScreenState.OptionsMenu;
               GradiusNeoGame.state[0] = 0;
@@ -8020,30 +8107,30 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           }
 
           case ScreenState.ControlOptions: {
-            this.a__Graphics_int_int_int_int(gfx, 82, 13, 29, 16);
-            this.a__Graphics_int_int_int_int(gfx, 377, 7, 28, 48);
+            this.drawBitmapGlyphRun(gfx, 82, 13, 29, 16);
+            this.drawBitmapGlyphRun(gfx, 377, 7, 28, 48);
             if (GradiusNeoGame.state[1] === 0) {
-              this.a__Graphics_int_int_int_int(gfx, 369, 8, 112, 64);
+              this.drawBitmapGlyphRun(gfx, 369, 8, 112, 64);
             } else {
-              this.a__Graphics_int_int_int_int(gfx, 384 + (GradiusNeoGame.state[1] - 1) * 8, 8, 112, 64);
+              this.drawBitmapGlyphRun(gfx, 384 + (GradiusNeoGame.state[1] - 1) * 8, 8, 112, 64);
             }
 
-            this.a__Graphics_int_int_int_int(gfx, 392, 6, 28, 96);
+            this.drawBitmapGlyphRun(gfx, 392, 6, 28, 96);
             if (GradiusNeoGame.state[2] === 0) {
-              this.a__Graphics_int_int_int_int(gfx, 369, 8, 112, 112);
+              this.drawBitmapGlyphRun(gfx, 369, 8, 112, 112);
             } else {
-              this.a__Graphics_int_int_int_int(gfx, 398 + (GradiusNeoGame.state[2] - 1) * 8, 8, 112, 112);
+              this.drawBitmapGlyphRun(gfx, 398 + (GradiusNeoGame.state[2] - 1) * 8, 8, 112, 112);
             }
 
-            this.a__Graphics_int_int_int_int(gfx, 422, 6, 28, 144);
+            this.drawBitmapGlyphRun(gfx, 422, 6, 28, 144);
             if (GradiusNeoGame.state[3] === 0) {
-              this.a__Graphics_int_int_int_int(gfx, 369, 8, 112, 160);
+              this.drawBitmapGlyphRun(gfx, 369, 8, 112, 160);
             } else {
-              this.a__Graphics_int_int_int_int(gfx, 428 + (GradiusNeoGame.state[3] - 1) * 8, 8, 112, 160);
+              this.drawBitmapGlyphRun(gfx, 428 + (GradiusNeoGame.state[3] - 1) * 8, 8, 112, 160);
             }
 
-            this.a__Graphics_int_int_int_int(gfx, 198, 4, 28, 192);
-            this.a__Graphics_int_int_int_int(gfx, 294, 7, 28, 208);
+            this.drawBitmapGlyphRun(gfx, 198, 4, 28, 192);
+            this.drawBitmapGlyphRun(gfx, 294, 7, 28, 208);
             if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2) !== 0) {
               GradiusNeoGame.state[0] = GradiusNeoGame.state[0] + 4;
             } else {
@@ -8119,21 +8206,21 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                 }
               }
             } else {
-              this.a__Graphics_int_int_int_int(gfx, 202, 5, 120, 200);
+              this.drawBitmapGlyphRun(gfx, 202, 5, 120, 200);
               GradiusNeoGame.state[10]++;
             }
             break;
           }
 
           case ScreenState.NewGameStageSelect: {
-            this.a__Graphics_int_int_int_int(gfx, 25, 12, 36, 48);
+            this.drawBitmapGlyphRun(gfx, 25, 12, 36, 48);
 
             let var91: int;
             for (var91 = 0; var91 <= GradiusNeoGame.state[StateSlot.HighestUnlockedStage]; var91++) {
-              this.a__Graphics_int_int_int_int(gfx, 259 + var91 * 7, 7, 71, 96 + var91 * 16);
+              this.drawBitmapGlyphRun(gfx, 259 + var91 * 7, 7, 71, 96 + var91 * 16);
             }
 
-            this.a__Graphics_int_int_int_int(gfx, 294, 7, 71, 96 + var91 * 16);
+            this.drawBitmapGlyphRun(gfx, 294, 7, 71, 96 + var91 * 16);
             if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2) !== 0) {
               GradiusNeoGame.state[0] =
                 GradiusNeoGame.state[0] + GradiusNeoGame.state[StateSlot.HighestUnlockedStage] + 1;
@@ -8191,29 +8278,29 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               if (GradiusNeoGame.state[0] !== 1) {
                 if (GradiusNeoGame.state[0] === 2) {
                   if (GradiusNeoGame.state[2] === 1) {
-                    this.a__Graphics_int_int_int_int(gfx, 343, 9, 57, 48);
+                    this.drawBitmapGlyphRun(gfx, 343, 9, 57, 48);
                   } else {
-                    this.a__Graphics_int_int_int_int(gfx, 352, 9, 57, 48);
+                    this.drawBitmapGlyphRun(gfx, 352, 9, 57, 48);
                   }
 
-                  this.a__Graphics_int_int_int_int(gfx, 207, 5, 22, 96);
-                  this.a__Graphics_int_int_int_int_int(gfx, GradiusNeoGame.state[StateSlot.Score], 7, 120, 96, 4);
+                  this.drawBitmapGlyphRun(gfx, 207, 5, 22, 96);
+                  this.drawBitmapNumber(gfx, GradiusNeoGame.state[StateSlot.Score], 7, 120, 96, 4);
                   if (GradiusNeoGame.state[3] > 0) {
-                    this.a__Graphics_int_int_int_int(gfx, 361, 8, 120, 120);
+                    this.drawBitmapGlyphRun(gfx, 361, 8, 120, 120);
                     if (GradiusNeoGame.state[3] === 1) {
-                      this.a__Graphics_int_int_int_int(gfx, 377, 7, 8, 120);
+                      this.drawBitmapGlyphRun(gfx, 377, 7, 8, 120);
                     } else {
                       if (GradiusNeoGame.state[3] === 2) {
-                        this.a__Graphics_int_int_int_int(gfx, 392, 6, 8, 120);
+                        this.drawBitmapGlyphRun(gfx, 392, 6, 8, 120);
                       } else {
                         if (GradiusNeoGame.state[3] === 3) {
-                          this.a__Graphics_int_int_int_int(gfx, 422, 6, 8, 120);
+                          this.drawBitmapGlyphRun(gfx, 422, 6, 8, 120);
                         }
                       }
                     }
                   }
 
-                  this.a__Graphics_int_int_int_int(gfx, 301, 7, 88, 176);
+                  this.drawBitmapGlyphRun(gfx, 301, 7, 88, 176);
                   this.drawSpriteRegion(gfx, 0, 46 + (GradiusNeoGame.state[StateSlot.LogicFrame] & 3), 54, 130, 20);
                   if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.Fire) !== 0) {
                     this.stopAllAudio();
@@ -8234,26 +8321,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
 
                 let var90: int;
                 for (var90 = 0; var90 <= GradiusNeoGame.state[StateSlot.HighestUnlockedStage]; var90++) {
-                  this.a__Graphics_int_int_int_int(gfx, 259 + var90 * 7, 7, 16, 32 + (var90 * 16 * 9) / 4);
-                  this.a__Graphics_int_int_int_int_int(
-                    gfx,
-                    GradiusNeoGame.state[9771 + var90],
-                    7,
-                    128,
-                    32 + (var90 * 16 * 9) / 4,
-                    4,
-                  );
-                  this.a__Graphics_int_int_int_int_int(
-                    gfx,
-                    GradiusNeoGame.state[9776 + var90],
-                    7,
-                    128,
-                    48 + (var90 * 16 * 9) / 4,
-                    4,
-                  );
+                  this.drawBitmapGlyphRun(gfx, 259 + var90 * 7, 7, 16, 32 + (var90 * 16 * 9) / 4);
+                  this.drawBitmapNumber(gfx, GradiusNeoGame.state[9771 + var90], 7, 128, 32 + (var90 * 16 * 9) / 4, 4);
+                  this.drawBitmapNumber(gfx, GradiusNeoGame.state[9776 + var90], 7, 128, 48 + (var90 * 16 * 9) / 4, 4);
                 }
 
-                this.a__Graphics_int_int_int_int(gfx, 301, 7, 16, 32 + (var90 * 16 * 9) / 4);
+                this.drawBitmapGlyphRun(gfx, 301, 7, 16, 32 + (var90 * 16 * 9) / 4);
                 if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2) !== 0) {
                   GradiusNeoGame.state[1] =
                     GradiusNeoGame.state[1] + GradiusNeoGame.state[StateSlot.HighestUnlockedStage] + 1;
@@ -8291,7 +8364,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               }
             }
 
-            this.a__Graphics_int_int_int_int(gfx, 37, 10, 50, 0);
+            this.drawBitmapGlyphRun(gfx, 37, 10, 50, 0);
             if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.RightSoftKey) !== 0) {
               GradiusNeoGame.screenState = ScreenState.ReturnToTitle;
             }
@@ -8385,14 +8458,14 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           }
 
           case ScreenState.ConfirmLoadedGame: {
-            this.a__Graphics_int_int_int_int(gfx, 17, 8, 64, 32);
-            this.a__Graphics_int_int_int_int(gfx, 254, 5, 56, 96);
-            this.a__Graphics_int_int_int_int_int(gfx, GradiusNeoGame.state[2] + 1, 1, 140, 96, 4);
-            this.a__Graphics_int_int_int_int(gfx, 124, 1, 154, 96);
-            this.a__Graphics_int_int_int_int_int(gfx, GradiusNeoGame.state[1] + 1, 1, 168, 96, 4);
-            this.a__Graphics_int_int_int_int(gfx, 7, 10, 50, 176);
-            this.a__Graphics_int_int_int_int(gfx, 294, 7, 50, 192);
-            this.a__Graphics_int_int(gfx, GradiusNeoGame.state[3], 124);
+            this.drawBitmapGlyphRun(gfx, 17, 8, 64, 32);
+            this.drawBitmapGlyphRun(gfx, 254, 5, 56, 96);
+            this.drawBitmapNumber(gfx, GradiusNeoGame.state[2] + 1, 1, 140, 96, 4);
+            this.drawBitmapGlyphRun(gfx, 124, 1, 154, 96);
+            this.drawBitmapNumber(gfx, GradiusNeoGame.state[1] + 1, 1, 168, 96, 4);
+            this.drawBitmapGlyphRun(gfx, 7, 10, 50, 176);
+            this.drawBitmapGlyphRun(gfx, 294, 7, 50, 192);
+            this.drawDifficultyLabel(gfx, GradiusNeoGame.state[3], 124);
             this.drawSpriteRegion(
               gfx,
               0,
@@ -8472,10 +8545,10 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
 
           case ScreenState.ShowStageLoading: {
             if (GradiusNeoGame.runtimeFlags[5]) {
-              this.a__Graphics_int_int_int_int(gfx, 0, 7, 71, 113);
+              this.drawBitmapGlyphRun(gfx, 0, 7, 71, 113);
             } else {
-              this.a__Graphics_int_int_int_int(gfx, 7, 10, 50, 113);
-              this.a__Graphics_int_int(gfx, GradiusNeoGame.state[StateSlot.Difficulty], 141);
+              this.drawBitmapGlyphRun(gfx, 7, 10, 50, 113);
+              this.drawDifficultyLabel(gfx, GradiusNeoGame.state[StateSlot.Difficulty], 141);
             }
 
             GradiusNeoGame.screenState++;
@@ -8483,7 +8556,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           }
 
           case ScreenState.LoadStage: {
-            this.d__void();
+            this.unloadStageSpriteSheets();
             GradiusNeoGame.state[StateSlot.FreeEntityHead] = 0;
             GradiusNeoGame.state[StateSlot.PrimaryEntityHead] = -1;
             GradiusNeoGame.state[StateSlot.AuxiliaryEntityHead] = -1;
@@ -8503,7 +8576,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               GradiusNeoGame.state[1245 + var80] = -1;
             }
 
-            GradiusNeoGame.f__void();
+            GradiusNeoGame.synchronizeFormationWeapon();
 
             for (let var81: int = 0; var81 < 752; var81++) {
               GradiusNeoGame.state[1265 + var81] = 0;
@@ -8551,7 +8624,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               }
             }
 
-            this.a__String('' + GradiusNeoGame.state[StateSlot.CurrentStage]);
+            this.loadResourceIntoBuffer('' + GradiusNeoGame.state[StateSlot.CurrentStage]);
             let var99: int = (GradiusNeoGame.resourceBuffer[0] << 8) | (GradiusNeoGame.resourceBuffer[1] & 255);
             GradiusNeoGame.state[37] = (GradiusNeoGame.resourceBuffer[var99++] & 255) << 8;
             GradiusNeoGame.state[37] = GradiusNeoGame.state[37] | (GradiusNeoGame.resourceBuffer[var99++] & 255);
@@ -8623,7 +8696,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                 GradiusNeoGame.state[StateSlot.CurrentRound] * 8;
             }
 
-            GradiusNeoGame.e__void();
+            GradiusNeoGame.updateAdaptiveDifficulty();
             GradiusNeoGame.state[34] = 0;
             GradiusNeoGame.screenState = ScreenState.StageReady;
             GradiusNeoGame.runtimeFlags[5] = true;
@@ -8674,16 +8747,16 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           }
 
           case ScreenState.GameOverContinue: {
-            this.a__Graphics_int_int_int_int(gfx, 308, 16, 8, 60);
+            this.drawBitmapGlyphRun(gfx, 308, 16, 8, 60);
             if (GradiusNeoGame.state[StateSlot.Continues] > 0) {
-              this.a__Graphics_int_int_int_int(gfx, 324, 13, 29, 120);
-              this.a__Graphics_int_int_int_int_int(gfx, GradiusNeoGame.state[StateSlot.Continues], 2, 183, 120, 4);
+              this.drawBitmapGlyphRun(gfx, 324, 13, 29, 120);
+              this.drawBitmapNumber(gfx, GradiusNeoGame.state[StateSlot.Continues], 2, 183, 120, 4);
               if (GradiusNeoGame.state[StateSlot.Continues] < 10) {
-                this.a__Graphics_int_int_int_int_int(gfx, 0, 1, 183, 120, 4);
+                this.drawBitmapNumber(gfx, 0, 1, 183, 120, 4);
               }
 
-              this.a__Graphics_int_int_int_int(gfx, 337, 3, 99, 152);
-              this.a__Graphics_int_int_int_int(gfx, 340, 3, 99, 168);
+              this.drawBitmapGlyphRun(gfx, 337, 3, 99, 152);
+              this.drawBitmapGlyphRun(gfx, 340, 3, 99, 168);
               if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 66) !== 0) {
                 GradiusNeoGame.state[0] = GradiusNeoGame.state[0] ^ 1;
               }
@@ -8698,7 +8771,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               );
             }
 
-            this.a__Graphics_String_int_int(gfx, 'PRESS OK', 64, 208);
+            this.drawBitmapText(gfx, 'PRESS OK', 64, 208);
             if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.Fire) !== 0) {
               GradiusNeoGame.screenState = ScreenState.ReturnToTitle;
               if (GradiusNeoGame.state[StateSlot.Continues] > 0 && GradiusNeoGame.state[0] === 0) {
@@ -8740,7 +8813,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               GradiusNeoGame.state[StateSlot.LogicFrame] = 0;
               GradiusNeoGame.state[45] = 1;
               GradiusNeoGame.requestBackgroundMusic(36);
-              this.d__void();
+              this.unloadStageSpriteSheets();
               this.loadSpriteSheet(3, 'midium');
               this.loadSpriteSheet(2, 'e');
               GradiusNeoGame.state[0] = 272;
@@ -8964,11 +9037,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               gfx.drawString('0' + (GradiusNeoGame.state[2] + 1), 148, 108, 20);
             }
 
-            this.a__Graphics_int_int_int_int(gfx, 105, 10, 50, 16);
-            this.a__Graphics_int_int_int_int(gfx, 436, 3, 16, 48);
-            this.a__Graphics_int_int_int_int(gfx, 439, 3, 16, 128);
-            this.a__Graphics_int_int_int_int(gfx, 442, 4, 16, 208);
-            this.a__Graphics_int_int_int_int(gfx, 294, 7, 16, GAMEPLAY_HEIGHT);
+            this.drawBitmapGlyphRun(gfx, 105, 10, 50, 16);
+            this.drawBitmapGlyphRun(gfx, 436, 3, 16, 48);
+            this.drawBitmapGlyphRun(gfx, 439, 3, 16, 128);
+            this.drawBitmapGlyphRun(gfx, 442, 4, 16, 208);
+            this.drawBitmapGlyphRun(gfx, 294, 7, 16, GAMEPLAY_HEIGHT);
             if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2) !== 0) {
               GradiusNeoGame.state[0] = GradiusNeoGame.state[0] + 3;
             } else {
@@ -9042,8 +9115,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           }
 
           case ScreenState.StageReady: {
-            this.a__Graphics_int_int_int_int(gfx, 7, 10, 50, 113);
-            this.a__Graphics_int_int(gfx, GradiusNeoGame.state[StateSlot.Difficulty], 141);
+            this.drawBitmapGlyphRun(gfx, 7, 10, 50, 113);
+            this.drawDifficultyLabel(gfx, GradiusNeoGame.state[StateSlot.Difficulty], 141);
             if (3000n < java.lang.System.currentTimeMillis() - GradiusNeoGame.timestamps[2]) {
               GradiusNeoGame.screenState = ScreenState.Gameplay;
               GradiusNeoGame.requestBackgroundMusic(15 + GradiusNeoGame.state[StateSlot.CurrentStage] * 3);
@@ -9053,7 +9126,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           }
 
           case ScreenState.About: {
-            this.e__Graphics(gfx);
+            this.renderAboutScreen(gfx);
             break;
           }
 
@@ -9083,7 +9156,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
 
           case ScreenState.Gameplay: {
             if (GradiusNeoGame.runtimeFlags[4]) {
-              this.i__Graphics(gfx);
+              this.updatePauseMenu(gfx);
               if (GradiusNeoGame.state[27] === 0 && GradiusNeoGame.state[StateSlot.PressedInputBits] !== 0) {
                 if (
                   (GradiusNeoGame.state[StateSlot.PressedInputBits] &
@@ -9107,8 +9180,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                     GradiusNeoGame.state[1123] = 1;
                     GradiusNeoGame.state[1124] = 1;
                     GradiusNeoGame.state[1125] = 1;
-                    GradiusNeoGame.f__void();
-                    GradiusNeoGame.e__void();
+                    GradiusNeoGame.synchronizeFormationWeapon();
+                    GradiusNeoGame.updateAdaptiveDifficulty();
                     GradiusNeoGame.requestSoundEffect(7);
                     if (GradiusNeoGame.state[StateSlot.Difficulty] >= 2) {
                       GradiusNeoGame.state[27]++;
@@ -9385,7 +9458,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                 } while ((var4 & '耀') !== 0);
               }
 
-              this.h__void();
+              this.updatePlayerWeaponsAndCollisions();
 
               for (let var38: int = 0; var38 < 20; var38++) {
                 switch (GradiusNeoGame.state[1245 + var38]) {
@@ -11095,8 +11168,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                   }
               }
 
-              this.g__void();
-              this.j__Graphics(gfx);
+              this.updatePrimaryEntities();
+              this.updateAuxiliaryEntities(gfx);
               this.renderBackgroundQueue(gfx);
               if (GradiusNeoGame.state[41] === 3) {
                 for (let var132: int = 0; var132 < 15; var132++) {
@@ -11115,23 +11188,23 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                       (GradiusNeoGame.resourceBuffer[GradiusNeoGame.state[48] + (var58 + var7) * 2] & 255) > 0
                     ) {
                       try {
-                        GradiusNeoGame.C =
+                        GradiusNeoGame.terrainTileSourceX =
                           (((GradiusNeoGame.resourceBuffer[GradiusNeoGame.state[48] + (var58 + var7) * 2] & 255) -
                             189) %
                             16) *
                           16;
-                        GradiusNeoGame.D =
+                        GradiusNeoGame.terrainTileSourceY =
                           (((GradiusNeoGame.resourceBuffer[GradiusNeoGame.state[48] + (var58 + var7) * 2] & 255) -
                             189) /
                             16 +
                             (GradiusNeoGame.resourceBuffer[GradiusNeoGame.state[48] + (var58 + var7) * 2 + 1] & 3) *
                               3) *
                           16;
-                        if (GradiusNeoGame.C >= 0 && GradiusNeoGame.D >= 0) {
+                        if (GradiusNeoGame.terrainTileSourceX >= 0 && GradiusNeoGame.terrainTileSourceY >= 0) {
                           gfx.drawRegionScaled(
                             this.spriteSheets[4],
-                            toSpriteSheetPixels(GradiusNeoGame.C),
-                            toSpriteSheetPixels(GradiusNeoGame.D),
+                            toSpriteSheetPixels(GradiusNeoGame.terrainTileSourceX),
+                            toSpriteSheetPixels(GradiusNeoGame.terrainTileSourceY),
                             12,
                             12,
                             0,
@@ -11335,7 +11408,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
               this.drawSpriteRegion(gfx, 0, 1, 0, RENDERED_GAMEPLAY_HEIGHT, 20);
               this.drawSpriteRegion(gfx, 0, 1, fromLegacyRenderPixels(84), RENDERED_GAMEPLAY_HEIGHT, 20);
               this.drawSpriteRegion(gfx, 0, 1, fromLegacyRenderPixels(168), RENDERED_GAMEPLAY_HEIGHT, 20);
-              this.a__Graphics_int_int_int_int_int(
+              this.drawBitmapNumber(
                 gfx,
                 GradiusNeoGame.state[StateSlot.Score],
                 7,
@@ -11344,7 +11417,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                 4,
               );
               this.drawSpriteRegion(gfx, 0, 43, 0, 0, 20);
-              this.a__Graphics_int_int_int_int_int(
+              this.drawBitmapNumber(
                 gfx,
                 GradiusNeoGame.state[StateSlot.Lives],
                 2,
@@ -11486,7 +11559,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
             this.konamiLogoImage = Image.createImage('/konami.png');
             this.loadSpriteSheet(0, 'c1');
             gfx.drawImage(this.konamiLogoImage, fromLegacyRenderPixels(90), fromLegacyRenderPixels(90), 3);
-            this.a__Graphics_String_int_int(gfx, 'LOADING', 71, 162);
+            this.drawBitmapText(gfx, 'LOADING', 71, 162);
             GradiusNeoGame.screenState = ScreenState.LoadSaveData;
             break;
           }
@@ -11534,24 +11607,33 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           case ScreenState.ExitApplication: {
             let var18: int = 19;
             let var20: boolean = false;
-            this.a__Graphics_String_int_int(gfx, 'YES', 99, 19);
-            this.a__Graphics_String_int_int(gfx, 'NO', 99, 35);
+            this.drawBitmapText(gfx, 'YES', 99, 19);
+            this.drawBitmapText(gfx, 'NO', 99, 35);
             gfx.setColor(0);
             gfx.fillRect(0, 0, this.getWidth(), this.getHeight());
             let var21: java.lang.String = '';
-            if (this.M === null) {
-              this.M = GameSupport.a(172, 'Would you like to view more games from Konami?' + var21, gfx.getFont());
+            if (this.exitPromptLines === null) {
+              this.exitPromptLines = GameSupport.a(
+                172,
+                'Would you like to view more games from Konami?' + var21,
+                gfx.getFont(),
+              );
             }
 
             gfx.setColor(16777215);
 
-            for (let var3: int = 0; var3 < this.M.length; var3++) {
-              gfx.drawString(this.M[var3], 93, toRenderPixels(3 + (gfx.getFont().getHeight() + 10) * (var3 + 1)), 17);
+            for (let var3: int = 0; var3 < this.exitPromptLines.length; var3++) {
+              gfx.drawString(
+                this.exitPromptLines[var3],
+                93,
+                toRenderPixels(3 + (gfx.getFont().getHeight() + 10) * (var3 + 1)),
+                17,
+              );
               var18 += gfx.getFont().getHeight() + 10;
             }
 
-            this.a__Graphics_String_int_int(gfx, 'YES', 99, var18 + 32);
-            this.a__Graphics_String_int_int(gfx, 'NO', 99, var18 + 48);
+            this.drawBitmapText(gfx, 'YES', 99, var18 + 32);
+            this.drawBitmapText(gfx, 'NO', 99, var18 + 48);
             if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2) !== 0) {
               GradiusNeoGame.state[0]++;
             } else {
@@ -11575,7 +11657,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
                   try {
                     let var22: java.lang.String = '2206';
                     this.running = false;
-                    this.w.platformRequest(
+                    this.midletHost.platformRequest(
                       'http://wap.cingularextras.com/fuel/enduser/endUserWMLDesc?categoryID=' + var22,
                     );
                   } catch (var23) {
@@ -11686,16 +11768,16 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
         '10_viperdie',
         '11_coin',
       ];
-      this.a__String_int('/' + var1[GradiusNeoGame.state[28]] + '.mid', 1);
+      this.queueAudioPlayback('/' + var1[GradiusNeoGame.state[28]] + '.mid', 1);
     }
   }
 
   private processPendingBackgroundMusic(): void {
-    if (java.lang.System.currentTimeMillis() < this.p && this.q) {
+    if (java.lang.System.currentTimeMillis() < this.audioResumeDeadlineMillis && this.audioResumePending) {
       GradiusNeoGame.requestBackgroundMusic(GradiusNeoGame.requestedBgmId);
       java.lang.Thread.yield();
     } else {
-      this.p = 0n;
+      this.audioResumeDeadlineMillis = 0n;
       if (GradiusNeoGame.runtimeFlags[2]) {
         GradiusNeoGame.runtimeFlags[2] = false;
         if (GradiusNeoGame.soundMode !== 1 && !this.soundTestActive) {
@@ -11704,10 +11786,10 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
 
         let var3: int = GradiusNeoGame.requestedBgmId / 3 - 4;
         let var4: java.lang.String[] = ['boss1', 'st1', 'st2', 'st3', 'st4', 'st5', 'boss2', 'lastboss', 'ending1'];
-        this.a__String_int('/' + var4[var3] + '.mid', -1);
-        if (this.q) {
-          this.q = false;
-          this.T = 1;
+        this.queueAudioPlayback('/' + var4[var3] + '.mid', -1);
+        if (this.audioResumePending) {
+          this.audioResumePending = false;
+          this.audioPlayerState = 1;
           this.updateAudioPlayer();
         }
       }
@@ -11715,36 +11797,39 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
   }
 
   private updateAudioPlayer(): void {
-    switch (this.T) {
+    switch (this.audioPlayerState) {
       case 0: {
         this.stopActiveAudioPlayer();
-        this.T++;
+        this.audioPlayerState++;
         return;
       }
 
       case 1:
         try {
           let var1: Player;
-          if ((var1 = this.V.get(this.R) as Player) !== null) {
-            this.T++;
+          if ((var1 = this.audioPlayerCache.get(this.queuedAudioPath) as Player) !== null) {
+            this.audioPlayerState++;
             var1.realize();
-            var1.setLoopCount(this.S);
+            var1.setLoopCount(this.queuedAudioLoopCount);
             var1.start();
-            this.U = var1;
+            this.activeAudioPlayer = var1;
           } else {
             let var2: java.lang.String = 'audio/midi';
             let var3: Player;
-            (var3 = Manager.createPlayer(this.getClass().getResourceAsStream(this.R), var2)).addPlayerListener(this);
-            this.V.put(this.R, var3);
+            (var3 = Manager.createPlayer(
+              this.getClass().getResourceAsStream(this.queuedAudioPath),
+              var2,
+            )).addPlayerListener(this);
+            this.audioPlayerCache.put(this.queuedAudioPath, var3);
           }
 
           return;
         } catch (var4) {
           if (var4 instanceof java.lang.Throwable) {
-            this.T = 0;
+            this.audioPlayerState = 0;
             GameSupport.a(' pse:' + var4);
             if (var4.getMessage() === 'device error') {
-              this.T = 2;
+              this.audioPlayerState = 2;
             }
 
             return;
@@ -11753,25 +11838,25 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
           }
         }
       case 2: {
-        this.R = null;
-        this.T++;
+        this.queuedAudioPath = null;
+        this.audioPlayerState++;
       }
 
       default:
     }
   }
 
-  private a__String_int(var1: java.lang.String, var2: int): void {
-    this.R = var1;
-    this.S = var2;
-    this.T = 0;
+  private queueAudioPlayback(resourcePath: java.lang.String, loopCount: int): void {
+    this.queuedAudioPath = resourcePath;
+    this.queuedAudioLoopCount = loopCount;
+    this.audioPlayerState = 0;
   }
 
   private stopActiveAudioPlayer(): void {
-    if (this.U !== null) {
+    if (this.activeAudioPlayer !== null) {
       try {
-        this.U.stop();
-        this.U.deallocate();
+        this.activeAudioPlayer.stop();
+        this.activeAudioPlayer.deallocate();
       } catch (var2) {
         if (var2 instanceof java.lang.Throwable) {
         } else {
@@ -11779,25 +11864,25 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable, Pl
         }
       }
 
-      this.U = null;
+      this.activeAudioPlayer = null;
     }
   }
 
-  public playerUpdate(var1: Player, var2: java.lang.String, var3: java.lang.Object): void {}
+  public playerUpdate(_player: Player, _event: java.lang.String, _eventData: java.lang.Object): void {}
 
   public suspendForAppHide(): void {
-    if (!GradiusNeoGame.r) {
-      GradiusNeoGame.r = true;
+    if (!GradiusNeoGame.appSuspended) {
+      GradiusNeoGame.appSuspended = true;
       this.heldInputBits = 0;
       this.stopAllAudio();
     }
   }
 
   public resumeAfterAppShow(): void {
-    if (GradiusNeoGame.r) {
-      this.p = java.lang.System.currentTimeMillis() + 1000n;
-      this.q = true;
-      GradiusNeoGame.r = false;
+    if (GradiusNeoGame.appSuspended) {
+      this.audioResumeDeadlineMillis = java.lang.System.currentTimeMillis() + 1000n;
+      this.audioResumePending = true;
+      GradiusNeoGame.appSuspended = false;
       if (GradiusNeoGame.screenState === ScreenState.Gameplay) {
         if (!GradiusNeoGame.runtimeFlags[4]) {
           GradiusNeoGame.runtimeFlags[4] = true;

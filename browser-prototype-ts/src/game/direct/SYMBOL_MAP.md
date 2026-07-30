@@ -136,46 +136,44 @@ Die bestätigten Spalten des Pools stehen im Code als `EntityField`, etwa
 
 ## Bereits verstandene Methoden
 
-| Generierter Name                      | Bedeutung                                                                                  |
-| ------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `run()`                               | originale blockierende 100-ms-Hauptschleife                                                |
-| `paint(Graphics)`                     | Rendering plus großer Teil der Zustandslogik                                               |
-| `g__int(int)`                         | MIDP-Keycode in Eingabebit übersetzen                                                      |
-| `g__void()`                           | großer Gegner-/Entity-Update-Switch                                                        |
-| `h__void()`                           | Spieler, Optionen, Waffen und Spielerkollision                                             |
-| `k__void()`                           | angeforderte Hintergrundmusik vorbereiten                                                  |
-| `j__void()`                           | angeforderten Soundeffekt vorbereiten                                                      |
-| `l__void()`                           | Audio-Zustandsautomat ausführen                                                            |
-| `m__void()`                           | aktiven Player stoppen/freigeben                                                           |
-| `c__int_int(x,y)`                     | `sampleTerrainCollision(...)`: Weltpunkt gegen Terrain-Kollisionsmap prüfen                |
-| `a__int_int_int_int_int(...)`         | `resolveEntityCollisions(...)`: Trefferstärke für Entity-Rechteck ermitteln                |
-| `b__int_int_int_int_int_int(...)`     | `applyEntityCollisionDamage(...)`: Schaden, Zerstörung, Score und Folge-Entity abwickeln   |
-| `c__int(entityId)`                    | `removePrimaryEntity(...)`: aus Hauptliste lösen und in die Freiliste zurücklegen          |
-| `d__int(entityId)`                    | `removeAuxiliaryEntity(...)`: aus Auxiliary-Liste lösen und in die Freiliste zurücklegen   |
-| `a__int_String(int,String)`           | `loadSpriteSheet(slot,name)`: Bildatlas und zugehörige `csv_*`-Regionen laden              |
-| `a__int_int_int_int(type,x,y,params)` | `spawnEntity(...)`: freien Entity-Slot belegen und initialisieren                          |
-| `b__int_int_int_int(type,x,y,params)` | `spawnAuxiliaryEntity(...)`: gekoppeltes Spezialobjekt in der zweiten Liste anlegen        |
-| `a__int_int_int_int_int_int(...)`     | `enqueueRenderCommand(type,x,y,layer,spriteRegion,color)`                                  |
-| `a__Graphics(Graphics)`               | `renderForegroundQueue(...)`: Render-Layer 4 bis 17 zeichnen und freigeben                 |
-| `b__Graphics(Graphics)`               | `renderBackgroundQueue(...)`: Render-Layer 0 bis 2 zeichnen und freigeben                  |
-| wiederholtes `drawRegion(...)`        | `drawSpriteRegion(graphics,sheet,region,x,y,anchor)`: gepackte XYWH-Region entpacken       |
-| `c__Graphics(Graphics)`               | `renderSoftKeyBar(...)`: untere Softkey-Leiste zeichnen                                    |
-| `a__int_int(left,right)`              | `setSoftKeyLabels(...)`: Beschriftungen aus den MIDP-Commands wählen                       |
-| `f__Graphics(Graphics)`               | `renderExitConfirmationOptions(...)`: EXIT/YES/NO zeichnen                                 |
-| `g__Graphics(Graphics)`               | `updateMainMenuExitConfirmation(...)`                                                      |
-| `h__Graphics(Graphics)`               | `updateGameplayExitConfirmation(...)`                                                      |
-| `g__int(keyCode)`                     | `keyCodeToInputBit(...)`                                                                   |
-| `e__int(section)`                     | `persistSaveDataSection(...)`: einen Savegame-Abschnitt serialisieren und in RMS schreiben |
-| `f__int(section)`                     | `loadSaveDataSection(...)`: einen Savegame-Abschnitt in den Laufzeitzustand laden          |
-| `a__int(track)`                       | `requestBackgroundMusic(...)`                                                              |
-| `b__int(effect)`                      | `requestSoundEffect(...)`                                                                  |
-| `i__void()`                           | `cycleSoundMode()`                                                                         |
-| `j__void()`                           | `processPendingSoundEffect()`                                                              |
-| `k__void()`                           | `processPendingBackgroundMusic()`                                                          |
-| `l__void()`                           | `updateAudioPlayer()`                                                                      |
-| `m__void()`                           | `stopActiveAudioPlayer()`                                                                  |
-| `b__void()`                           | `suspendForAppHide()`: Eingaben und Audio beim Verbergen pausieren                         |
-| `c__void()`                           | `resumeAfterAppShow()`: Audio und Gameplay nach Rückkehr fortsetzen                        |
+| Aktueller Name                       | Bedeutung                                                                            |
+| ------------------------------------ | ------------------------------------------------------------------------------------ |
+| `run()`                              | originale blockierende 100-ms-Hauptschleife                                          |
+| `paint(Graphics)`                    | Rendering plus großer Teil der Zustandslogik                                         |
+| `keyCodeToInputBit(int)`             | MIDP-Keycode in Eingabebit übersetzen                                                |
+| `updatePrimaryEntities()`            | großer Gegner-/Entity-Update-Switch                                                  |
+| `updateAuxiliaryEntities(Graphics)`  | gekoppelte Spezialobjekte, Laser und Bossbestandteile aktualisieren                  |
+| `updatePlayerWeaponsAndCollisions()` | Spieler, Optionen, Waffen und Spielerkollision                                       |
+| `calculateDirectionToPlayer(x,y)`    | quantisierten 64-stufigen Zielwinkel zum Spieler bestimmen                           |
+| `rotateDirectionTowardPlayer(x,y,a)` | Winkel `a` um höchstens einen Schritt zum Spieler drehen                             |
+| `advanceEntityX(entity,a,speed)`     | X-Fixed-Point-Position anhand der Winkeltabelle fortschreiben                        |
+| `advanceEntityY(entity,a,speed)`     | Y-Fixed-Point-Position anhand der Winkeltabelle fortschreiben                        |
+| `updateAdaptiveDifficulty()`         | dynamischen Schwierigkeits-/Ausrüstungswert in `state[25]` berechnen                 |
+| `sampleTerrainCollision(x,y)`        | Weltpunkt gegen Terrain-Kollisionsmap prüfen                                         |
+| `resolveEntityCollisions(...)`       | Trefferstärke für Entity-Rechteck ermitteln                                          |
+| `applyEntityCollisionDamage(...)`    | Schaden, Zerstörung, Score und Folge-Entity abwickeln                                |
+| `removePrimaryEntity(entityId)`      | aus Hauptliste lösen und in die Freiliste zurücklegen                                |
+| `removeAuxiliaryEntity(entityId)`    | aus Auxiliary-Liste lösen und in die Freiliste zurücklegen                           |
+| `loadSpriteSheet(slot,name)`         | Bildatlas und zugehörige `csv_*`-Regionen laden                                      |
+| `unloadStageSpriteSheets()`          | Stage-/Titel-Atlanten in Slots 2 bis 5 freigeben                                     |
+| `loadResourceIntoBuffer(path)`       | Binärressource in den gemeinsamen Ressourcenpuffer laden                             |
+| `spawnEntity(type,x,y,params)`       | freien Entity-Slot belegen und initialisieren                                        |
+| `spawnAuxiliaryEntity(type,x,y,p)`   | gekoppeltes Spezialobjekt in der zweiten Liste anlegen                               |
+| `enqueueRenderCommand(...)`          | Renderkommando nach Layer sortiert einreihen                                         |
+| `renderForegroundQueue(Graphics)`    | Render-Layer 4 bis 17 zeichnen und freigeben                                         |
+| `renderBackgroundQueue(Graphics)`    | Render-Layer 0 bis 2 zeichnen und freigeben                                          |
+| wiederholtes `drawRegion(...)`       | `drawSpriteRegion(graphics,sheet,region,x,y,anchor)`: gepackte XYWH-Region entpacken |
+| `renderSoftKeyBar(Graphics)`         | untere Softkey-Leiste zeichnen                                                       |
+| `setSoftKeyLabels(left,right)`       | Beschriftungen aus den MIDP-Commands wählen                                          |
+| `drawBitmapGlyphRun(...)`            | zusammenhängende Folge vorberechneter Bitmap-Glyphen zeichnen                        |
+| `drawBitmapText(...)`                | ASCII-Text über den Sprite-Font zeichnen                                             |
+| `drawBitmapNumber(...)`              | rechtsbündige Zahl über den Sprite-Font zeichnen                                     |
+| `drawDifficultyLabel(...)`           | Schwierigkeitsbezeichnung mit seitlichen Trennzeichen zeichnen                       |
+| `renderInstructionsScreen(Graphics)` | scrollbare Anleitung darstellen                                                      |
+| `renderAboutScreen(Graphics)`        | scrollbaren About-Text darstellen                                                    |
+| `updatePauseMenu(Graphics)`          | Pausemenü zeichnen und Eingaben verarbeiten                                          |
+| `synchronizeFormationWeapon()`       | Waffenmodus an Formation und Option-Anzahl anpassen                                  |
+| `queueAudioPlayback(path,loops)`     | MIDI-Pfad und Wiederholungsmodus an den Audio-Zustandsautomaten übergeben            |
 
 ## Bildschirmkoordinaten
 
