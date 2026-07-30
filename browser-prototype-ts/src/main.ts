@@ -13,7 +13,11 @@ function requireElement<T extends Element>(selector: string): T {
 const canvas = requireElement<HTMLCanvasElement>('#game');
 const shell = requireElement<HTMLElement>('.display-shell');
 const scaleLabel = requireElement<HTMLElement>('#scale');
+const resolutionLabel = requireElement<HTMLElement>('#resolution');
 const inputLabel = requireElement<HTMLElement>('#input');
+canvas.width = LOGICAL_WIDTH;
+canvas.height = LOGICAL_HEIGHT;
+resolutionLabel.textContent = `${LOGICAL_WIDTH} × ${LOGICAL_HEIGHT} logical pixels`;
 const maybeContext = canvas.getContext('2d', { alpha: false });
 if (!maybeContext) throw new Error('Canvas 2D is unavailable');
 const context: CanvasRenderingContext2D = maybeContext;
@@ -54,7 +58,7 @@ function drawFoundationScreen(): void {
   context.fillStyle = '#77c9ff';
   context.fillText('TYPESCRIPT PORT', LOGICAL_WIDTH / 2, 96);
   context.fillStyle = '#7f94aa';
-  context.fillText('CANVAS 176 x 220 READY', LOGICAL_WIDTH / 2, 122);
+  context.fillText(`CANVAS ${LOGICAL_WIDTH} x ${LOGICAL_HEIGHT} READY`, LOGICAL_WIDTH / 2, 122);
   context.fillText('PRESS ARROW KEYS', LOGICAL_WIDTH / 2, 138);
 }
 

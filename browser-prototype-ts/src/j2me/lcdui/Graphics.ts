@@ -207,6 +207,44 @@ export class Graphics {
     });
   }
 
+  /** Draws a J2ME source region at an explicitly scaled destination size. */
+  drawRegionScaled(
+    image: Image,
+    sourceX: number,
+    sourceY: number,
+    sourceWidth: number,
+    sourceHeight: number,
+    transform: number,
+    destinationX: number,
+    destinationY: number,
+    destinationWidth: number,
+    destinationHeight: number,
+    anchor: number,
+  ): void {
+    if (sourceWidth === 0 || sourceHeight === 0 || destinationWidth === 0 || destinationHeight === 0) return;
+    if (sourceWidth < 0 || sourceHeight < 0 || destinationWidth < 0 || destinationHeight < 0) {
+      throw new RangeError(
+        `Invalid scaled region: ${sourceWidth}x${sourceHeight} -> ${destinationWidth}x${destinationHeight}`,
+      );
+    }
+    if (transform !== 0) throw new Error(`Unsupported Sprite transform: ${transform}`);
+
+    const offset = Graphics.resolveAnchor(anchor, destinationWidth, destinationHeight);
+    this.withClip(() => {
+      this.context.drawImage(
+        image.source,
+        sourceX,
+        sourceY,
+        sourceWidth,
+        sourceHeight,
+        destinationX + offset.x + this.translateX,
+        destinationY + offset.y + this.translateY,
+        destinationWidth,
+        destinationHeight,
+      );
+    });
+  }
+
   static resolveAnchor(anchor: number, width: number, height: number, text = false, baseline = 0): AnchorOffset {
     const horizontal = anchor & (Graphics.LEFT | Graphics.HCENTER | Graphics.RIGHT);
     const vertical = anchor & (Graphics.TOP | Graphics.VCENTER | Graphics.BOTTOM | Graphics.BASELINE);

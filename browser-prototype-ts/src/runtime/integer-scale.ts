@@ -1,5 +1,5 @@
-export const LOGICAL_WIDTH = 176;
-export const LOGICAL_HEIGHT = 220;
+export { LOGICAL_HEIGHT, LOGICAL_WIDTH } from './render-config';
+import { LOGICAL_HEIGHT, LOGICAL_WIDTH } from './render-config';
 
 export interface IntegerScaleOptions {
   maxScale?: number;
@@ -18,11 +18,7 @@ export function calculateIntegerScale(
 
   return Math.max(
     1,
-    Math.min(
-      maxScale,
-      Math.floor(availableWidth / LOGICAL_WIDTH),
-      Math.floor(availableHeight / LOGICAL_HEIGHT),
-    ),
+    Math.min(maxScale, Math.floor(availableWidth / LOGICAL_WIDTH), Math.floor(availableHeight / LOGICAL_HEIGHT)),
   );
 }
 

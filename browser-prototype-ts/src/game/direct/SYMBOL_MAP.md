@@ -180,9 +180,26 @@ Die bestätigten Spalten des Pools stehen im Code als `EntityField`, etwa
 ## Bildschirmkoordinaten
 
 Die Spiellogik arbeitet intern mit `GAME_VIEW_WIDTH = 240` und
-`GAMEPLAY_HEIGHT = 224`. Durch die originale Skalierung `3/4` entstehen
-`RENDERED_GAME_VIEW_WIDTH = 180` und `RENDERED_GAMEPLAY_HEIGHT = 168`. Das
-tatsächliche Browser-Canvas bleibt davon getrennt bei 176×220 Pixeln.
+`GAMEPLAY_HEIGHT = 224`. Alle bisher verstreuten Render-Umrechnungen `* 3 / 4`
+laufen jetzt über `toRenderPixels(...)`; deren zentraler Faktor ist
+`RENDER_SCALE`. Im aktuellen Testmodus steht er auf `1`; damit entstehen
+`RENDERED_GAME_VIEW_WIDTH = 240` und `RENDERED_GAMEPLAY_HEIGHT = 224`.
+
+`SPRITE_SHEET_SCALE = 3/4` ist davon getrennt: Die vorhandenen PNG-Atlanten
+sind bereits verkleinert. `toSpriteSheetPixels(...)` bestimmt deshalb das
+Quellrechteck im Atlas, während `toRenderPixels(...)` die Zielposition und
+Zielgröße auf dem Canvas bestimmt.
+
+Für den nativen 240×224-Renderpfad muss damit nicht mehr nach arithmetischen
+Einzelstellen gesucht werden. Canvas-Größe und UI-Bereich müssen noch auf den
+neuen Modus abgestimmt werden. `src/runtime/render-config.ts` ist der zentrale
+Umschalter. `RENDER_SCALE = 3/4` verwendet 176×220; `RENDER_SCALE = 1`
+verwendet 240×294 mit einem 240×224-Weltbild und dem HUD darunter.
+
+Einige UI-Koordinaten sind bereits als Pixelwerte des alten 3/4-Renderziels
+hardcodiert. Bestätigte Stellen laufen über `fromLegacyRenderPixels(...)`; zum
+Beispiel wird der alte HUD-Anfang `y = 168` dadurch zu `y = 224`. Diese Werte
+dürfen nicht wie Weltkoordinaten behandelt werden.
 
 ### Von `spawnEntity` initialisierte Entity-Felder
 

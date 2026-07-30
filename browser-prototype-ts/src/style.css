@@ -5,15 +5,18 @@
   color: #eaf5ff;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
-html, body { min-height: 100%; }
+html,
+body {
+  min-height: 100%;
+}
 
 body {
   margin: 0;
-  background:
-    radial-gradient(circle at 50% 12%, #15305a 0, transparent 35%),
-    linear-gradient(#05070b, #09101e);
+  background: radial-gradient(circle at 50% 12%, #15305a 0, transparent 35%), linear-gradient(#05070b, #09101e);
 }
 
 .app-shell {
@@ -26,10 +29,25 @@ body {
   padding: 24px;
 }
 
-header { text-align: center; }
-.eyebrow { margin: 0; color: #7ea2c7; font-size: .7rem; letter-spacing: .14em; text-transform: uppercase; }
-h1 { margin: 3px 0 0; font-family: system-ui, sans-serif; font-style: italic; letter-spacing: -.07em; }
-h1 span { color: #ef394e; }
+header {
+  text-align: center;
+}
+.eyebrow {
+  margin: 0;
+  color: #7ea2c7;
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+h1 {
+  margin: 3px 0 0;
+  font-family: system-ui, sans-serif;
+  font-style: italic;
+  letter-spacing: -0.07em;
+}
+h1 span {
+  color: #ef394e;
+}
 
 .display-shell {
   box-sizing: content-box;
@@ -38,7 +56,10 @@ h1 span { color: #ef394e; }
   border: 8px solid #020307;
   border-radius: 8px;
   background: #000;
-  box-shadow: 0 0 0 1px #385272, 0 22px 70px #000c, 0 0 42px #227fe733;
+  box-shadow:
+    0 0 0 1px #385272,
+    0 22px 70px #000c,
+    0 0 42px #227fe733;
 }
 
 #game {
@@ -57,8 +78,13 @@ h1 span { color: #ef394e; }
   justify-content: center;
   gap: 8px 18px;
   color: #8fa4ba;
-  font-size: .72rem;
+  font-size: 0.72rem;
 }
 
-#scale { color: #78d8ff; font-weight: 700; }
-#input { color: #a9d7b1; }
+#scale {
+  color: #78d8ff;
+  font-weight: 700;
+}
+#input {
+  color: #a9d7b1;
+}
