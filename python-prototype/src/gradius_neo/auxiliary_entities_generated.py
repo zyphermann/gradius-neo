@@ -86,12 +86,12 @@ class AuxiliaryEntitySystem:
                                 entityY = (self.state[(EntityField.Y + self.state[(EntityField.Parameter2 + entityId)])] + self.state[(EntityField.YFixed + entityId)])
                             if (self.state[(4606 + entityId)] <= 0):
                                 if (self.state[(EntityField.Parameter1 + entityId)] == 0):
-                                    self.renderQueue.enqueue(2, ((entityX - 16) + (directionSideIndex * 16)), (entityY - 8), 14, (244 + (((age & 1)) * 1)), 0)
+                                    self.renderQueue.enqueue(2, ((entityX - 16) + (directionSideIndex * 16)), (entityY - 8), 14, (244 + ((to_int(to_int(age) & to_int(1))) * 1)), 0)
                                     if (age >= 3):
                                         self.state[(4606 + entityId)] += 1
                                 else:
                                     if (self.state[(EntityField.Parameter1 + entityId)] == 1):
-                                        self.renderQueue.enqueue(2, ((entityX - 16) + (directionSideIndex * 16)), (entityY - 8), 14, (244 + (((age & 1)) * 1)), 0)
+                                        self.renderQueue.enqueue(2, ((entityX - 16) + (directionSideIndex * 16)), (entityY - 8), 14, (244 + ((to_int(to_int(age) & to_int(1))) * 1)), 0)
                                         if (age >= 7):
                                             self.state[(4606 + entityId)] += 1
                                     else:
@@ -119,8 +119,8 @@ class AuxiliaryEntitySystem:
                             self.state[(4606 + entityId)] = 1
                             self.state[(EntityField.Health + entityId)] = (4 + self.state[25])
                         self.state[0] = (age % 64)
-                        entityX = ((((self.state[(EntityField.XFixed + self.state[(EntityField.Parameter0 + entityId)])] >> 4)) + 16) + (((int_div((((self.state[(455 + self.state[0])] * 16) * 3)), 2)) >> 4)))
-                        entityY = ((((self.state[(EntityField.YFixed + self.state[(EntityField.Parameter0 + entityId)])] >> 4)) + 16) + (((((self.state[(471 + self.state[0])] * 16) * 3)) >> 4)))
+                        entityX = ((((to_int(self.state[(EntityField.XFixed + self.state[(EntityField.Parameter0 + entityId)])]) >> (to_int(4) & 31))) + 16) + ((to_int((int_div((((self.state[(455 + self.state[0])] * 16) * 3)), 2))) >> (to_int(4) & 31))))
+                        entityY = ((((to_int(self.state[(EntityField.YFixed + self.state[(EntityField.Parameter0 + entityId)])]) >> (to_int(4) & 31))) + 16) + ((to_int((((self.state[(471 + self.state[0])] * 16) * 3))) >> (to_int(4) & 31))))
                         self.state[1] = 13
                         if (32 < self.state[0]):
                             self.state[1] = 10
@@ -158,8 +158,8 @@ class AuxiliaryEntitySystem:
                             age = (64 + (8 * self.state[(EntityField.Parameter1 + entityId)]))
                             self.state[(EntityField.Health + entityId)] = 255
                         self.state[0] = (64 - ((age % 64)))
-                        entityX = ((self.state[(EntityField.X + self.state[(EntityField.Parameter0 + entityId)])] + 48) + (((int_div((((self.state[(455 + self.state[0])] * 16) * 1)), 2)) >> 4)))
-                        entityY = ((self.state[(EntityField.Y + self.state[(EntityField.Parameter0 + entityId)])] + 24) + (((((self.state[(471 + self.state[0])] * 16) * 4)) >> 4)))
+                        entityX = ((self.state[(EntityField.X + self.state[(EntityField.Parameter0 + entityId)])] + 48) + ((to_int((int_div((((self.state[(455 + self.state[0])] * 16) * 1)), 2))) >> (to_int(4) & 31))))
+                        entityY = ((self.state[(EntityField.Y + self.state[(EntityField.Parameter0 + entityId)])] + 24) + ((to_int((((self.state[(471 + self.state[0])] * 16) * 4))) >> (to_int(4) & 31))))
                         var12 = 350
                         self.state[1] = 13
                         if ((4 <= self.state[0]) and (self.state[0] <= 28)):
@@ -173,7 +173,7 @@ class AuxiliaryEntitySystem:
                         if (self.state[(EntityField.Parameter0 + self.state[(EntityField.Parameter0 + entityId)])] > 0):
                             self.state[2] = self.state[(EntityField.Age + self.state[(EntityField.Parameter0 + entityId)])]
                             if (((self.state[2] % ((16 - int_div(self.state[25], 3)))) == 0) and ((self.state[2] % 10) == self.state[(EntityField.Parameter1 + entityId)])):
-                                self.spawnEntity(24, entityX, entityY, (((self.state[1] << 8)) | 8))
+                                self.spawnEntity(24, entityX, entityY, to_int(to_int((to_int(to_int(self.state[1]) << (to_int(8) & 31)))) | to_int(8)))
                         if (self.state[9738] > 0):
                             self.removeEntity(entityId)
                             self.spawnEntity(EntityType.ThreeFrameEffectA, (entityX + 8), entityY, 0)
@@ -197,10 +197,10 @@ class AuxiliaryEntitySystem:
                             if (self.state[(EntityField.Parameter0 + self.state[(EntityField.Parameter0 + entityId)])] == (-1)):
                                 var17 = (32 - int_div(self.state[25], 2))
                                 if ((age % var17) == 0):
-                                    self.spawnEntity(65, (((entityX + 64) + 2) - int_div((((((1 - self.state[(EntityField.Parameter1 + entityId)])) * 16) * 5)), 8)), ((entityY + (self.state[(EntityField.Parameter1 + entityId)] * 16)) + int_div(((var10 * 16)), 4)), (1536 | ((16 - ((1 * var10) * 16)))))
+                                    self.spawnEntity(65, (((entityX + 64) + 2) - int_div((((((1 - self.state[(EntityField.Parameter1 + entityId)])) * 16) * 5)), 8)), ((entityY + (self.state[(EntityField.Parameter1 + entityId)] * 16)) + int_div(((var10 * 16)), 4)), to_int(to_int(1536) | to_int(((16 - ((1 * var10) * 16))))))
                                 else:
                                     if ((age % var17) == int_div(var17, 2)):
-                                        self.spawnEntity(65, (((entityX + 48) + 2) - int_div((((((1 - self.state[(EntityField.Parameter1 + entityId)])) * 16) * 5)), 8)), ((entityY + (self.state[(EntityField.Parameter1 + entityId)] * 16)) + int_div(((var10 * 16)), 4)), (1536 | ((16 - ((1 * var10) * 16)))))
+                                        self.spawnEntity(65, (((entityX + 48) + 2) - int_div((((((1 - self.state[(EntityField.Parameter1 + entityId)])) * 16) * 5)), 8)), ((entityY + (self.state[(EntityField.Parameter1 + entityId)] * 16)) + int_div(((var10 * 16)), 4)), to_int(to_int(1536) | to_int(((16 - ((1 * var10) * 16))))))
                             else:
                                 if (self.state[(EntityField.Parameter0 + self.state[(EntityField.Parameter0 + entityId)])] >= 0):
                                     self.state[0] = self.state[(EntityField.Parameter0 + self.state[(EntityField.Parameter0 + entityId)])]
@@ -237,13 +237,13 @@ class AuxiliaryEntitySystem:
                             age = (16 + int_div(((self.state[(EntityField.Parameter1 + entityId)] * 64)), 4))
                         else:
                             self.state[0] = ((((age * 2) + int_div((((self.state[(EntityField.Parameter1 + entityId)] * 64) * 1)), 4))) % 64)
-                            entityX = (self.state[(EntityField.XFixed + self.state[(EntityField.Parameter0 + entityId)])] + ((((self.state[(455 + self.state[0])] * self.state[(4606 + self.state[(EntityField.Parameter0 + entityId)])])) >> 4)))
-                            entityY = (self.state[(EntityField.YFixed + self.state[(EntityField.Parameter0 + entityId)])] + ((((self.state[(471 + self.state[0])] * self.state[(5118 + self.state[(EntityField.Parameter0 + entityId)])])) >> 4)))
+                            entityX = (self.state[(EntityField.XFixed + self.state[(EntityField.Parameter0 + entityId)])] + ((to_int(((self.state[(455 + self.state[0])] * self.state[(4606 + self.state[(EntityField.Parameter0 + entityId)])]))) >> (to_int(4) & 31))))
+                            entityY = (self.state[(EntityField.YFixed + self.state[(EntityField.Parameter0 + entityId)])] + ((to_int(((self.state[(471 + self.state[0])] * self.state[(5118 + self.state[(EntityField.Parameter0 + entityId)])]))) >> (to_int(4) & 31))))
                             if (self.state[(EntityField.Parameter3 + self.state[(EntityField.Parameter0 + entityId)])] != 0):
                                 if (self.state[(EntityField.Parameter0 + self.state[(EntityField.Parameter0 + entityId)])] == 2):
                                     if ((age % (((24 - int_div(self.state[25], 2)) - self.state[(EntityField.Parameter1 + entityId)]))) == 0):
                                         var23 = ((age + self.state[StateSlot.PlayerX]) + self.state[StateSlot.PlayerY])
-                                        self.spawnEntity(30, (entityX - 16), ((entityY + 8) + int_div(((((self.state[(1055 + ((var23 & 63)))] % 2)) * 16)), 2)), (8 + int_div(self.state[25], 7)))
+                                        self.spawnEntity(30, (entityX - 16), ((entityY + 8) + int_div(((((self.state[(1055 + (to_int(to_int(var23) & to_int(63))))] % 2)) * 16)), 2)), (8 + int_div(self.state[25], 7)))
                                 else:
                                     if ((self.state[(EntityField.Parameter0 + self.state[(EntityField.Parameter0 + entityId)])] == 3) and ((age % (((32 - int_div(self.state[25], 2)) - (self.state[(EntityField.Parameter1 + entityId)] * 2)))) == 0)):
                                         self.spawnEntity(21, entityX, (entityY + 8), 0)
@@ -394,11 +394,11 @@ class AuxiliaryEntitySystem:
                                     case 4:
                                         if ((age % 16) == 0):
                                             var11 = (((int_div(self.state[StateSlot.Score], 100) + self.state[StateSlot.PlayerX]) + self.state[StateSlot.PlayerY]) + self.state[(EntityField.Parameter2 + entityId)])
-                                            self.state[0] = (((self.state[(1055 + ((var11 & 63)))] & 15)) % 12)
-                                            self.spawnEntity(43, GAME_VIEW_WIDTH, (16 * ((self.state[0] + 1))), (((((((((self.state[(EntityField.Parameter2 + entityId)] & 1)) + 1)) << 24)) | ((self.state[(EntityField.Parameter2 + entityId)] << 16))) | 0) | ((4 + int_div(self.state[25], 7)))))
+                                            self.state[0] = ((to_int(to_int(self.state[(1055 + (to_int(to_int(var11) & to_int(63))))]) & to_int(15))) % 12)
+                                            self.spawnEntity(43, GAME_VIEW_WIDTH, (16 * ((self.state[0] + 1))), to_int(to_int(to_int(to_int(to_int(to_int((to_int(to_int((((to_int(to_int(self.state[(EntityField.Parameter2 + entityId)]) & to_int(1))) + 1))) << (to_int(24) & 31)))) | to_int((to_int(to_int(self.state[(EntityField.Parameter2 + entityId)]) << (to_int(16) & 31)))))) | to_int(0))) | to_int(((4 + int_div(self.state[25], 7))))))
                                             self.state[94] += 1
                                             self.state[(EntityField.Parameter2 + entityId)] += 1
-                                            self.state[(EntityField.Parameter2 + entityId)] = (self.state[(EntityField.Parameter2 + entityId)] & 7)
+                                            self.state[(EntityField.Parameter2 + entityId)] = to_int(to_int(self.state[(EntityField.Parameter2 + entityId)]) & to_int(7))
                                         if (age >= GAME_VIEW_WIDTH):
                                             self.state[(EntityField.Parameter3 + entityId)] += 1
                                             self.state[(EntityField.Parameter1 + entityId)] = 280

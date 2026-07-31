@@ -507,6 +507,20 @@ class EntityMotionSnapshots:
 
     def _capture(self) -> dict[int, tuple[int, int, int]]:
         positions = {-1: (0, self.state.raw[StateSlot.PlayerX], self.state.raw[StateSlot.PlayerY])}
+        for option_index in range(1, 5):
+            positions[-1 - option_index] = (
+                0,
+                self.state.raw[1_160 + option_index],
+                self.state.raw[1_165 + option_index],
+            )
+        for projectile_index in range(20):
+            if self.state.raw[1_245 + projectile_index] < 0:
+                continue
+            positions[-100 - projectile_index] = (
+                0,
+                self.state.raw[1_185 + projectile_index],
+                self.state.raw[1_205 + projectile_index],
+            )
         for head in (StateSlot.PrimaryEntityHead, StateSlot.AuxiliaryEntityHead):
             visited: set[int] = set()
             entity_id = self.state.raw[head]

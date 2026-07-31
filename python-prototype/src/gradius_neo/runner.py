@@ -62,12 +62,16 @@ def main() -> None:
                 game.keyReleased(key_codes[event.key])
 
         while accumulator >= LOGIC_STEP_SECONDS:
+            game.captureEntityMotionBeforeTick()
             game.paint(graphics)
+            game.captureEntityMotionAfterTick()
             game.processPendingBackgroundMusic()
             game.processPendingSoundEffect()
             game.updateAudioPlayer()
             accumulator -= LOGIC_STEP_SECONDS
 
+        interpolation_alpha = accumulator / LOGIC_STEP_SECONDS
+        game.renderInterpolatedFrame(graphics, interpolation_alpha)
         pygame.transform.scale(logical_surface, window.get_size(), window)
         pygame.display.flip()
 

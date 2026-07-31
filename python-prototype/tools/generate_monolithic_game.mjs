@@ -149,6 +149,21 @@ function expr(node) {
       }
       return `int_div(${expr(node.left)}, ${expr(node.right)})`;
     }
+    if (operatorKind === ts.SyntaxKind.AmpersandToken) {
+      return `to_int(to_int(${expr(node.left)}) & to_int(${expr(node.right)}))`;
+    }
+    if (operatorKind === ts.SyntaxKind.BarToken) {
+      return `to_int(to_int(${expr(node.left)}) | to_int(${expr(node.right)}))`;
+    }
+    if (operatorKind === ts.SyntaxKind.CaretToken) {
+      return `to_int(to_int(${expr(node.left)}) ^ to_int(${expr(node.right)}))`;
+    }
+    if (operatorKind === ts.SyntaxKind.LessThanLessThanToken) {
+      return `to_int(to_int(${expr(node.left)}) << (to_int(${expr(node.right)}) & 31))`;
+    }
+    if (operatorKind === ts.SyntaxKind.GreaterThanGreaterThanToken) {
+      return `(to_int(${expr(node.left)}) >> (to_int(${expr(node.right)}) & 31))`;
+    }
     if (operatorKind === ts.SyntaxKind.PlusToken && isSyntacticStringExpression(node)) {
       return `(str(${expr(node.left)}) + str(${expr(node.right)}))`;
     }

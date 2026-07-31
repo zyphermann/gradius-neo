@@ -189,15 +189,15 @@ class GradiusNeoGame(GameSurface):
             else:
                 raise var4
         self.loadResourceIntoBuffer((str("csv_") + str(resourceName)))
-        for var3 in range(0, ((((GradiusNeoGame.resourceBuffer[2] << 8)) | ((GradiusNeoGame.resourceBuffer[3] & 255))))):
-            self.spriteRegions[(((((GradiusNeoGame.resourceBuffer[0] << 8)) | ((GradiusNeoGame.resourceBuffer[1] & 255)))) + var3)] = (((((GradiusNeoGame.resourceBuffer[(4 + (var3 * 4))] << 24)) | ((((GradiusNeoGame.resourceBuffer[(5 + (var3 * 4))] & 255)) << 16))) | ((((GradiusNeoGame.resourceBuffer[(6 + (var3 * 4))] & 255)) << 8))) | ((GradiusNeoGame.resourceBuffer[(7 + (var3 * 4))] & 255)))
+        for var3 in range(0, (to_int(to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[2]) << (to_int(8) & 31)))) | to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[3]) & to_int(255))))))):
+            self.spriteRegions[((to_int(to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[0]) << (to_int(8) & 31)))) | to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[1]) & to_int(255)))))) + var3)] = to_int(to_int(to_int(to_int(to_int(to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[(4 + (var3 * 4))]) << (to_int(24) & 31)))) | to_int((to_int(to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[(5 + (var3 * 4))]) & to_int(255)))) << (to_int(16) & 31)))))) | to_int((to_int(to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[(6 + (var3 * 4))]) & to_int(255)))) << (to_int(8) & 31)))))) | to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[(7 + (var3 * 4))]) & to_int(255)))))
     
     def drawSpriteRegion(self, gfx, sheetIndex, regionIndex, destinationX, destinationY, anchor):
         packedRegion = self.spriteRegions[regionIndex]
-        sourceX = ((unsigned_right_shift(packedRegion, 24)) & 255)
-        sourceY = ((unsigned_right_shift(packedRegion, 16)) & 255)
-        width = ((unsigned_right_shift(packedRegion, 8)) & 255)
-        height = (packedRegion & 255)
+        sourceX = to_int(to_int((unsigned_right_shift(packedRegion, 24))) & to_int(255))
+        sourceY = to_int(to_int((unsigned_right_shift(packedRegion, 16))) & to_int(255))
+        width = to_int(to_int((unsigned_right_shift(packedRegion, 8))) & to_int(255))
+        height = to_int(to_int(packedRegion) & to_int(255))
         gfx.drawRegionScaled(self.spriteSheets[sheetIndex], toSpriteSheetPixels(sourceX), toSpriteSheetPixels(sourceY), toSpriteSheetPixels(width), toSpriteSheetPixels(height), 0, destinationX, destinationY, toRenderPixels(width), toRenderPixels(height), anchor)
     
     def renderForegroundQueue(self, gfx, interpolationAlpha=0, advanceVisualState=True):
@@ -259,8 +259,8 @@ class GradiusNeoGame(GameSurface):
                             raise _SwitchBreak()
                         case 3:
                             if (0 < GradiusNeoGame.state[StateSlot.ShieldEnergy]):
-                                var2 = (140 + (((GradiusNeoGame.state[StateSlot.LogicFrame] & 1)) * 4))
-                                var11 = ((int_div((((GradiusNeoGame.state[StateSlot.ShieldEnergy] + 3) - 1)), 3)) & 1)
+                                var2 = (140 + ((to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(1))) * 4))
+                                var11 = to_int(to_int((int_div((((GradiusNeoGame.state[StateSlot.ShieldEnergy] + 3) - 1)), 3))) & to_int(1))
                                 self.drawSpriteRegion(gfx, 0, var2, toRenderPixels((((commandX + 6) + (var11 * 1)) - 16)), toRenderPixels(((((commandY + (-8)) + (var11 * 1)) - 1) - GradiusNeoGame.state[StateSlot.CameraOffsetY])), 20)
                                 self.drawSpriteRegion(gfx, 0, (var2 + 1), toRenderPixels((((commandX + 6) - (var11 * 1)) + 8)), toRenderPixels(((((commandY + (-8)) + (var11 * 1)) - 1) - GradiusNeoGame.state[StateSlot.CameraOffsetY])), 20)
                                 self.drawSpriteRegion(gfx, 0, (var2 + 2), toRenderPixels((((commandX + 6) + (var11 * 1)) - 16)), toRenderPixels((((((commandY + (-8)) - (var11 * 1)) + 16) - 1) - GradiusNeoGame.state[StateSlot.CameraOffsetY])), 20)
@@ -286,7 +286,7 @@ class GradiusNeoGame(GameSurface):
                             self.drawSpriteRegion(gfx, 0, var7, toRenderPixels(commandX), toRenderPixels(((commandY - 2) - GradiusNeoGame.state[StateSlot.CameraOffsetY])), 20)
                             var7 = 44
                             if (GradiusNeoGame.state[StateSlot.PlayerMoveSpeed] > 5):
-                                var7 = (44 + ((GradiusNeoGame.state[StateSlot.LogicFrame] & 1)))
+                                var7 = (44 + (to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(1))))
                             self.drawSpriteRegion(gfx, 0, var7, toRenderPixels((commandX - 8)), toRenderPixels(((commandY - 2) - GradiusNeoGame.state[StateSlot.CameraOffsetY])), 20)
                             raise _SwitchBreak()
                         case 4:
@@ -360,13 +360,13 @@ class GradiusNeoGame(GameSurface):
                     self.drawSpriteRegion(gfx, 3, 292, toRenderPixels(((128 - int_div(self.backdropScrollX, 48)) - 16)), 36, 20)
         for starIndex in range(0, 20):
             speed = ((((int_div(starIndex, 2) + 1)) * GradiusNeoGame.state[45]) if (backdropMode == 1) else (int_div(starIndex, 2) + 1))
-            x = (((GradiusNeoGame.state[(1055 + starIndex)] - (visualLogicFrame * speed))) & 255)
-            y = ((GradiusNeoGame.state[(1075 + starIndex)] & 255) if (backdropMode == 1) else (((GradiusNeoGame.state[(1075 + starIndex)] - GradiusNeoGame.state[StateSlot.CameraOffsetY])) & 255))
+            x = to_int(to_int(((GradiusNeoGame.state[(1055 + starIndex)] - (visualLogicFrame * speed)))) & to_int(255))
+            y = (to_int(to_int(GradiusNeoGame.state[(1075 + starIndex)]) & to_int(255)) if (backdropMode == 1) else to_int(to_int(((GradiusNeoGame.state[(1075 + starIndex)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) & to_int(255)))
             gfx.setColor(GradiusNeoGame.state[(307 + starIndex)])
             gfx.drawLine(toRenderPixels(x), toRenderPixels(y), toRenderPixels(x), toRenderPixels(y))
             if (backdropMode == 1):
-                secondX = (((x + 160)) & 255)
-                secondY = (((GradiusNeoGame.state[(1075 + starIndex)] + 80)) & 255)
+                secondX = to_int(to_int(((x + 160))) & to_int(255))
+                secondY = to_int(to_int(((GradiusNeoGame.state[(1075 + starIndex)] + 80))) & to_int(255))
                 gfx.drawLine(toRenderPixels(secondX), toRenderPixels(secondY), toRenderPixels(secondX), toRenderPixels(secondY))
         return True
     
@@ -444,7 +444,7 @@ class GradiusNeoGame(GameSurface):
     def calculateDirectionToPlayer(sourceX, sourceY):
         sourceX = (GradiusNeoGame.state[StateSlot.PlayerX] - sourceX)
         sourceY = (GradiusNeoGame.state[StateSlot.PlayerY] - sourceY)
-        while (((((sourceY + 8)) | ((8 - sourceY)))) < 0):
+        while ((to_int(to_int(((sourceY + 8))) | to_int(((8 - sourceY))))) < 0):
             sourceX = int_div(sourceX, 2)
             sourceY = int_div(sourceY, 2)
         if (0 <= sourceX):
@@ -461,7 +461,7 @@ class GradiusNeoGame(GameSurface):
     @staticmethod
     def rotateDirectionTowardPlayer(xFixed, yFixed, currentDirection):
         directionDelta = None
-        if (((directionDelta := (GradiusNeoGame.calculateDirectionToPlayer((xFixed >> 4), (yFixed >> 4)) - currentDirection))) > 32):
+        if (((directionDelta := (GradiusNeoGame.calculateDirectionToPlayer((to_int(xFixed) >> (to_int(4) & 31)), (to_int(yFixed) >> (to_int(4) & 31))) - currentDirection))) > 32):
             directionDelta -= 64
         if (directionDelta < (-32)):
             directionDelta += 64
@@ -472,11 +472,11 @@ class GradiusNeoGame(GameSurface):
     
     @staticmethod
     def advanceEntityX(entityId, direction, speed):
-        return (((_set_item(GradiusNeoGame.state, (EntityField.XFixed + entityId), (GradiusNeoGame.state[(EntityField.XFixed + entityId)] + (GradiusNeoGame.state[(455 + direction)] * speed)))) >> 4))
+        return ((to_int((_set_item(GradiusNeoGame.state, (EntityField.XFixed + entityId), (GradiusNeoGame.state[(EntityField.XFixed + entityId)] + (GradiusNeoGame.state[(455 + direction)] * speed))))) >> (to_int(4) & 31)))
     
     @staticmethod
     def advanceEntityY(entityId, direction, speed):
-        return (((_set_item(GradiusNeoGame.state, (EntityField.YFixed + entityId), (GradiusNeoGame.state[(EntityField.YFixed + entityId)] + (GradiusNeoGame.state[(471 + direction)] * speed)))) >> 4))
+        return ((to_int((_set_item(GradiusNeoGame.state, (EntityField.YFixed + entityId), (GradiusNeoGame.state[(EntityField.YFixed + entityId)] + (GradiusNeoGame.state[(471 + direction)] * speed))))) >> (to_int(4) & 31)))
     
     @staticmethod
     def updateAdaptiveDifficulty():
@@ -531,7 +531,7 @@ class GradiusNeoGame(GameSurface):
             self.drawSpriteRegion(gfx, 0, (((value % 10)) + firstDigitGlyph), toRenderPixels((digitX - 2)), toRenderPixels((y - 2)), 20)
             value = int_div(value, 10)
             digitX -= 14
-            if not (((((-value) & (((x - digitX) - 14)))) < 0)):
+            if not (((to_int(to_int((-value)) & to_int((((x - digitX) - 14))))) < 0)):
                 break
     
     def drawDifficultyLabel(self, gfx, difficulty, y):
@@ -586,7 +586,7 @@ class GradiusNeoGame(GameSurface):
     
     def updateCheatCode(self):
         progress = GradiusNeoGame.state[StateSlot.CheatCodeProgress]
-        if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & CHEAT_CODE_INPUTS[progress])) == 0):
+        if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(CHEAT_CODE_INPUTS[progress]))) == 0):
             GradiusNeoGame.state[StateSlot.CheatCodeProgress] = 0
             return
         nextProgress = (progress + 1)
@@ -674,10 +674,10 @@ class GradiusNeoGame(GameSurface):
         worldX += 8
         worldY += 8
         if (GradiusNeoGame.state[StateSlot.StageWorldHeight] != GAMEPLAY_HEIGHT):
-            if (((((GAME_VIEW_WIDTH - worldX)) | worldX)) < 0):
+            if ((to_int(to_int(((GAME_VIEW_WIDTH - worldX))) | to_int(worldX))) < 0):
                 return 0
         else:
-            if (((((((GAME_VIEW_WIDTH - worldX)) | ((GAMEPLAY_HEIGHT - worldY))) | worldX) | worldY)) < 0):
+            if ((to_int(to_int(to_int(to_int(to_int(to_int(((GAME_VIEW_WIDTH - worldX))) | to_int(((GAMEPLAY_HEIGHT - worldY))))) | to_int(worldX))) | to_int(worldY))) < 0):
                 return 0
         return ((-1) if (GradiusNeoGame.state[((1265 + (int_div((GradiusNeoGame.state[StateSlot.CameraOffsetY] + worldY), 16) * 16)) + ((int_div((GradiusNeoGame.state[StateSlot.CollisionMapScrollX] + worldX), 16) % 16)))] != 0) else 0)
     
@@ -692,7 +692,7 @@ class GradiusNeoGame(GameSurface):
             else:
                 if (deathSpawnType == 20):
                     GradiusNeoGame.spawnEntity(EntityType.TwoFrameLargeExplosion, (hitBoxX + int_div(((hitBoxWidth - 16)), 2)), (hitBoxY + int_div(((hitBoxHeight - 16)), 2)), 0)
-                    GradiusNeoGame.spawnEntity(20, (hitBoxX + int_div(((hitBoxWidth - 16)), 2)), (hitBoxY + int_div(((hitBoxHeight - 16)), 2)), (((((int_div(((hitBoxWidth - 16)), 2)) << 16)) | (((int_div(((hitBoxHeight - 16)), 2)) << 8))) | 5))
+                    GradiusNeoGame.spawnEntity(20, (hitBoxX + int_div(((hitBoxWidth - 16)), 2)), (hitBoxY + int_div(((hitBoxHeight - 16)), 2)), to_int(to_int(to_int(to_int((to_int(to_int((int_div(((hitBoxWidth - 16)), 2))) << (to_int(16) & 31)))) | to_int((to_int(to_int((int_div(((hitBoxHeight - 16)), 2))) << (to_int(8) & 31)))))) | to_int(5)))
                     GradiusNeoGame.state[StateSlot.Score] = (GradiusNeoGame.state[StateSlot.Score] + 1000)
                     GradiusNeoGame.requestSoundEffect(3)
                 else:
@@ -707,7 +707,7 @@ class GradiusNeoGame(GameSurface):
                             GradiusNeoGame.requestSoundEffect(3)
                         else:
                             if (deathSpawnType != 10):
-                                if ((GradiusNeoGame.state[StateSlot.CurrentRound] >= 2) or (((GradiusNeoGame.state[StateSlot.CurrentRound] == 1) and (((GradiusNeoGame.state[StateSlot.LogicFrame] & 1)) != 0)))):
+                                if ((GradiusNeoGame.state[StateSlot.CurrentRound] >= 2) or (((GradiusNeoGame.state[StateSlot.CurrentRound] == 1) and ((to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(1))) != 0)))):
                                     GradiusNeoGame.spawnEntity(21, (hitBoxX + int_div(((hitBoxWidth - 16)), 2)), (hitBoxY + int_div(((hitBoxHeight - 16)), 2)), 0)
                                 GradiusNeoGame.spawnEntity(deathSpawnType, (hitBoxX + int_div(((hitBoxWidth - 16)), 2)), (hitBoxY + int_div(((hitBoxHeight - 16)), 2)), 0)
                                 GradiusNeoGame.state[StateSlot.Score] = (GradiusNeoGame.state[StateSlot.Score] + 100)
@@ -803,9 +803,9 @@ class GradiusNeoGame(GameSurface):
                 match section:
                     case SaveDataSection.SettingsAndHighScores:
                         GradiusNeoGame.saveData[0] = to_byte(GradiusNeoGame.state[StateSlot.Difficulty])
-                        GradiusNeoGame.saveData[0] = to_byte((GradiusNeoGame.saveData[0] | to_byte((GradiusNeoGame.soundMode << 4))))
+                        GradiusNeoGame.saveData[0] = to_byte(to_int(to_int(GradiusNeoGame.saveData[0]) | to_int(to_byte(to_int(to_int(GradiusNeoGame.soundMode) << (to_int(4) & 31))))))
                         GradiusNeoGame.saveData[1] = to_byte(GradiusNeoGame.state[StateSlot.AutoFireSetting])
-                        GradiusNeoGame.saveData[2] = to_byte((GradiusNeoGame.state[22] | ((0 if GradiusNeoGame.smoothRenderingEnabled else 2))))
+                        GradiusNeoGame.saveData[2] = to_byte(to_int(to_int(GradiusNeoGame.state[22]) | to_int(((0 if GradiusNeoGame.smoothRenderingEnabled else 2)))))
                         GradiusNeoGame.saveData[3] = to_byte(GradiusNeoGame.state[StateSlot.HighestUnlockedStage])
                         GradiusNeoGame.saveData[4] = to_byte(GradiusNeoGame.state[33])
                         GradiusNeoGame.saveData[5] = to_byte(GradiusNeoGame.state[100])
@@ -870,11 +870,11 @@ class GradiusNeoGame(GameSurface):
         try:
             match section:
                 case SaveDataSection.SettingsAndHighScores:
-                    GradiusNeoGame.state[StateSlot.Difficulty] = (GradiusNeoGame.saveData[0] & 15)
-                    GradiusNeoGame.soundMode = (((GradiusNeoGame.saveData[0] & 240)) >> 4)
+                    GradiusNeoGame.state[StateSlot.Difficulty] = to_int(to_int(GradiusNeoGame.saveData[0]) & to_int(15))
+                    GradiusNeoGame.soundMode = (to_int((to_int(to_int(GradiusNeoGame.saveData[0]) & to_int(240)))) >> (to_int(4) & 31))
                     GradiusNeoGame.state[StateSlot.AutoFireSetting] = GradiusNeoGame.saveData[1]
-                    GradiusNeoGame.state[22] = (GradiusNeoGame.saveData[2] & 1)
-                    GradiusNeoGame.smoothRenderingEnabled = (((GradiusNeoGame.saveData[2] & 2)) == 0)
+                    GradiusNeoGame.state[22] = to_int(to_int(GradiusNeoGame.saveData[2]) & to_int(1))
+                    GradiusNeoGame.smoothRenderingEnabled = ((to_int(to_int(GradiusNeoGame.saveData[2]) & to_int(2))) == 0)
                     GradiusNeoGame.state[StateSlot.HighestUnlockedStage] = GradiusNeoGame.saveData[3]
                     GradiusNeoGame.state[33] = GradiusNeoGame.saveData[4]
                     GradiusNeoGame.state[100] = GradiusNeoGame.saveData[5]
@@ -887,7 +887,7 @@ class GradiusNeoGame(GameSurface):
                 case SaveDataSection.GameProgress:
                     GradiusNeoGame.state[StateSlot.CurrentStage] = GradiusNeoGame.saveData[20]
                     GradiusNeoGame.state[StateSlot.CurrentRound] = GradiusNeoGame.saveData[21]
-                    GradiusNeoGame.state[StateSlot.LogicFrame] = (GradiusNeoGame.saveData[22] & 255)
+                    GradiusNeoGame.state[StateSlot.LogicFrame] = to_int(to_int(GradiusNeoGame.saveData[22]) & to_int(255))
                     GradiusNeoGame.state[72] = GradiusNeoGame.saveData[23]
                     GradiusNeoGame.state[StateSlot.Score] = readInt32(GradiusNeoGame.saveData, SaveOffset.Score)
                     GradiusNeoGame.state[StateSlot.NextExtraLifeScore] = readInt32(GradiusNeoGame.saveData, SaveOffset.NextExtraLifeScore)
@@ -928,12 +928,12 @@ class GradiusNeoGame(GameSurface):
     
     def keyPressed(self, var1):
         if (var1 != (-10)):
-            GradiusNeoGame.state[StateSlot.PressedInputAccumulator] = (GradiusNeoGame.state[StateSlot.PressedInputAccumulator] | keyCodeToInputBit(var1, (lambda keyCode: self.getGameAction(keyCode))))
-            self.heldInputBits = (self.heldInputBits | GradiusNeoGame.state[StateSlot.PressedInputAccumulator])
+            GradiusNeoGame.state[StateSlot.PressedInputAccumulator] = to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputAccumulator]) | to_int(keyCodeToInputBit(var1, (lambda keyCode: self.getGameAction(keyCode)))))
+            self.heldInputBits = to_int(to_int(self.heldInputBits) | to_int(GradiusNeoGame.state[StateSlot.PressedInputAccumulator]))
     
     def keyReleased(self, var1):
         if (var1 != (-10)):
-            self.releasedInputBits = (self.releasedInputBits | keyCodeToInputBit(var1, (lambda keyCode: self.getGameAction(keyCode))))
+            self.releasedInputBits = to_int(to_int(self.releasedInputBits) | to_int(keyCodeToInputBit(var1, (lambda keyCode: self.getGameAction(keyCode)))))
     
     def hideNotify(self):
         self.suspendForAppHide()
@@ -951,16 +951,16 @@ class GradiusNeoGame(GameSurface):
         for var2 in range(0, 8):
             gfx.drawString(self.instructionsLines[(self.textScrollOffset + var2)], 93, toRenderPixels((3 + (26 * ((var2 + 1))))), 17)
         GameSupport.a(gfx, 0, 21, 156, 7, (self.textScrollOffset * 19), (len(self.instructionsLines) * 19))
-        if (((GradiusNeoGame.state[StateSlot.HeldInputBits] & 6)) != 0):
+        if ((to_int(to_int(GradiusNeoGame.state[StateSlot.HeldInputBits]) & to_int(6))) != 0):
             self.textScrollOffset -= 1
         else:
-            if (((GradiusNeoGame.state[StateSlot.HeldInputBits] & 96)) != 0):
+            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.HeldInputBits]) & to_int(96))) != 0):
                 self.textScrollOffset += 1
         if (self.textScrollOffset < 0):
             self.textScrollOffset = 0
         if (self.textScrollOffset > (len(self.instructionsLines) - 8)):
             self.textScrollOffset = (len(self.instructionsLines) - 8)
-        if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.RightSoftKey)) != 0):
+        if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.RightSoftKey))) != 0):
             GradiusNeoGame.screenState = self.infoReturnScreen
     
     def renderAboutScreen(self, gfx):
@@ -973,35 +973,35 @@ class GradiusNeoGame(GameSurface):
         for var3 in range(0, 8):
             gfx.drawString(self.aboutLines[(self.textScrollOffset + var3)], 93, toRenderPixels((3 + (26 * ((var3 + 1))))), 17)
         GameSupport.a(gfx, 0, 21, 156, 7, (self.textScrollOffset * 19), (len(self.aboutLines) * 19))
-        if (((GradiusNeoGame.state[StateSlot.HeldInputBits] & 6)) != 0):
+        if ((to_int(to_int(GradiusNeoGame.state[StateSlot.HeldInputBits]) & to_int(6))) != 0):
             self.textScrollOffset -= 1
         else:
-            if (((GradiusNeoGame.state[StateSlot.HeldInputBits] & 96)) != 0):
+            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.HeldInputBits]) & to_int(96))) != 0):
                 self.textScrollOffset += 1
         if (self.textScrollOffset < 0):
             self.textScrollOffset = 0
         if (self.textScrollOffset > (len(self.aboutLines) - 8)):
             self.textScrollOffset = (len(self.aboutLines) - 8)
-        if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.RightSoftKey)) != 0):
+        if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.RightSoftKey))) != 0):
             GradiusNeoGame.screenState = ScreenState.ReturnToTitle
     
     def renderExitConfirmationOptions(self, gfx):
         self.drawBitmapText(gfx, "EXIT", 92, 96)
         self.drawBitmapText(gfx, "YES", 92, 112)
         self.drawBitmapText(gfx, "NO", 92, 128)
-        if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2)) != 0):
+        if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(2))) != 0):
             getAndIncrement(GradiusNeoGame.state, 0)
         else:
-            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64)) != 0):
+            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(64))) != 0):
                 getAndIncrement(GradiusNeoGame.state, 0)
         GradiusNeoGame.state[0] = (GradiusNeoGame.state[0] % 2)
-        self.drawSpriteRegion(gfx, 0, (46 + ((GradiusNeoGame.state[StateSlot.LogicFrame] & 3))), 57, toRenderPixels(((96 + (((GradiusNeoGame.state[0] + 1)) * 16)) - 2)), 20)
+        self.drawSpriteRegion(gfx, 0, (46 + (to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(3)))), 57, toRenderPixels(((96 + (((GradiusNeoGame.state[0] + 1)) * 16)) - 2)), 20)
     
     def updateMainMenuExitConfirmation(self, gfx):
         self.renderExitConfirmationOptions(gfx)
-        if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.RightSoftKey)) != 0):
+        if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.RightSoftKey))) != 0):
             GradiusNeoGame.screenState = ScreenState.ReturnToTitle
-        if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.Fire)) != 0):
+        if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.Fire))) != 0):
             try:
                 match GradiusNeoGame.state[0]:
                     case 0:
@@ -1016,9 +1016,9 @@ class GradiusNeoGame(GameSurface):
     
     def updateGameplayExitConfirmation(self, gfx):
         self.renderExitConfirmationOptions(gfx)
-        if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.RightSoftKey)) != 0):
+        if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.RightSoftKey))) != 0):
             GradiusNeoGame.screenState = ScreenState.EnterPauseMenu
-        if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.Fire)) != 0):
+        if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.Fire))) != 0):
             try:
                 match GradiusNeoGame.state[0]:
                     case 0:
@@ -1053,19 +1053,19 @@ class GradiusNeoGame(GameSurface):
         self.drawBitmapText(gfx, (str("SOUND - ") + str(var10[GradiusNeoGame.soundMode])), 43, 112)
         self.drawBitmapText(gfx, "HELP", 43, 128)
         self.drawBitmapText(gfx, "EXIT", 43, 144)
-        if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2)) != 0):
+        if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(2))) != 0):
             GradiusNeoGame.state[0] = (GradiusNeoGame.state[0] + 3)
         else:
-            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64)) != 0):
+            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(64))) != 0):
                 getAndIncrement(GradiusNeoGame.state, 0)
         GradiusNeoGame.state[0] = (GradiusNeoGame.state[0] % 4)
-        self.drawSpriteRegion(gfx, 0, (46 + ((GradiusNeoGame.state[StateSlot.LogicFrame] & 3))), 20, toRenderPixels(((96 + (GradiusNeoGame.state[0] * 16)) - 2)), 20)
-        if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.RightSoftKey)) != 0):
+        self.drawSpriteRegion(gfx, 0, (46 + (to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(3)))), 20, toRenderPixels(((96 + (GradiusNeoGame.state[0] * 16)) - 2)), 20)
+        if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.RightSoftKey))) != 0):
             GradiusNeoGame.runtimeFlags[4] = False
             self.setSoftKeyLabels(4, 5)
             gfx.setColor(0)
             gfx.fillRect(0, 0, RENDERED_GAME_VIEW_WIDTH, RENDERED_GAME_VIEW_WIDTH)
-        if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.Fire)) != 0):
+        if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.Fire))) != 0):
             GradiusNeoGame.state[StateSlot.PressedInputBits] = 0
             if (GradiusNeoGame.state[0] == 0):
                 GradiusNeoGame.runtimeFlags[4] = False
@@ -1114,12 +1114,12 @@ class GradiusNeoGame(GameSurface):
             directionSideIndex = int_div(((GradiusNeoGame.entityDirectionSign + 1)), 2)
             GradiusNeoGame.spawnedEntityCount = 0
             if (GradiusNeoGame.state[StateSlot.StageWorldHeight] > GAME_VIEW_WIDTH):
-                if (((((entityX + 48)) | ((272 - entityX)))) < 0):
+                if ((to_int(to_int(((entityX + 48))) | to_int(((272 - entityX))))) < 0):
                     GradiusNeoGame.removePrimaryEntity(entityId)
                     entityId = nextEntityId
                     continue
             else:
-                if ((((((((entityX + 48)) | ((272 - entityX))) | ((entityY + 48))) | ((264 - entityY)))) < 0) and (GradiusNeoGame.state[(EntityField.Type + entityId)] < 92)):
+                if (((to_int(to_int(to_int(to_int(to_int(to_int(((entityX + 48))) | to_int(((272 - entityX))))) | to_int(((entityY + 48))))) | to_int(((264 - entityY))))) < 0) and (GradiusNeoGame.state[(EntityField.Type + entityId)] < 92)):
                     GradiusNeoGame.removePrimaryEntity(entityId)
                     entityId = nextEntityId
                     continue
@@ -1211,9 +1211,9 @@ class GradiusNeoGame(GameSurface):
                         var103 = ((((int(int_div(GradiusNeoGame.timestamps[0], 1000)) + GradiusNeoGame.state[StateSlot.LogicFrame]) + entityId) + entityX) + entityY)
                         for var61 in range(0, (((age + 1)) % 4)):
                             var28 = None
-                            if (((var28 := (14 + ((((GradiusNeoGame.state[(1055 + ((((var103 + var61)) & 63)))] & 7)) % 5))))) == 17):
+                            if (((var28 := (14 + (((to_int(to_int(GradiusNeoGame.state[(1055 + (to_int(to_int(((var103 + var61))) & to_int(63))))]) & to_int(7))) % 5))))) == 17):
                                 var28 += 1
-                            GradiusNeoGame.spawnEntity(var28, (entityX + ((GradiusNeoGame.state[(1055 + ((((var103 + var61)) & 63)))] % GradiusNeoGame.state[(EntityField.Parameter2 + entityId)]))), (entityY + ((GradiusNeoGame.state[(1055 + ((((var103 + var61)) & 63)))] % GradiusNeoGame.state[(EntityField.Parameter1 + entityId)]))), 0)
+                            GradiusNeoGame.spawnEntity(var28, (entityX + ((GradiusNeoGame.state[(1055 + (to_int(to_int(((var103 + var61))) & to_int(63))))] % GradiusNeoGame.state[(EntityField.Parameter2 + entityId)]))), (entityY + ((GradiusNeoGame.state[(1055 + (to_int(to_int(((var103 + var61))) & to_int(63))))] % GradiusNeoGame.state[(EntityField.Parameter1 + entityId)]))), 0)
                         if (age >= (GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] - 1)):
                             GradiusNeoGame.removePrimaryEntity(entityId)
                         raise _SwitchBreak()
@@ -1259,14 +1259,14 @@ class GradiusNeoGame(GameSurface):
                         if (GradiusNeoGame.state[(EntityField.Type + entityId)] <= 25):
                             GradiusNeoGame.state[0] = GradiusNeoGame.state[(EntityField.Parameter1 + entityId)]
                         if (30 <= GradiusNeoGame.state[(EntityField.Type + entityId)]):
-                            GradiusNeoGame.enqueueRenderCommand(1, entityX, entityY, GradiusNeoGame.state[0], (271 + ((age & 1))), 0)
+                            GradiusNeoGame.enqueueRenderCommand(1, entityX, entityY, GradiusNeoGame.state[0], (271 + (to_int(to_int(age) & to_int(1)))), 0)
                             if (GradiusNeoGame.resolveEntityCollisions(entityId, entityX, (entityY + 2), 16, 10) != 0):
                                 GradiusNeoGame.removePrimaryEntity(entityId)
                         else:
                             if (28 <= GradiusNeoGame.state[(EntityField.Type + entityId)]):
                                 GradiusNeoGame.enqueueRenderCommand(1, entityX, entityY, GradiusNeoGame.state[0], 391, 0)
                             else:
-                                GradiusNeoGame.enqueueRenderCommand(1, entityX, entityY, GradiusNeoGame.state[0], (269 + ((age & 1))), 0)
+                                GradiusNeoGame.enqueueRenderCommand(1, entityX, entityY, GradiusNeoGame.state[0], (269 + (to_int(to_int(age) & to_int(1)))), 0)
                             if (GradiusNeoGame.resolveEntityCollisions(entityId, entityX, (entityY + 6), 16, 4) != 0):
                                 GradiusNeoGame.removePrimaryEntity(entityId)
                         var66 = None
@@ -1281,7 +1281,7 @@ class GradiusNeoGame(GameSurface):
                         else:
                             if (((entityY + 16) >= GradiusNeoGame.state[StateSlot.CameraOffsetY]) and ((GradiusNeoGame.state[StateSlot.CameraOffsetY] + GAMEPLAY_HEIGHT) >= entityY)):
                                 GradiusNeoGame.enqueueRenderCommand(1, entityX, entityY, 16, (349 + int_div(GradiusNeoGame.state[(EntityField.Parameter0 + entityId)], 4)), 0)
-                                GradiusNeoGame.state[(EntityField.XFixed + entityId)] = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] + ((((GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.entityDirectionSign)) << 4)))
+                                GradiusNeoGame.state[(EntityField.XFixed + entityId)] = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] + (to_int(to_int(((GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.entityDirectionSign))) << (to_int(4) & 31))))
                                 if (GradiusNeoGame.sampleTerrainCollision(entityX, (entityY - GradiusNeoGame.state[StateSlot.CameraOffsetY])) < 0):
                                     GradiusNeoGame.removePrimaryEntity(entityId)
                                 else:
@@ -1297,7 +1297,7 @@ class GradiusNeoGame(GameSurface):
                         else:
                             if (((entityY + 16) >= GradiusNeoGame.state[StateSlot.CameraOffsetY]) and ((GradiusNeoGame.state[StateSlot.CameraOffsetY] + GAMEPLAY_HEIGHT) >= entityY)):
                                 GradiusNeoGame.enqueueRenderCommand(1, entityX, entityY, 16, (349 + int_div(GradiusNeoGame.state[(EntityField.Parameter0 + entityId)], 4)), 0)
-                                GradiusNeoGame.state[(EntityField.XFixed + entityId)] = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] + ((((GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.entityDirectionSign)) << 4)))
+                                GradiusNeoGame.state[(EntityField.XFixed + entityId)] = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] + (to_int(to_int(((GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.entityDirectionSign))) << (to_int(4) & 31))))
                                 if (GradiusNeoGame.sampleTerrainCollision(entityX, (entityY - GradiusNeoGame.state[StateSlot.CameraOffsetY])) < 0):
                                     GradiusNeoGame.removePrimaryEntity(entityId)
                                 else:
@@ -1310,7 +1310,7 @@ class GradiusNeoGame(GameSurface):
                     case 40:
                         if (age == 0):
                             GradiusNeoGame.state[(EntityField.Health + entityId)] = (2 + int_div(GradiusNeoGame.state[25], 8))
-                        GradiusNeoGame.enqueueRenderCommand(1, entityX, entityY, 16, (373 + ((age & 1))), 0)
+                        GradiusNeoGame.enqueueRenderCommand(1, entityX, entityY, 16, (373 + (to_int(to_int(age) & to_int(1)))), 0)
                         GradiusNeoGame.applyEntityCollisionDamage(entityId, entityX, entityY, 16, 16, 16)
                         entityX = GradiusNeoGame.advanceEntityX(entityId, GradiusNeoGame.state[(EntityField.Parameter0 + entityId)], 6)
                         entityY = GradiusNeoGame.advanceEntityY(entityId, GradiusNeoGame.state[(EntityField.Parameter0 + entityId)], 6)
@@ -1322,7 +1322,7 @@ class GradiusNeoGame(GameSurface):
                                 entityX = (-32)
                             GradiusNeoGame.state[(9731 + GradiusNeoGame.state[(EntityField.Parameter2 + entityId)])] = 0
                         if ((age % ((6 - int_div(GradiusNeoGame.state[25], 12)))) == 0):
-                            GradiusNeoGame.spawnEntity((47 + directionSideIndex), entityX, entityY, (((((GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] << 24)) | ((GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] << 16))) | ((GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] << 8))) | GradiusNeoGame.state[(EntityField.Parameter0 + entityId)]))
+                            GradiusNeoGame.spawnEntity((47 + directionSideIndex), entityX, entityY, to_int(to_int(to_int(to_int(to_int(to_int((to_int(to_int(GradiusNeoGame.state[(EntityField.Parameter3 + entityId)]) << (to_int(24) & 31)))) | to_int((to_int(to_int(GradiusNeoGame.state[(EntityField.Parameter2 + entityId)]) << (to_int(16) & 31)))))) | to_int((to_int(to_int(GradiusNeoGame.state[(EntityField.Parameter1 + entityId)]) << (to_int(8) & 31)))))) | to_int(GradiusNeoGame.state[(EntityField.Parameter0 + entityId)])))
                         if (age >= (((6 - int_div(GradiusNeoGame.state[25], 12))) * ((GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] - 1)))):
                             GradiusNeoGame.removePrimaryEntity(entityId)
                         entityX -= (GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.entityDirectionSign)
@@ -1354,13 +1354,13 @@ class GradiusNeoGame(GameSurface):
                                     else:
                                         if (GradiusNeoGame.state[(4606 + entityId)] == 2):
                                             GradiusNeoGame.state[(5118 + entityId)] = GradiusNeoGame.calculateDirectionToPlayer(entityX, entityY)
-                                            GradiusNeoGame.state[(EntityField.XFixed + entityId)] = (entityX << 4)
-                                            GradiusNeoGame.state[(EntityField.YFixed + entityId)] = (entityY << 4)
+                                            GradiusNeoGame.state[(EntityField.XFixed + entityId)] = to_int(to_int(entityX) << (to_int(4) & 31))
+                                            GradiusNeoGame.state[(EntityField.YFixed + entityId)] = to_int(to_int(entityY) << (to_int(4) & 31))
                                         if (GradiusNeoGame.state[(4606 + entityId)] >= 3):
                                             GradiusNeoGame.state[(EntityField.XFixed + entityId)] = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] + (GradiusNeoGame.state[(455 + GradiusNeoGame.state[(5118 + entityId)])] * ((5 + int_div(GradiusNeoGame.state[25], 6)))))
                                             GradiusNeoGame.state[(EntityField.YFixed + entityId)] = (GradiusNeoGame.state[(EntityField.YFixed + entityId)] + (GradiusNeoGame.state[(471 + GradiusNeoGame.state[(5118 + entityId)])] * ((5 + int_div(GradiusNeoGame.state[25], 6)))))
-                                            entityX = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] >> 4)
-                                            entityY = (GradiusNeoGame.state[(EntityField.YFixed + entityId)] >> 4)
+                                            entityX = (to_int(GradiusNeoGame.state[(EntityField.XFixed + entityId)]) >> (to_int(4) & 31))
+                                            entityY = (to_int(GradiusNeoGame.state[(EntityField.YFixed + entityId)]) >> (to_int(4) & 31))
                                         getAndIncrement(GradiusNeoGame.state, (4606 + entityId))
                                     raise _SwitchBreak()
                                 case 2 | 3:
@@ -1387,8 +1387,8 @@ class GradiusNeoGame(GameSurface):
                                     GradiusNeoGame.state[(4606 + entityId)] = (GradiusNeoGame.state[(4606 + entityId)] - 16)
                                     GradiusNeoGame.state[(EntityField.XFixed + entityId)] = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] + (GradiusNeoGame.entityDirectionSign * GradiusNeoGame.state[(4606 + entityId)]))
                                     GradiusNeoGame.state[(EntityField.YFixed + entityId)] = (GradiusNeoGame.state[(EntityField.YFixed + entityId)] + (var83 * 32))
-                                    entityX = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] >> 4)
-                                    entityY = (GradiusNeoGame.state[(EntityField.YFixed + entityId)] >> 4)
+                                    entityX = (to_int(GradiusNeoGame.state[(EntityField.XFixed + entityId)]) >> (to_int(4) & 31))
+                                    entityY = (to_int(GradiusNeoGame.state[(EntityField.YFixed + entityId)]) >> (to_int(4) & 31))
                                     raise _SwitchBreak()
                                 case 6 | 7:
                                     GradiusNeoGame.state[0] = (GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] - 6)
@@ -1408,8 +1408,8 @@ class GradiusNeoGame(GameSurface):
                                         var12 = ((int_div(((GradiusNeoGame.state[0] * 64)), 2) - (((((16 - ((age % 16)))) * 2) * GradiusNeoGame.entityDirectionSign) * var81)) + 64)
                                     GradiusNeoGame.state[(EntityField.XFixed + entityId)] = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] + (GradiusNeoGame.state[(455 + var12)] * ((5 + int_div(GradiusNeoGame.state[25], 6)))))
                                     GradiusNeoGame.state[(EntityField.YFixed + entityId)] = (GradiusNeoGame.state[(EntityField.YFixed + entityId)] + (GradiusNeoGame.state[(471 + var12)] * ((5 + int_div(GradiusNeoGame.state[25], 6)))))
-                                    entityX = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] >> 4)
-                                    entityY = (GradiusNeoGame.state[(EntityField.YFixed + entityId)] >> 4)
+                                    entityX = (to_int(GradiusNeoGame.state[(EntityField.XFixed + entityId)]) >> (to_int(4) & 31))
+                                    entityY = (to_int(GradiusNeoGame.state[(EntityField.YFixed + entityId)]) >> (to_int(4) & 31))
                         except _SwitchBreak:
                             pass
                         if ((((age + 1)) % ((150 - (GradiusNeoGame.state[25] * 4)))) == 0):
@@ -1428,8 +1428,8 @@ class GradiusNeoGame(GameSurface):
                         if (53 <= GradiusNeoGame.state[(EntityField.Type + entityId)]):
                             GradiusNeoGame.state[(EntityField.XFixed + entityId)] = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] + (GradiusNeoGame.state[(455 + GradiusNeoGame.state[(EntityField.Parameter1 + entityId)])] * ((4 + int_div(GradiusNeoGame.state[25], 6)))))
                             GradiusNeoGame.state[(EntityField.YFixed + entityId)] = (GradiusNeoGame.state[(EntityField.YFixed + entityId)] + (GradiusNeoGame.state[(471 + GradiusNeoGame.state[(EntityField.Parameter1 + entityId)])] * ((4 + int_div(GradiusNeoGame.state[25], 6)))))
-                            entityX = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] >> 4)
-                            entityY = (GradiusNeoGame.state[(EntityField.YFixed + entityId)] >> 4)
+                            entityX = (to_int(GradiusNeoGame.state[(EntityField.XFixed + entityId)]) >> (to_int(4) & 31))
+                            entityY = (to_int(GradiusNeoGame.state[(EntityField.YFixed + entityId)]) >> (to_int(4) & 31))
                             if (GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] <= age):
                                 GradiusNeoGame.state[(EntityField.Type + entityId)] = 49
                                 if (entityX < GradiusNeoGame.state[StateSlot.PlayerX]):
@@ -1477,7 +1477,7 @@ class GradiusNeoGame(GameSurface):
                             GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] = GradiusNeoGame.rotateDirectionTowardPlayer(GradiusNeoGame.state[(EntityField.XFixed + entityId)], GradiusNeoGame.state[(EntityField.YFixed + entityId)], GradiusNeoGame.state[(EntityField.Parameter1 + entityId)])
                             entityX = GradiusNeoGame.advanceEntityX(entityId, GradiusNeoGame.state[(EntityField.Parameter1 + entityId)], (4 + int_div(GradiusNeoGame.state[25], 8)))
                             entityY = GradiusNeoGame.advanceEntityY(entityId, GradiusNeoGame.state[(EntityField.Parameter1 + entityId)], (4 + int_div(GradiusNeoGame.state[25], 8)))
-                            GradiusNeoGame.enqueueRenderCommand(1, entityX, entityY, 13, (var25 + int_div(((((GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] + 2)) & 63)), 4)), 0)
+                            GradiusNeoGame.enqueueRenderCommand(1, entityX, entityY, 13, (var25 + int_div((to_int(to_int(((GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] + 2))) & to_int(63))), 4)), 0)
                             if (GradiusNeoGame.applyEntityCollisionDamage(entityId, entityX, entityY, 16, 16, 16) and (GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] != 0)):
                                 GradiusNeoGame.spawnEntity(114, entityX, entityY, 0)
                             if ((GradiusNeoGame.state[86] >= 3) and (GradiusNeoGame.spawnedEntityCount == 0)):
@@ -1491,7 +1491,7 @@ class GradiusNeoGame(GameSurface):
                         if (GradiusNeoGame.state[(EntityField.Type + entityId)] >= 63):
                             var78 = ((((GradiusNeoGame.state[(EntityField.Type + entityId)] - 63)) * 2) - 1)
                         var72 = 0
-                        if ((((GradiusNeoGame.state[(EntityField.XFixed + entityId)] >> 4)) + 16) < GradiusNeoGame.state[StateSlot.PlayerX]):
+                        if ((((to_int(GradiusNeoGame.state[(EntityField.XFixed + entityId)]) >> (to_int(4) & 31))) + 16) < GradiusNeoGame.state[StateSlot.PlayerX]):
                             var72 = 1
                         var24 = (229 + (var72 * 2))
                         if (GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] != 0):
@@ -1506,22 +1506,22 @@ class GradiusNeoGame(GameSurface):
                             if (GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] == 0):
                                 if (GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] == 0):
                                     GradiusNeoGame.state[(EntityField.XFixed + entityId)] = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] + (GradiusNeoGame.entityDirectionSign * 96))
-                                    GradiusNeoGame.state[(EntityField.YFixed + entityId)] = (GradiusNeoGame.state[(EntityField.YFixed + entityId)] + (var78 * ((((age << 4)) >> 2))))
+                                    GradiusNeoGame.state[(EntityField.YFixed + entityId)] = (GradiusNeoGame.state[(EntityField.YFixed + entityId)] + (var78 * ((to_int((to_int(to_int(age) << (to_int(4) & 31)))) >> (to_int(2) & 31)))))
                                     if ((((age - 1)) % ((40 - GradiusNeoGame.state[25]))) == 0):
                                         GradiusNeoGame.spawnEntity((26 + var72), (entityX + int_div(((GradiusNeoGame.entityDirectionSign * 16)), 2)), (entityY - 8), (4 + int_div(GradiusNeoGame.state[25], 4)))
                                     if (GradiusNeoGame.state[(EntityField.Type + entityId)] >= 63):
-                                        if ((((((GradiusNeoGame.state[StateSlot.PlayerX] - ((GradiusNeoGame.state[(EntityField.XFixed + entityId)] >> 4)))) * GradiusNeoGame.entityDirectionSign) < 112) and (0 <= entityX)) and (entityX <= 144)):
+                                        if ((((((GradiusNeoGame.state[StateSlot.PlayerX] - ((to_int(GradiusNeoGame.state[(EntityField.XFixed + entityId)]) >> (to_int(4) & 31))))) * GradiusNeoGame.entityDirectionSign) < 112) and (0 <= entityX)) and (entityX <= 144)):
                                             getAndIncrement(GradiusNeoGame.state, (EntityField.Parameter2 + entityId))
                                             age = 3
                                     else:
-                                        if ((((((GradiusNeoGame.state[StateSlot.PlayerX] - ((GradiusNeoGame.state[(EntityField.XFixed + entityId)] >> 4)))) * GradiusNeoGame.entityDirectionSign) < 112) and ((GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] * 16) <= entityX)) and (entityX <= (GAME_VIEW_WIDTH - (((2 + GradiusNeoGame.state[(EntityField.Parameter3 + entityId)])) * 16)))):
+                                        if ((((((GradiusNeoGame.state[StateSlot.PlayerX] - ((to_int(GradiusNeoGame.state[(EntityField.XFixed + entityId)]) >> (to_int(4) & 31))))) * GradiusNeoGame.entityDirectionSign) < 112) and ((GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] * 16) <= entityX)) and (entityX <= (GAME_VIEW_WIDTH - (((2 + GradiusNeoGame.state[(EntityField.Parameter3 + entityId)])) * 16)))):
                                             getAndIncrement(GradiusNeoGame.state, (EntityField.Parameter2 + entityId))
                                             age = 3
                                 else:
-                                    GradiusNeoGame.state[(EntityField.XFixed + entityId)] = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] + (GradiusNeoGame.entityDirectionSign * ((((6 + int_div(GradiusNeoGame.state[25], 12))) << 4))))
+                                    GradiusNeoGame.state[(EntityField.XFixed + entityId)] = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] + (GradiusNeoGame.entityDirectionSign * (to_int(to_int(((6 + int_div(GradiusNeoGame.state[25], 12)))) << (to_int(4) & 31)))))
                                     if ((age % ((13 - int_div(GradiusNeoGame.state[25], 4)))) == 0):
-                                        GradiusNeoGame.spawnEntity(21, (((GradiusNeoGame.state[(EntityField.XFixed + entityId)] >> 4)) + 8), (GradiusNeoGame.state[(EntityField.YFixed + entityId)] >> 4), 0)
-                                    if (((((120 - ((GradiusNeoGame.state[(EntityField.XFixed + entityId)] >> 4))) - 16)) * GradiusNeoGame.entityDirectionSign) <= 0):
+                                        GradiusNeoGame.spawnEntity(21, (((to_int(GradiusNeoGame.state[(EntityField.XFixed + entityId)]) >> (to_int(4) & 31))) + 8), (to_int(GradiusNeoGame.state[(EntityField.YFixed + entityId)]) >> (to_int(4) & 31)), 0)
+                                    if (((((120 - ((to_int(GradiusNeoGame.state[(EntityField.XFixed + entityId)]) >> (to_int(4) & 31)))) - 16)) * GradiusNeoGame.entityDirectionSign) <= 0):
                                         getAndIncrement(GradiusNeoGame.state, (EntityField.Parameter2 + entityId))
                                         GradiusNeoGame.state[(4606 + entityId)] = (GradiusNeoGame.entityDirectionSign * 16)
                                         age = 0
@@ -1530,8 +1530,8 @@ class GradiusNeoGame(GameSurface):
                                     if (GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] == 0):
                                         if ((age % 4) == 0):
                                             var102 = ((((int(int_div(GradiusNeoGame.timestamps[0], 1000)) + GradiusNeoGame.state[StateSlot.LogicFrame]) + entityId) + entityX) + entityY)
-                                            GradiusNeoGame.state[(4606 + entityId)] = (GradiusNeoGame.state[(455 + GradiusNeoGame.state[(1055 + ((var102 & 63)))])] * 4)
-                                            GradiusNeoGame.state[(5118 + entityId)] = (GradiusNeoGame.state[(471 + GradiusNeoGame.state[(1055 + ((((var102 + age)) & 63)))])] * 4)
+                                            GradiusNeoGame.state[(4606 + entityId)] = (GradiusNeoGame.state[(455 + GradiusNeoGame.state[(1055 + (to_int(to_int(var102) & to_int(63))))])] * 4)
+                                            GradiusNeoGame.state[(5118 + entityId)] = (GradiusNeoGame.state[(471 + GradiusNeoGame.state[(1055 + (to_int(to_int(((var102 + age))) & to_int(63))))])] * 4)
                                         GradiusNeoGame.state[(EntityField.XFixed + entityId)] = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] + GradiusNeoGame.state[(4606 + entityId)])
                                         GradiusNeoGame.state[(EntityField.YFixed + entityId)] = (GradiusNeoGame.state[(EntityField.YFixed + entityId)] + GradiusNeoGame.state[(5118 + entityId)])
                                         if (GradiusNeoGame.state[(EntityField.Type + entityId)] >= 63):
@@ -1544,18 +1544,18 @@ class GradiusNeoGame(GameSurface):
                                             if (3072 < GradiusNeoGame.state[(EntityField.YFixed + entityId)]):
                                                 GradiusNeoGame.state[(EntityField.YFixed + entityId)] = 3072
                                         else:
-                                            if (GradiusNeoGame.state[(EntityField.XFixed + entityId)] < (((GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] * 16)) << 4)):
-                                                GradiusNeoGame.state[(EntityField.XFixed + entityId)] = (((GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] * 16)) << 4)
-                                            if ((((GAME_VIEW_WIDTH - (((2 + GradiusNeoGame.state[(EntityField.Parameter3 + entityId)])) * 16))) << 4) < GradiusNeoGame.state[(EntityField.XFixed + entityId)]):
-                                                GradiusNeoGame.state[(EntityField.XFixed + entityId)] = (((GAME_VIEW_WIDTH - (((2 + GradiusNeoGame.state[(EntityField.Parameter3 + entityId)])) * 16))) << 4)
-                                            if (GradiusNeoGame.state[(EntityField.YFixed + entityId)] < (((GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] * 16)) << 4)):
-                                                GradiusNeoGame.state[(EntityField.YFixed + entityId)] = (((GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] * 16)) << 4)
-                                            if ((((GAMEPLAY_HEIGHT - (((1 + GradiusNeoGame.state[(EntityField.Parameter3 + entityId)])) * 16))) << 4) < GradiusNeoGame.state[(EntityField.YFixed + entityId)]):
-                                                GradiusNeoGame.state[(EntityField.YFixed + entityId)] = (((GAMEPLAY_HEIGHT - (((1 + GradiusNeoGame.state[(EntityField.Parameter3 + entityId)])) * 16))) << 4)
+                                            if (GradiusNeoGame.state[(EntityField.XFixed + entityId)] < to_int(to_int(((GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] * 16))) << (to_int(4) & 31))):
+                                                GradiusNeoGame.state[(EntityField.XFixed + entityId)] = to_int(to_int(((GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] * 16))) << (to_int(4) & 31))
+                                            if (to_int(to_int(((GAME_VIEW_WIDTH - (((2 + GradiusNeoGame.state[(EntityField.Parameter3 + entityId)])) * 16)))) << (to_int(4) & 31)) < GradiusNeoGame.state[(EntityField.XFixed + entityId)]):
+                                                GradiusNeoGame.state[(EntityField.XFixed + entityId)] = to_int(to_int(((GAME_VIEW_WIDTH - (((2 + GradiusNeoGame.state[(EntityField.Parameter3 + entityId)])) * 16)))) << (to_int(4) & 31))
+                                            if (GradiusNeoGame.state[(EntityField.YFixed + entityId)] < to_int(to_int(((GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] * 16))) << (to_int(4) & 31))):
+                                                GradiusNeoGame.state[(EntityField.YFixed + entityId)] = to_int(to_int(((GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] * 16))) << (to_int(4) & 31))
+                                            if (to_int(to_int(((GAMEPLAY_HEIGHT - (((1 + GradiusNeoGame.state[(EntityField.Parameter3 + entityId)])) * 16)))) << (to_int(4) & 31)) < GradiusNeoGame.state[(EntityField.YFixed + entityId)]):
+                                                GradiusNeoGame.state[(EntityField.YFixed + entityId)] = to_int(to_int(((GAMEPLAY_HEIGHT - (((1 + GradiusNeoGame.state[(EntityField.Parameter3 + entityId)])) * 16)))) << (to_int(4) & 31))
                                         if (age > 80):
                                             getAndIncrement(GradiusNeoGame.state, (EntityField.Parameter2 + entityId))
                                             age = 1
-                                            GradiusNeoGame.spawnEntity(21, (GradiusNeoGame.state[(EntityField.XFixed + entityId)] >> 4), (GradiusNeoGame.state[(EntityField.YFixed + entityId)] >> 4), 0)
+                                            GradiusNeoGame.spawnEntity(21, (to_int(GradiusNeoGame.state[(EntityField.XFixed + entityId)]) >> (to_int(4) & 31)), (to_int(GradiusNeoGame.state[(EntityField.YFixed + entityId)]) >> (to_int(4) & 31)), 0)
                                     else:
                                         GradiusNeoGame.state[(4606 + entityId)] = (GradiusNeoGame.state[(4606 + entityId)] + ((-GradiusNeoGame.entityDirectionSign) * var78))
                                         GradiusNeoGame.state[(EntityField.XFixed + entityId)] = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] + (GradiusNeoGame.state[(455 + GradiusNeoGame.state[(4606 + entityId)])] * ((6 + int_div(GradiusNeoGame.state[25], 12)))))
@@ -1568,15 +1568,15 @@ class GradiusNeoGame(GameSurface):
                                 else:
                                     if (GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] == 0):
                                         GradiusNeoGame.state[(EntityField.XFixed + entityId)] = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] + ((-GradiusNeoGame.entityDirectionSign) * 96))
-                                        GradiusNeoGame.state[(EntityField.YFixed + entityId)] = (GradiusNeoGame.state[(EntityField.YFixed + entityId)] + ((-var78) * ((((age << 4)) >> 2))))
+                                        GradiusNeoGame.state[(EntityField.YFixed + entityId)] = (GradiusNeoGame.state[(EntityField.YFixed + entityId)] + ((-var78) * ((to_int((to_int(to_int(age) << (to_int(4) & 31)))) >> (to_int(2) & 31)))))
                                     else:
                                         GradiusNeoGame.state[(4606 + entityId)] = (GradiusNeoGame.state[(4606 + entityId)] + (GradiusNeoGame.entityDirectionSign * var78))
                                         GradiusNeoGame.state[(EntityField.XFixed + entityId)] = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] + (GradiusNeoGame.state[(455 + GradiusNeoGame.state[(4606 + entityId)])] * ((6 + int_div(GradiusNeoGame.state[25], 12)))))
                                         GradiusNeoGame.state[(EntityField.YFixed + entityId)] = (GradiusNeoGame.state[(EntityField.YFixed + entityId)] + (GradiusNeoGame.state[(471 + GradiusNeoGame.state[(4606 + entityId)])] * ((6 + int_div(GradiusNeoGame.state[25], 12)))))
                                     if ((((age - 1)) % ((40 - GradiusNeoGame.state[25]))) == 0):
-                                        GradiusNeoGame.spawnEntity(21, (GradiusNeoGame.state[(EntityField.XFixed + entityId)] >> 4), (GradiusNeoGame.state[(EntityField.YFixed + entityId)] >> 4), 0)
-                            entityX = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] >> 4)
-                            entityY = (GradiusNeoGame.state[(EntityField.YFixed + entityId)] >> 4)
+                                        GradiusNeoGame.spawnEntity(21, (to_int(GradiusNeoGame.state[(EntityField.XFixed + entityId)]) >> (to_int(4) & 31)), (to_int(GradiusNeoGame.state[(EntityField.YFixed + entityId)]) >> (to_int(4) & 31)), 0)
+                            entityX = (to_int(GradiusNeoGame.state[(EntityField.XFixed + entityId)]) >> (to_int(4) & 31))
+                            entityY = (to_int(GradiusNeoGame.state[(EntityField.YFixed + entityId)]) >> (to_int(4) & 31))
                             GradiusNeoGame.enqueueRenderCommand(2, entityX, entityY, 13, var24, 0)
                             if (GradiusNeoGame.applyEntityCollisionDamage(entityId, (entityX + 4), entityY, 26, 16, 16) and (GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] != 0)):
                                 GradiusNeoGame.spawnEntity(114, (entityX + 8), entityY, 0)
@@ -1592,7 +1592,7 @@ class GradiusNeoGame(GameSurface):
                         GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] = GradiusNeoGame.rotateDirectionTowardPlayer(GradiusNeoGame.state[(EntityField.XFixed + entityId)], GradiusNeoGame.state[(EntityField.YFixed + entityId)], GradiusNeoGame.state[(EntityField.Parameter0 + entityId)])
                         entityX = GradiusNeoGame.advanceEntityX(entityId, GradiusNeoGame.state[(EntityField.Parameter0 + entityId)], GradiusNeoGame.state[0])
                         entityY = GradiusNeoGame.advanceEntityY(entityId, GradiusNeoGame.state[(EntityField.Parameter0 + entityId)], GradiusNeoGame.state[0])
-                        GradiusNeoGame.enqueueRenderCommand(1, entityX, entityY, 14, (196 + int_div(((((GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] + 2)) & 63)), 4)), 0)
+                        GradiusNeoGame.enqueueRenderCommand(1, entityX, entityY, 14, (196 + int_div((to_int(to_int(((GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] + 2))) & to_int(63))), 4)), 0)
                         if (GradiusNeoGame.sampleTerrainCollision(entityX, entityY) < 0):
                             GradiusNeoGame.removePrimaryEntity(entityId)
                             GradiusNeoGame.spawnEntity(EntityType.ThreeFrameEffectA, entityX, entityY, 0)
@@ -1617,8 +1617,8 @@ class GradiusNeoGame(GameSurface):
                                 if (age <= GradiusNeoGame.state[(EntityField.Parameter2 + entityId)]):
                                     GradiusNeoGame.state[(EntityField.XFixed + entityId)] = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] + (GradiusNeoGame.state[(455 + GradiusNeoGame.state[(EntityField.Parameter3 + entityId)])] * 4))
                                     GradiusNeoGame.state[(EntityField.YFixed + entityId)] = (GradiusNeoGame.state[(EntityField.YFixed + entityId)] + (GradiusNeoGame.state[(471 + GradiusNeoGame.state[(EntityField.Parameter3 + entityId)])] * 4))
-                                    entityX = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] >> 4)
-                                    entityY = (GradiusNeoGame.state[(EntityField.YFixed + entityId)] >> 4)
+                                    entityX = (to_int(GradiusNeoGame.state[(EntityField.XFixed + entityId)]) >> (to_int(4) & 31))
+                                    entityY = (to_int(GradiusNeoGame.state[(EntityField.YFixed + entityId)]) >> (to_int(4) & 31))
                                     if (age >= GradiusNeoGame.state[(EntityField.Parameter2 + entityId)]):
                                         GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] = 0
                                         age = 0
@@ -1668,7 +1668,7 @@ class GradiusNeoGame(GameSurface):
                                     GradiusNeoGame.state[1] = 4
                                 else:
                                     GradiusNeoGame.state[1] = (GradiusNeoGame.state[1] * 8)
-                                GradiusNeoGame.spawnEntity(23, (entityX + 8), (entityY + 8), (((((int_div(64, GradiusNeoGame.state[1])) << 16)) | ((GradiusNeoGame.state[1] << 8))) | 0))
+                                GradiusNeoGame.spawnEntity(23, (entityX + 8), (entityY + 8), to_int(to_int(to_int(to_int((to_int(to_int((int_div(64, GradiusNeoGame.state[1]))) << (to_int(16) & 31)))) | to_int((to_int(to_int(GradiusNeoGame.state[1]) << (to_int(8) & 31)))))) | to_int(0)))
                                 if (GradiusNeoGame.state[86] > 0):
                                     getAndIncrement(GradiusNeoGame.state, 95)
                             if ((GradiusNeoGame.state[86] >= 3) and (GradiusNeoGame.spawnedEntityCount == 0)):
@@ -1691,7 +1691,7 @@ class GradiusNeoGame(GameSurface):
                                     getAndIncrement(GradiusNeoGame.state, (EntityField.Parameter2 + entityId))
                             else:
                                 if (((GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] == 1) and ((entityY + 16) >= GradiusNeoGame.state[StateSlot.CameraOffsetY])) and ((GradiusNeoGame.state[StateSlot.CameraOffsetY] + GAMEPLAY_HEIGHT) >= entityY)):
-                                    GradiusNeoGame.spawnEntity(23, entityX, entityY, (((16777216 | ((((10 - ((int_div(GradiusNeoGame.state[25], 10)) * 2))) << 16))) | ((((3 + ((int_div(GradiusNeoGame.state[25], 10)) * 2))) << 8))) | (int_div(((((1 - GradiusNeoGame.state[(EntityField.Parameter0 + entityId)])) * 64)), 2))))
+                                    GradiusNeoGame.spawnEntity(23, entityX, entityY, to_int(to_int(to_int(to_int(to_int(to_int(16777216) | to_int((to_int(to_int(((10 - ((int_div(GradiusNeoGame.state[25], 10)) * 2)))) << (to_int(16) & 31)))))) | to_int((to_int(to_int(((3 + ((int_div(GradiusNeoGame.state[25], 10)) * 2)))) << (to_int(8) & 31)))))) | to_int((int_div(((((1 - GradiusNeoGame.state[(EntityField.Parameter0 + entityId)])) * 64)), 2)))))
                                 if (getAndIncrement(GradiusNeoGame.state, (EntityField.Parameter2 + entityId)) >= 3):
                                     GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] = 0
                                 GradiusNeoGame.state[0] = 4
@@ -1699,7 +1699,7 @@ class GradiusNeoGame(GameSurface):
                                 var21 = (((381 + ((int_div(((GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] + 1)), 2)) * 5)) + (GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] * 10)) + GradiusNeoGame.state[0])
                                 GradiusNeoGame.enqueueRenderCommand(1, entityX, entityY, 13, var21, 0)
                                 if GradiusNeoGame.applyEntityCollisionDamage(entityId, entityX, entityY, 16, 16, 17):
-                                    GradiusNeoGame.spawnEntity(23, entityX, entityY, (((16777216 | ((((10 - ((int_div(GradiusNeoGame.state[25], 10)) * 2))) << 16))) | ((((3 + ((int_div(GradiusNeoGame.state[25], 10)) * 2))) << 8))) | ((16 - int_div(((GradiusNeoGame.entityDirectionSign * 64)), 2)))))
+                                    GradiusNeoGame.spawnEntity(23, entityX, entityY, to_int(to_int(to_int(to_int(to_int(to_int(16777216) | to_int((to_int(to_int(((10 - ((int_div(GradiusNeoGame.state[25], 10)) * 2)))) << (to_int(16) & 31)))))) | to_int((to_int(to_int(((3 + ((int_div(GradiusNeoGame.state[25], 10)) * 2)))) << (to_int(8) & 31)))))) | to_int(((16 - int_div(((GradiusNeoGame.entityDirectionSign * 64)), 2))))))
                         raise _SwitchBreak()
                     case 77 | 78:
                         if (age == 0):
@@ -1752,7 +1752,7 @@ class GradiusNeoGame(GameSurface):
                                         GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] = 1
                                         entityX = 0
                             if (GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] >= 0):
-                                GradiusNeoGame.spawnEntity(23, (entityX + 16), (entityY + 8), ((262144 | ((((1 + (((int_div(GradiusNeoGame.state[25], 12) + 1)) * 2))) << 8))) | (int_div(((GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] * 64)), 4))))
+                                GradiusNeoGame.spawnEntity(23, (entityX + 16), (entityY + 8), to_int(to_int(to_int(to_int(262144) | to_int((to_int(to_int(((1 + (((int_div(GradiusNeoGame.state[25], 12) + 1)) * 2)))) << (to_int(8) & 31)))))) | to_int((int_div(((GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] * 64)), 4)))))
                                 GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] = (-1)
                             GradiusNeoGame.enqueueRenderCommand(0, entityX, entityY, 13, var20, 197123)
                             if (GradiusNeoGame.applyEntityCollisionDamage(entityId, entityX, entityY, 48, 32, 10) or (age >= 800)):
@@ -1814,7 +1814,7 @@ class GradiusNeoGame(GameSurface):
                                                     GradiusNeoGame.spawnEntity(70, (entityX + 16), (entityY + 8), 256)
                             GradiusNeoGame.enqueueRenderCommand(0, entityX, entityY, 13, var19, 197132)
                             if (GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] <= 2):
-                                GradiusNeoGame.enqueueRenderCommand(1, ((entityX + 48) - 2), entityY, 13, ((220 + (GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] * 1)) + (((GradiusNeoGame.state[StateSlot.LogicFrame] & 1)) * 2)), 0)
+                                GradiusNeoGame.enqueueRenderCommand(1, ((entityX + 48) - 2), entityY, 13, ((220 + (GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] * 1)) + ((to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(1))) * 2)), 0)
                                 if (GradiusNeoGame.applyEntityCollisionDamage(entityId, entityX, entityY, 48, 16, 10) or (age >= 600)):
                                     if (age < 600):
                                         GradiusNeoGame.state[StateSlot.Score] = (GradiusNeoGame.state[StateSlot.Score] + 1000)
@@ -1840,14 +1840,14 @@ class GradiusNeoGame(GameSurface):
                                     GradiusNeoGame.state[0] = 0
                                     if (((GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] % 2) == 0) and ((incrementAndGet(GradiusNeoGame.state, (EntityField.Parameter1 + entityId)) % 8) == 0)):
                                         getAndIncrement(GradiusNeoGame.state, 0)
-                                    GradiusNeoGame.spawnEntity(81, (entityX + (((GradiusNeoGame.state[(1055 + ((var100 & 63)))] % 6)) * 16)), (entityY + (((GradiusNeoGame.state[(1055 + ((((var100 + 1)) & 63)))] % 6)) * 16)), GradiusNeoGame.state[0])
+                                    GradiusNeoGame.spawnEntity(81, (entityX + (((GradiusNeoGame.state[(1055 + (to_int(to_int(var100) & to_int(63))))] % 6)) * 16)), (entityY + (((GradiusNeoGame.state[(1055 + (to_int(to_int(((var100 + 1))) & to_int(63))))] % 6)) * 16)), GradiusNeoGame.state[0])
                             else:
                                 if ((GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] <= 4) and ((age % ((6 - int_div(GradiusNeoGame.state[25], 9)))) == 0)):
                                     var101 = ((int(int_div(GradiusNeoGame.timestamps[0], 1000)) + GradiusNeoGame.state[StateSlot.LogicFrame]) + GradiusNeoGame.state[(EntityField.Parameter1 + entityId)])
                                     GradiusNeoGame.state[0] = 1
                                     if (((GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] % 2) == 0) and ((incrementAndGet(GradiusNeoGame.state, (EntityField.Parameter1 + entityId)) % 8) == 0)):
                                         getAndIncrement(GradiusNeoGame.state, 0)
-                                    GradiusNeoGame.spawnEntity(81, (entityX + (((GradiusNeoGame.state[(1055 + ((var101 & 63)))] % 6)) * 16)), (entityY + (((GradiusNeoGame.state[(1055 + ((((var101 + 1)) & 63)))] % 6)) * 16)), GradiusNeoGame.state[0])
+                                    GradiusNeoGame.spawnEntity(81, (entityX + (((GradiusNeoGame.state[(1055 + (to_int(to_int(var101) & to_int(63))))] % 6)) * 16)), (entityY + (((GradiusNeoGame.state[(1055 + (to_int(to_int(((var101 + 1))) & to_int(63))))] % 6)) * 16)), GradiusNeoGame.state[0])
                         raise _SwitchBreak()
                     case 81:
                         var18 = 359
@@ -1878,7 +1878,7 @@ class GradiusNeoGame(GameSurface):
                                 directionSideIndex = 1
                             if ((age % ((48 - GradiusNeoGame.state[25]))) == 0):
                                 GradiusNeoGame.spawnEntity(21, entityX, entityY, 0)
-                            GradiusNeoGame.enqueueRenderCommand(1, entityX, entityY, 13, ((364 + (directionSideIndex * 2)) + ((age & 1))), 0)
+                            GradiusNeoGame.enqueueRenderCommand(1, entityX, entityY, 13, ((364 + (directionSideIndex * 2)) + (to_int(to_int(age) & to_int(1)))), 0)
                             GradiusNeoGame.applyEntityCollisionDamage(entityId, entityX, entityY, 16, 16, 16)
                         raise _SwitchBreak()
                     case 84:
@@ -1897,7 +1897,7 @@ class GradiusNeoGame(GameSurface):
                                         GradiusNeoGame.state[0] = 381
                                     else:
                                         if ((age % 4) == 0):
-                                            GradiusNeoGame.spawnEntity(53, entityX, (entityY + 8), (524288 | ((((32 - int_div(((directionSideIndex * 64)), 2))) << 8))))
+                                            GradiusNeoGame.spawnEntity(53, entityX, (entityY + 8), to_int(to_int(524288) | to_int((to_int(to_int(((32 - int_div(((directionSideIndex * 64)), 2)))) << (to_int(8) & 31))))))
                             else:
                                 if (age == 24):
                                     GradiusNeoGame.state[0] = 382
@@ -1930,14 +1930,14 @@ class GradiusNeoGame(GameSurface):
                                 GradiusNeoGame.state[(EntityField.Health + entityId)] = (128 + (GradiusNeoGame.state[25] * 8))
                             GradiusNeoGame.state[9738] = 0
                             for var59 in range(0, GradiusNeoGame.state[(EntityField.Parameter3 + entityId)]):
-                                GradiusNeoGame.spawnAuxiliaryEntity(87, (entityX + 16), (entityY + 16), (((((GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] << 24)) | ((var59 << 16))) | 1792) | entityId))
+                                GradiusNeoGame.spawnAuxiliaryEntity(87, (entityX + 16), (entityY + 16), to_int(to_int(to_int(to_int(to_int(to_int((to_int(to_int(GradiusNeoGame.state[(EntityField.Parameter3 + entityId)]) << (to_int(24) & 31)))) | to_int((to_int(to_int(var59) << (to_int(16) & 31)))))) | to_int(1792))) | to_int(entityId)))
                         else:
                             if (GradiusNeoGame.state[(5118 + entityId)] != 0):
                                 GradiusNeoGame.removePrimaryEntity(entityId)
                             else:
                                 if (GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] == 0):
                                     GradiusNeoGame.state[(EntityField.XFixed + entityId)] = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] - 96)
-                                    if ((GradiusNeoGame.state[(EntityField.XFixed + entityId)] >> 4) <= 160):
+                                    if ((to_int(GradiusNeoGame.state[(EntityField.XFixed + entityId)]) >> (to_int(4) & 31)) <= 160):
                                         getAndIncrement(GradiusNeoGame.state, (EntityField.Parameter0 + entityId))
                                         age = 47
                                 else:
@@ -1945,8 +1945,8 @@ class GradiusNeoGame(GameSurface):
                                         GradiusNeoGame.state[0] = (age % 64)
                                         GradiusNeoGame.state[(EntityField.XFixed + entityId)] = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] + (GradiusNeoGame.state[(455 + GradiusNeoGame.state[0])] * 4))
                                         GradiusNeoGame.state[(EntityField.YFixed + entityId)] = (GradiusNeoGame.state[(EntityField.YFixed + entityId)] - (GradiusNeoGame.state[(471 + GradiusNeoGame.state[0])] * 6))
-                                entityX = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] >> 4)
-                                entityY = (GradiusNeoGame.state[(EntityField.YFixed + entityId)] >> 4)
+                                entityX = (to_int(GradiusNeoGame.state[(EntityField.XFixed + entityId)]) >> (to_int(4) & 31))
+                                entityY = (to_int(GradiusNeoGame.state[(EntityField.YFixed + entityId)]) >> (to_int(4) & 31))
                                 GradiusNeoGame.enqueueRenderCommand(0, entityX, entityY, 12, 290, 197379)
                                 if (GradiusNeoGame.applyEntityCollisionDamage(entityId, entityX, (entityY + 16), 16, 16, 10) or (age >= 800)):
                                     if (age < 800):
@@ -1970,12 +1970,12 @@ class GradiusNeoGame(GameSurface):
                         else:
                             if ((((entityY + 104) >= GradiusNeoGame.state[StateSlot.CameraOffsetY]) and ((GradiusNeoGame.state[StateSlot.CameraOffsetY] + GAMEPLAY_HEIGHT) >= (entityY - 88))) and ((age % ((13 - int_div(GradiusNeoGame.state[25], 4)))) == 0)):
                                 var99 = ((((int(int_div(GradiusNeoGame.timestamps[0], 1000)) + GradiusNeoGame.state[StateSlot.LogicFrame]) + entityId) + entityX) + entityY)
-                                GradiusNeoGame.state[0] = (((GradiusNeoGame.state[(1055 + ((var99 & 63)))] & 63)) * 3)
+                                GradiusNeoGame.state[0] = ((to_int(to_int(GradiusNeoGame.state[(1055 + (to_int(to_int(var99) & to_int(63))))]) & to_int(63))) * 3)
                                 GradiusNeoGame.state[1] = (-1)
                                 if (GradiusNeoGame.state[0] <= 96):
                                     GradiusNeoGame.state[1] = 0
-                                GradiusNeoGame.state[1] = (GradiusNeoGame.state[1] + ((GradiusNeoGame.state[(1055 + ((((var99 + 1)) & 63)))] & 1)))
-                                GradiusNeoGame.spawnEntity(89, entityX, ((entityY - 88) + GradiusNeoGame.state[0]), (((((GradiusNeoGame.state[1] + 1)) << 8)) | ((48 + int_div((((GradiusNeoGame.state[1] * 64) * 6)), 64)))))
+                                GradiusNeoGame.state[1] = (GradiusNeoGame.state[1] + (to_int(to_int(GradiusNeoGame.state[(1055 + (to_int(to_int(((var99 + 1))) & to_int(63))))]) & to_int(1))))
+                                GradiusNeoGame.spawnEntity(89, entityX, ((entityY - 88) + GradiusNeoGame.state[0]), to_int(to_int((to_int(to_int(((GradiusNeoGame.state[1] + 1))) << (to_int(8) & 31)))) | to_int(((48 + int_div((((GradiusNeoGame.state[1] * 64) * 6)), 64))))))
                         raise _SwitchBreak()
                     case 89:
                         if (age == 0):
@@ -1984,7 +1984,7 @@ class GradiusNeoGame(GameSurface):
                             entityX = GradiusNeoGame.advanceEntityX(entityId, GradiusNeoGame.state[(EntityField.Parameter0 + entityId)], 8)
                             entityY = GradiusNeoGame.advanceEntityY(entityId, GradiusNeoGame.state[(EntityField.Parameter0 + entityId)], 8)
                             var17 = (365 + (GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] * 2))
-                            GradiusNeoGame.enqueueRenderCommand(2, entityX, entityY, 13, (var17 + (((age & 1)) * 1)), 0)
+                            GradiusNeoGame.enqueueRenderCommand(2, entityX, entityY, 13, (var17 + ((to_int(to_int(age) & to_int(1))) * 1)), 0)
                             if (GradiusNeoGame.sampleTerrainCollision(entityX, (entityY - GradiusNeoGame.state[StateSlot.CameraOffsetY])) < 0):
                                 GradiusNeoGame.removePrimaryEntity(entityId)
                                 GradiusNeoGame.spawnEntity(EntityType.ThreeFrameSmallExplosion, (entityX + 8), (entityY - 8), 0)
@@ -2003,17 +2003,17 @@ class GradiusNeoGame(GameSurface):
                                 GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] = (-1)
                                 if (GradiusNeoGame.state[0] <= 32):
                                     GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] = 1
-                                var76 = ((((GradiusNeoGame.state[0] & 1)) * 2) - 1)
+                                var76 = (((to_int(to_int(GradiusNeoGame.state[0]) & to_int(1))) * 2) - 1)
                                 entityY += var76
                                 GradiusNeoGame.state[1] = 0
                                 if ((((age + 4)) % 32) <= 4):
-                                    GradiusNeoGame.state[1] = ((((((age & 1)) * 2) - 1)) * 2)
-                                    if (((age & 1)) == 1):
+                                    GradiusNeoGame.state[1] = (((((to_int(to_int(age) & to_int(1))) * 2) - 1)) * 2)
+                                    if ((to_int(to_int(age) & to_int(1))) == 1):
                                         var98 = ((((int(int_div(GradiusNeoGame.timestamps[0], 1000)) + GradiusNeoGame.state[StateSlot.LogicFrame]) + entityId) + entityX) + entityY)
                                         for var58 in range(0, (int_div(GradiusNeoGame.state[25], 10)) + 1):
-                                            GradiusNeoGame.state[2] = ((((((GradiusNeoGame.state[(1055 + ((((var98 + var58)) & 63)))] & 255)) % 25)) + 4) + ((int_div(((GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] + 1)), 2)) * 32))
-                                            GradiusNeoGame.state[3] = (((GradiusNeoGame.state[(1055 + (((((var98 + var58) + 32)) & 63)))] & 3)) + 2)
-                                            GradiusNeoGame.spawnEntity(91, (entityX + 16), (entityY + 16), (((GradiusNeoGame.state[2] << 16)) | ((GradiusNeoGame.state[3] << 8))))
+                                            GradiusNeoGame.state[2] = (((((to_int(to_int(GradiusNeoGame.state[(1055 + (to_int(to_int(((var98 + var58))) & to_int(63))))]) & to_int(255))) % 25)) + 4) + ((int_div(((GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] + 1)), 2)) * 32))
+                                            GradiusNeoGame.state[3] = ((to_int(to_int(GradiusNeoGame.state[(1055 + (to_int(to_int((((var98 + var58) + 32))) & to_int(63))))]) & to_int(3))) + 2)
+                                            GradiusNeoGame.spawnEntity(91, (entityX + 16), (entityY + 16), to_int(to_int((to_int(to_int(GradiusNeoGame.state[2]) << (to_int(16) & 31)))) | to_int((to_int(to_int(GradiusNeoGame.state[3]) << (to_int(8) & 31))))))
                                 var16 = (379 + ((int_div(((GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] + 1)), 2)) * 1))
                                 GradiusNeoGame.enqueueRenderCommand(0, (entityX + GradiusNeoGame.state[1]), entityY, 12, var16, 197379)
                                 if GradiusNeoGame.applyEntityCollisionDamage(entityId, (entityX + 8), (entityY + 8), 32, 32, 10):
@@ -2024,8 +2024,8 @@ class GradiusNeoGame(GameSurface):
                                     GradiusNeoGame.requestSoundEffect(3)
                         raise _SwitchBreak()
                     case 91:
-                        GradiusNeoGame.state[(EntityField.XFixed + entityId)] = (entityX << 4)
-                        GradiusNeoGame.state[(EntityField.YFixed + entityId)] = (entityY << 4)
+                        GradiusNeoGame.state[(EntityField.XFixed + entityId)] = to_int(to_int(entityX) << (to_int(4) & 31))
+                        GradiusNeoGame.state[(EntityField.YFixed + entityId)] = to_int(to_int(entityY) << (to_int(4) & 31))
                         if (age == 0):
                             GradiusNeoGame.state[(EntityField.Health + entityId)] = 2
                         else:
@@ -2042,7 +2042,7 @@ class GradiusNeoGame(GameSurface):
                                         entityY = GradiusNeoGame.advanceEntityY(entityId, GradiusNeoGame.state[(EntityField.Parameter2 + entityId)], 4)
                                     else:
                                         entityX += (GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.entityDirectionSign)
-                                        entityY += ((((((GradiusNeoGame.state[StateSlot.LogicFrame] & 1)) * 2) - 1)) * 2)
+                                        entityY += (((((to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(1))) * 2) - 1)) * 2)
                                 GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] = (-1)
                                 if (GradiusNeoGame.state[0] <= 32):
                                     GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] = 1
@@ -2059,9 +2059,9 @@ class GradiusNeoGame(GameSurface):
                             var14 = 350
                         if ((age % 32) == 0):
                             var97 = ((((int(int_div(GradiusNeoGame.timestamps[0], 1000)) + GradiusNeoGame.state[StateSlot.LogicFrame]) + entityId) + entityX) + entityY)
-                            GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] = (((GradiusNeoGame.state[(1055 + ((var97 & 63)))] & 7)) % 5)
+                            GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] = ((to_int(to_int(GradiusNeoGame.state[(1055 + (to_int(to_int(var97) & to_int(63))))]) & to_int(7))) % 5)
                             if (GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] == 1):
-                                GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] = (GradiusNeoGame.state[(1055 + ((var97 & 63)))] & 3)
+                                GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] = to_int(to_int(GradiusNeoGame.state[(1055 + (to_int(to_int(var97) & to_int(63))))]) & to_int(3))
                         if (age == 0):
                             GradiusNeoGame.state[(EntityField.Health + entityId)] = 192
                             GradiusNeoGame.state[(4606 + entityId)] = 128
@@ -2082,24 +2082,24 @@ class GradiusNeoGame(GameSurface):
                                 entityX += int_div((((GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.entityDirectionSign) * (-1))), 2)
                             if ((GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] == 0) and ((age % 16) == 0)):
                                 if (GradiusNeoGame.state[(EntityField.Type + entityId)] == 93):
-                                    GradiusNeoGame.spawnEntity(23, (entityX + 88), (entityY + 24), ((262144 | ((((1 + ((int_div(GradiusNeoGame.state[25], 10)) * 2))) << 8))) | GradiusNeoGame.calculateDirectionToPlayer((entityX + 88), (entityY + 24))))
+                                    GradiusNeoGame.spawnEntity(23, (entityX + 88), (entityY + 24), to_int(to_int(to_int(to_int(262144) | to_int((to_int(to_int(((1 + ((int_div(GradiusNeoGame.state[25], 10)) * 2)))) << (to_int(8) & 31)))))) | to_int(GradiusNeoGame.calculateDirectionToPlayer((entityX + 88), (entityY + 24)))))
                                 else:
-                                    GradiusNeoGame.spawnEntity(23, ((entityX + 56) - ((GradiusNeoGame.entityDirectionSign * 16) * 2)), (entityY + 24), ((262144 | ((((1 + ((int_div(GradiusNeoGame.state[25], 10)) * 2))) << 8))) | GradiusNeoGame.calculateDirectionToPlayer(((entityX + 56) - ((GradiusNeoGame.entityDirectionSign * 16) * 2)), (entityY + 24))))
+                                    GradiusNeoGame.spawnEntity(23, ((entityX + 56) - ((GradiusNeoGame.entityDirectionSign * 16) * 2)), (entityY + 24), to_int(to_int(to_int(to_int(262144) | to_int((to_int(to_int(((1 + ((int_div(GradiusNeoGame.state[25], 10)) * 2)))) << (to_int(8) & 31)))))) | to_int(GradiusNeoGame.calculateDirectionToPlayer(((entityX + 56) - ((GradiusNeoGame.entityDirectionSign * 16) * 2)), (entityY + 24)))))
                             else:
                                 if ((GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] == 1) and ((age % ((16 - int_div(GradiusNeoGame.state[25], 4)))) == 0)):
                                     if (GradiusNeoGame.state[(EntityField.Type + entityId)] == 93):
-                                        GradiusNeoGame.spawnEntity((53 + directionSideIndex), ((entityX + 80) + (GradiusNeoGame.entityDirectionSign * 16)), (entityY + 16), (1048576 | ((((32 - (GradiusNeoGame.entityDirectionSign * 8))) << 8))))
+                                        GradiusNeoGame.spawnEntity((53 + directionSideIndex), ((entityX + 80) + (GradiusNeoGame.entityDirectionSign * 16)), (entityY + 16), to_int(to_int(1048576) | to_int((to_int(to_int(((32 - (GradiusNeoGame.entityDirectionSign * 8)))) << (to_int(8) & 31))))))
                                     else:
-                                        GradiusNeoGame.spawnEntity((53 + directionSideIndex), (entityX + 48), (entityY + 40), (1048576 | ((((32 + (GradiusNeoGame.entityDirectionSign * 24))) << 8))))
+                                        GradiusNeoGame.spawnEntity((53 + directionSideIndex), (entityX + 48), (entityY + 40), to_int(to_int(1048576) | to_int((to_int(to_int(((32 + (GradiusNeoGame.entityDirectionSign * 24)))) << (to_int(8) & 31))))))
                                 else:
                                     if ((GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] == 2) and ((age % ((16 - int_div(GradiusNeoGame.state[25], 4)))) == 0)):
                                         if (GradiusNeoGame.state[(EntityField.Type + entityId)] == 93):
-                                            GradiusNeoGame.spawnEntity(57, ((entityX + 88) + int_div((((GradiusNeoGame.entityDirectionSign * 16) * 3)), 2)), (entityY + 16), (((32 - (GradiusNeoGame.entityDirectionSign * 8))) << 8))
+                                            GradiusNeoGame.spawnEntity(57, ((entityX + 88) + int_div((((GradiusNeoGame.entityDirectionSign * 16) * 3)), 2)), (entityY + 16), to_int(to_int(((32 - (GradiusNeoGame.entityDirectionSign * 8)))) << (to_int(8) & 31)))
                                         else:
                                             GradiusNeoGame.spawnEntity(57, (entityX + 56), (entityY + 48), 0)
                                     else:
                                         if ((GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] <= 4) and ((age % 32) < (GradiusNeoGame.state[25] + 1))):
-                                            GradiusNeoGame.state[0] = (GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] & 1)
+                                            GradiusNeoGame.state[0] = to_int(to_int(GradiusNeoGame.state[(EntityField.Parameter2 + entityId)]) & to_int(1))
                                             GradiusNeoGame.state[1] = 68
                                             if (GradiusNeoGame.state[StateSlot.PlayerX] > (((entityX + GradiusNeoGame.state[(4606 + entityId)]) - 16) - (directionSideIndex * GradiusNeoGame.state[(4606 + entityId)]))):
                                                 getAndIncrement(GradiusNeoGame.state, 1)
@@ -2107,7 +2107,7 @@ class GradiusNeoGame(GameSurface):
                                             if (GradiusNeoGame.state[StateSlot.PlayerY] < (entityY + 32)):
                                                 GradiusNeoGame.state[2] = 32
                                             if ((age % 4) == 0):
-                                                GradiusNeoGame.spawnEntity((GradiusNeoGame.state[1] + (GradiusNeoGame.state[0] * 4)), (((entityX + GradiusNeoGame.state[(4606 + entityId)]) - 16) - (directionSideIndex * GradiusNeoGame.state[(4606 + entityId)])), (entityY + 32), (((((GradiusNeoGame.state[2] << 24)) | ((((GradiusNeoGame.state[25] - ((age % 32)))) << 16))) | ((GradiusNeoGame.state[0] << 8))) | 0))
+                                                GradiusNeoGame.spawnEntity((GradiusNeoGame.state[1] + (GradiusNeoGame.state[0] * 4)), (((entityX + GradiusNeoGame.state[(4606 + entityId)]) - 16) - (directionSideIndex * GradiusNeoGame.state[(4606 + entityId)])), (entityY + 32), to_int(to_int(to_int(to_int(to_int(to_int((to_int(to_int(GradiusNeoGame.state[2]) << (to_int(24) & 31)))) | to_int((to_int(to_int(((GradiusNeoGame.state[25] - ((age % 32))))) << (to_int(16) & 31)))))) | to_int((to_int(to_int(GradiusNeoGame.state[0]) << (to_int(8) & 31)))))) | to_int(0)))
                             if (GradiusNeoGame.state[(EntityField.Type + entityId)] >= 93):
                                 GradiusNeoGame.enqueueRenderCommand(0, entityX, entityY, 12, var14, 787212)
                                 if (((GradiusNeoGame.applyEntityCollisionDamage(entityId, entityX, (entityY + 32), 192, 4, 10) or GradiusNeoGame.applyEntityCollisionDamage(entityId, entityX, (entityY + 32), 192, 4, 10)) or GradiusNeoGame.applyEntityCollisionDamage(entityId, ((entityX + 88) - (directionSideIndex * 80)), (entityY + 16), 96, 16, 10)) or GradiusNeoGame.applyEntityCollisionDamage(entityId, ((entityX + 144) - (directionSideIndex * 144)), (entityY + 8), 48, 8, 10)):
@@ -2134,7 +2134,7 @@ class GradiusNeoGame(GameSurface):
                             GradiusNeoGame.state[(EntityField.Health + entityId)] = (256 + (GradiusNeoGame.state[25] * 8))
                             GradiusNeoGame.state[9738] = 0
                             for var57 in range(0, 8):
-                                GradiusNeoGame.spawnAuxiliaryEntity(95, (entityX + 16), (entityY + 16), (((var57 << 8)) | entityId))
+                                GradiusNeoGame.spawnAuxiliaryEntity(95, (entityX + 16), (entityY + 16), to_int(to_int((to_int(to_int(var57) << (to_int(8) & 31)))) | to_int(entityId)))
                             GradiusNeoGame.state[85] = 0
                         else:
                             if (GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] == 0):
@@ -2145,7 +2145,7 @@ class GradiusNeoGame(GameSurface):
                                 if (GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] == 1):
                                     entityY += (GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] * ((int_div(GradiusNeoGame.state[25], 12) + 2)))
                                     if ((age % ((64 - GradiusNeoGame.state[25]))) == 0):
-                                        GradiusNeoGame.spawnAuxiliaryEntity(33, (-16), 24, (((16777216 | ((entityId << 16))) | 256) | 12))
+                                        GradiusNeoGame.spawnAuxiliaryEntity(33, (-16), 24, to_int(to_int(to_int(to_int(to_int(to_int(16777216) | to_int((to_int(to_int(entityId) << (to_int(16) & 31)))))) | to_int(256))) | to_int(12)))
                                         getAndIncrement(GradiusNeoGame.state, (EntityField.Parameter0 + entityId))
                                         GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] = 0
                                 else:
@@ -2155,7 +2155,7 @@ class GradiusNeoGame(GameSurface):
                                         if ((entityY + 24) < GradiusNeoGame.state[StateSlot.PlayerY]):
                                             GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] = 1
                             if ((((age + 1)) % ((64 - GradiusNeoGame.state[25]))) == 0):
-                                GradiusNeoGame.spawnEntity(23, (entityX + 48), (entityY + 24), ((262144 | ((((1 + (((int_div(GradiusNeoGame.state[25], 12) + 1)) * 2))) << 8))) | 48))
+                                GradiusNeoGame.spawnEntity(23, (entityX + 48), (entityY + 24), to_int(to_int(to_int(to_int(262144) | to_int((to_int(to_int(((1 + (((int_div(GradiusNeoGame.state[25], 12) + 1)) * 2)))) << (to_int(8) & 31)))))) | to_int(48)))
                             if ((age % 16) == 0):
                                 GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] = (-1)
                                 if ((entityY + 24) < GradiusNeoGame.state[StateSlot.PlayerY]):
@@ -2212,7 +2212,7 @@ class GradiusNeoGame(GameSurface):
                                         else:
                                             if (GradiusNeoGame.state[(4606 + entityId)] == 1):
                                                 if (getAndIncrement(GradiusNeoGame.state, (EntityField.Parameter0 + entityId)) == 0):
-                                                    GradiusNeoGame.spawnAuxiliaryEntity(35, (8 + int_div((((GradiusNeoGame.state[(EntityField.XFixed + entityId)] * 16) * 3)), 2)), 0, (((16777216 | ((entityId << 16))) | 512) | 20))
+                                                    GradiusNeoGame.spawnAuxiliaryEntity(35, (8 + int_div((((GradiusNeoGame.state[(EntityField.XFixed + entityId)] * 16) * 3)), 2)), 0, to_int(to_int(to_int(to_int(to_int(to_int(16777216) | to_int((to_int(to_int(entityId) << (to_int(16) & 31)))))) | to_int(512))) | to_int(20)))
                                                     getAndIncrement(GradiusNeoGame.state, (EntityField.Parameter0 + entityId))
                                             else:
                                                 if (GradiusNeoGame.state[(4606 + entityId)] == 2):
@@ -2222,12 +2222,12 @@ class GradiusNeoGame(GameSurface):
                                                         entityX += int_div(((GradiusNeoGame.state[(EntityField.XFixed + entityId)] * 16)), 2)
                                                         entityY += (((GradiusNeoGame.state[0] - 18)) * 2)
                                                         if (GradiusNeoGame.state[0] == 18):
-                                                            GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] = (GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] ^ 1)
+                                                            GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] = to_int(to_int(GradiusNeoGame.state[(EntityField.Parameter3 + entityId)]) ^ to_int(1))
                                                         if (GradiusNeoGame.state[0] == 27):
                                                             GradiusNeoGame.state[(EntityField.XFixed + entityId)] = (GradiusNeoGame.state[(EntityField.XFixed + entityId)] * (-1))
                                                 else:
                                                     if ((GradiusNeoGame.state[(4606 + entityId)] == 3) and ((GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] % ((22 - int_div(GradiusNeoGame.state[25], 2)))) == 0)):
-                                                        GradiusNeoGame.spawnEntity(23, ((entityX + 8) + int_div((((GradiusNeoGame.state[(EntityField.XFixed + entityId)] * 16) * 3)), 2)), (entityY + 8), (263936 | ((32 - (GradiusNeoGame.state[(EntityField.XFixed + entityId)] * 16)))))
+                                                        GradiusNeoGame.spawnEntity(23, ((entityX + 8) + int_div((((GradiusNeoGame.state[(EntityField.XFixed + entityId)] * 16) * 3)), 2)), (entityY + 8), to_int(to_int(263936) | to_int(((32 - (GradiusNeoGame.state[(EntityField.XFixed + entityId)] * 16))))))
                                     if ((GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] % 64) <= 4):
                                         GradiusNeoGame.state[(5118 + entityId)] = int_div(((((4 - ((GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] % 64)))) * 16)), 4)
                                         if ((GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] % 64) == 0):
@@ -2239,7 +2239,7 @@ class GradiusNeoGame(GameSurface):
                                                 GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] = 0
                                             if ((GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] % 32) == 0):
                                                 var96 = ((((int(int_div(GradiusNeoGame.timestamps[0], 1000)) + GradiusNeoGame.state[StateSlot.LogicFrame]) + entityId) + entityX) + entityY)
-                                                GradiusNeoGame.state[(4606 + entityId)] = (GradiusNeoGame.state[(1055 + ((var96 & 63)))] & 3)
+                                                GradiusNeoGame.state[(4606 + entityId)] = to_int(to_int(GradiusNeoGame.state[(1055 + (to_int(to_int(var96) & to_int(63))))]) & to_int(3))
                                                 if (GradiusNeoGame.state[(4606 + entityId)] == 1):
                                                     GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] = 1
                                                     if (GradiusNeoGame.state[(EntityField.XFixed + entityId)] == 1):
@@ -2266,9 +2266,9 @@ class GradiusNeoGame(GameSurface):
                             GradiusNeoGame.state[(5118 + entityId)] = 0
                             GradiusNeoGame.state[(EntityField.Health + entityId)] = (256 + (GradiusNeoGame.state[25] * 8))
                             GradiusNeoGame.state[9738] = 0
-                            GradiusNeoGame.spawnAuxiliaryEntity(98, entityX, entityY, (0 | entityId))
-                            GradiusNeoGame.spawnAuxiliaryEntity(98, entityX, entityY, (256 | entityId))
-                            entityY = ((((int(int_div(GradiusNeoGame.timestamps[0], 1000)) & 1)) * 16) * 10)
+                            GradiusNeoGame.spawnAuxiliaryEntity(98, entityX, entityY, to_int(to_int(0) | to_int(entityId)))
+                            GradiusNeoGame.spawnAuxiliaryEntity(98, entityX, entityY, to_int(to_int(256) | to_int(entityId)))
+                            entityY = (((to_int(to_int(int(int_div(GradiusNeoGame.timestamps[0], 1000))) & to_int(1))) * 16) * 10)
                             GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] = (-4)
                         else:
                             if (GradiusNeoGame.state[(5118 + entityId)] != 0):
@@ -2291,8 +2291,8 @@ class GradiusNeoGame(GameSurface):
                                                     GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] = (-1)
                                                 else:
                                                     if (((age % 32) < (GradiusNeoGame.state[25] + 1)) and ((age % 4) == 0)):
-                                                        GradiusNeoGame.spawnEntity(68, (entityX + 80), (entityY + 16), (((536870912 | ((((GradiusNeoGame.state[25] - ((age % 32)))) << 16))) | 1) | 1))
-                                                        GradiusNeoGame.spawnEntity(68, (entityX + 80), (entityY + 48), (((0 | ((((GradiusNeoGame.state[25] - ((age % 32)))) << 16))) | 1) | 1))
+                                                        GradiusNeoGame.spawnEntity(68, (entityX + 80), (entityY + 16), to_int(to_int(to_int(to_int(to_int(to_int(536870912) | to_int((to_int(to_int(((GradiusNeoGame.state[25] - ((age % 32))))) << (to_int(16) & 31)))))) | to_int(1))) | to_int(1)))
+                                                        GradiusNeoGame.spawnEntity(68, (entityX + 80), (entityY + 48), to_int(to_int(to_int(to_int(to_int(to_int(0) | to_int((to_int(to_int(((GradiusNeoGame.state[25] - ((age % 32))))) << (to_int(16) & 31)))))) | to_int(1))) | to_int(1)))
                                             else:
                                                 if (GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] == (-1)):
                                                     entityY += (GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] * 2)
@@ -2301,7 +2301,7 @@ class GradiusNeoGame(GameSurface):
                                                 else:
                                                     if (GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] >= 0):
                                                         GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] = (GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] + GradiusNeoGame.state[(EntityField.Parameter2 + entityId)])
-                                                        GradiusNeoGame.enqueueRenderCommand(0, entityX, (entityY + 24), 13, (355 + (((GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] & 1)) * 1)), 262660)
+                                                        GradiusNeoGame.enqueueRenderCommand(0, entityX, (entityY + 24), 13, (355 + ((to_int(to_int(GradiusNeoGame.state[(EntityField.Parameter0 + entityId)]) & to_int(1))) * 1)), 262660)
                                                         if (GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] >= 12):
                                                             if (GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] <= 14):
                                                                 GradiusNeoGame.enqueueRenderCommand(0, (entityX + 32), (entityY + 24), 8, (274 + (((GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] - 12)) * 1)), 131590)
@@ -2325,7 +2325,7 @@ class GradiusNeoGame(GameSurface):
                                                 GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] = 0
                                                 GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] = 1
                                             if ((GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] >= 2) and ((age % ((32 - int_div(GradiusNeoGame.state[25], 2)))) == 0)):
-                                                GradiusNeoGame.spawnEntity(23, (entityX + 96), (entityY + 32), ((262144 | ((((1 + ((int_div(GradiusNeoGame.state[25], 8)) * 2))) << 8))) | GradiusNeoGame.calculateDirectionToPlayer(entityX, entityY)))
+                                                GradiusNeoGame.spawnEntity(23, (entityX + 96), (entityY + 32), to_int(to_int(to_int(to_int(262144) | to_int((to_int(to_int(((1 + ((int_div(GradiusNeoGame.state[25], 8)) * 2)))) << (to_int(8) & 31)))))) | to_int(GradiusNeoGame.calculateDirectionToPlayer(entityX, entityY))))
                                             if ((age % 16) == 0):
                                                 GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] = (-1)
                                                 if ((entityY + 24) < GradiusNeoGame.state[StateSlot.PlayerY]):
@@ -2367,23 +2367,23 @@ class GradiusNeoGame(GameSurface):
                                 if (GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] == 0):
                                     if ((age % ((48 - GradiusNeoGame.state[25]))) == 0):
                                         var93 = ((GradiusNeoGame.state[StateSlot.PlayerX] + GradiusNeoGame.state[StateSlot.PlayerY]) + getAndIncrement(GradiusNeoGame.state, 4))
-                                        GradiusNeoGame.state[0] = (16 * ((7 + ((GradiusNeoGame.state[(1055 + ((var93 & 63)))] % 6)))))
+                                        GradiusNeoGame.state[0] = (16 * ((7 + ((GradiusNeoGame.state[(1055 + (to_int(to_int(var93) & to_int(63))))] % 6)))))
                                         GradiusNeoGame.state[1] = 63
                                         if (GradiusNeoGame.state[0] <= 96):
                                             GradiusNeoGame.state[1] = 64
-                                        GradiusNeoGame.state[2] = (GradiusNeoGame.state[(1055 + ((((var93 + 1)) & 63)))] & 1)
-                                        GradiusNeoGame.spawnEntity(GradiusNeoGame.state[1], GAME_VIEW_WIDTH, GradiusNeoGame.state[0], (0 | GradiusNeoGame.state[2]))
+                                        GradiusNeoGame.state[2] = to_int(to_int(GradiusNeoGame.state[(1055 + (to_int(to_int(((var93 + 1))) & to_int(63))))]) & to_int(1))
+                                        GradiusNeoGame.spawnEntity(GradiusNeoGame.state[1], GAME_VIEW_WIDTH, GradiusNeoGame.state[0], to_int(to_int(0) | to_int(GradiusNeoGame.state[2])))
                                 else:
                                     if (GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] == 1):
                                         if ((age % ((16 - int_div(GradiusNeoGame.state[25], 4)))) == 0):
                                             var94 = ((GradiusNeoGame.state[StateSlot.PlayerX] + GradiusNeoGame.state[StateSlot.PlayerY]) + getAndIncrement(GradiusNeoGame.state, 4))
-                                            GradiusNeoGame.state[0] = (((GradiusNeoGame.state[(1055 + ((var94 & 63)))] & 15)) % 5)
+                                            GradiusNeoGame.state[0] = ((to_int(to_int(GradiusNeoGame.state[(1055 + (to_int(to_int(var94) & to_int(63))))]) & to_int(15))) % 5)
                                             GradiusNeoGame.spawnEntity(21, GradiusNeoGame.state[(103 + GradiusNeoGame.state[0])], GradiusNeoGame.state[(127 + GradiusNeoGame.state[0])], 0)
                                     else:
                                         if ((GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] == 2) and ((age % ((24 - int_div(GradiusNeoGame.state[25], 16)))) == 0)):
                                             var95 = ((GradiusNeoGame.state[StateSlot.PlayerX] + GradiusNeoGame.state[StateSlot.PlayerY]) + getAndIncrement(GradiusNeoGame.state, 4))
-                                            GradiusNeoGame.state[0] = (((GradiusNeoGame.state[(1055 + ((var95 & 63)))] & 15)) % 5)
-                                            GradiusNeoGame.spawnEntity(23, GradiusNeoGame.state[(103 + GradiusNeoGame.state[0])], GradiusNeoGame.state[(127 + GradiusNeoGame.state[0])], (262912 | GradiusNeoGame.calculateDirectionToPlayer(GradiusNeoGame.state[(103 + GradiusNeoGame.state[0])], GradiusNeoGame.state[(127 + GradiusNeoGame.state[0])])))
+                                            GradiusNeoGame.state[0] = ((to_int(to_int(GradiusNeoGame.state[(1055 + (to_int(to_int(var95) & to_int(63))))]) & to_int(15))) % 5)
+                                            GradiusNeoGame.spawnEntity(23, GradiusNeoGame.state[(103 + GradiusNeoGame.state[0])], GradiusNeoGame.state[(127 + GradiusNeoGame.state[0])], to_int(to_int(262912) | to_int(GradiusNeoGame.calculateDirectionToPlayer(GradiusNeoGame.state[(103 + GradiusNeoGame.state[0])], GradiusNeoGame.state[(127 + GradiusNeoGame.state[0])]))))
                                 if ((age % 128) == 0):
                                     getAndIncrement(GradiusNeoGame.state, (EntityField.Parameter0 + entityId))
                                     GradiusNeoGame.state[(5118 + entityId)] = GradiusNeoGame.entityDirectionSign
@@ -2393,9 +2393,9 @@ class GradiusNeoGame(GameSurface):
                                     if (0 >= (GradiusNeoGame.entityDirectionSign * GradiusNeoGame.state[(4606 + entityId)])):
                                         getAndDecrement(GradiusNeoGame.state, (EntityField.Parameter0 + entityId))
                                         var92 = ((GradiusNeoGame.state[StateSlot.PlayerX] + GradiusNeoGame.state[StateSlot.PlayerY]) + getAndIncrement(GradiusNeoGame.state, 4))
-                                        GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] = (((GradiusNeoGame.state[(1055 + ((var92 & 63)))] & 15)) % 3)
-                                        GradiusNeoGame.state[5] = (((GradiusNeoGame.state[(1055 + ((((var92 + 1)) & 63)))] & 15)) % 5)
-                                        GradiusNeoGame.state[6] = ((((GradiusNeoGame.state[(1055 + ((((var92 + 2)) & 63)))] & 1)) * 2) - 1)
+                                        GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] = ((to_int(to_int(GradiusNeoGame.state[(1055 + (to_int(to_int(var92) & to_int(63))))]) & to_int(15))) % 3)
+                                        GradiusNeoGame.state[5] = ((to_int(to_int(GradiusNeoGame.state[(1055 + (to_int(to_int(((var92 + 1))) & to_int(63))))]) & to_int(15))) % 5)
+                                        GradiusNeoGame.state[6] = (((to_int(to_int(GradiusNeoGame.state[(1055 + (to_int(to_int(((var92 + 2))) & to_int(63))))]) & to_int(1))) * 2) - 1)
                                     else:
                                         if (16 <= (GradiusNeoGame.entityDirectionSign * GradiusNeoGame.state[(4606 + entityId)])):
                                             getAndIncrement(GradiusNeoGame.state, (EntityField.Parameter0 + entityId))
@@ -2513,7 +2513,7 @@ class GradiusNeoGame(GameSurface):
                                         getAndIncrement(GradiusNeoGame.state, (EntityField.Parameter2 + entityId))
                                     else:
                                         var91 = ((GradiusNeoGame.state[StateSlot.PlayerX] + GradiusNeoGame.state[StateSlot.PlayerY]) + GradiusNeoGame.state[(EntityField.Parameter1 + entityId)])
-                                        GradiusNeoGame.state[1] = (GradiusNeoGame.state[(1055 + ((var91 & 63)))] & 15)
+                                        GradiusNeoGame.state[1] = to_int(to_int(GradiusNeoGame.state[(1055 + (to_int(to_int(var91) & to_int(63))))]) & to_int(15))
                                         GradiusNeoGame.state[2] = (((((int_div(GradiusNeoGame.state[1], 4)) * 16) + 32)) % 64)
                                         if ((age % ((6 - int_div(GradiusNeoGame.state[25], 7)))) == 0):
                                             GradiusNeoGame.spawnEntity(65, GradiusNeoGame.state[(103 + GradiusNeoGame.state[1])], GradiusNeoGame.state[(127 + GradiusNeoGame.state[1])], GradiusNeoGame.state[2])
@@ -2562,9 +2562,9 @@ class GradiusNeoGame(GameSurface):
                                     else:
                                         var90 = ((GradiusNeoGame.state[StateSlot.PlayerX] + GradiusNeoGame.state[StateSlot.PlayerY]) + GradiusNeoGame.state[(EntityField.Parameter1 + entityId)])
                                         if (GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] != 0):
-                                            GradiusNeoGame.state[1] = (((GradiusNeoGame.state[(1055 + ((var90 & 63)))] & 255)) % 24)
+                                            GradiusNeoGame.state[1] = ((to_int(to_int(GradiusNeoGame.state[(1055 + (to_int(to_int(var90) & to_int(63))))]) & to_int(255))) % 24)
                                         else:
-                                            GradiusNeoGame.state[1] = (((GradiusNeoGame.state[(1055 + ((var90 & 63)))] & 255)) % 12)
+                                            GradiusNeoGame.state[1] = ((to_int(to_int(GradiusNeoGame.state[(1055 + (to_int(to_int(var90) & to_int(63))))]) & to_int(255))) % 12)
                                         if (((age % ((4 - int_div(GradiusNeoGame.state[25], 10)))) == 0) and (GradiusNeoGame.state[(127 + GradiusNeoGame.state[1])] > 0)):
                                             GradiusNeoGame.spawnEntity((24 + int_div(GradiusNeoGame.state[1], 12)), GradiusNeoGame.state[(103 + GradiusNeoGame.state[1])], (16 + (((GradiusNeoGame.state[1] % 12)) * 16)), 1288)
                                             getAndIncrement(GradiusNeoGame.state, (EntityField.Parameter1 + entityId))
@@ -2592,9 +2592,9 @@ class GradiusNeoGame(GameSurface):
                         if (age == 0):
                             for var41 in range(0, 6):
                                 var87 = ((int(int_div(GradiusNeoGame.timestamps[0], 1000)) + GradiusNeoGame.state[StateSlot.LogicFrame]) + GradiusNeoGame.state[(EntityField.Parameter1 + entityId)])
-                                GradiusNeoGame.state[(103 + var41)] = (GAMEPLAY_HEIGHT - ((((var41 & 1)) * 16) * 15))
-                                GradiusNeoGame.state[(127 + var41)] = ((4 + int_div((((int_div(GradiusNeoGame.state[25], 12)) * 16)), 8)) + int_div(((((GradiusNeoGame.state[(1055 + ((var87 & 63)))] & 3)) * 16)), 8))
-                                GradiusNeoGame.state[(127 + var41)] = (GradiusNeoGame.state[(127 + var41)] * (((((var41 & 1)) * 2) - 1)))
+                                GradiusNeoGame.state[(103 + var41)] = (GAMEPLAY_HEIGHT - (((to_int(to_int(var41) & to_int(1))) * 16) * 15))
+                                GradiusNeoGame.state[(127 + var41)] = ((4 + int_div((((int_div(GradiusNeoGame.state[25], 12)) * 16)), 8)) + int_div((((to_int(to_int(GradiusNeoGame.state[(1055 + (to_int(to_int(var87) & to_int(63))))]) & to_int(3))) * 16)), 8))
+                                GradiusNeoGame.state[(127 + var41)] = (GradiusNeoGame.state[(127 + var41)] * ((((to_int(to_int(var41) & to_int(1))) * 2) - 1)))
                                 getAndIncrement(GradiusNeoGame.state, (EntityField.Parameter1 + entityId))
                             GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] = (-1)
                         else:
@@ -2608,7 +2608,7 @@ class GradiusNeoGame(GameSurface):
                             else:
                                 if (age <= 16):
                                     for var43 in range(0, 6):
-                                        GradiusNeoGame.state[(103 + var43)] = (GradiusNeoGame.state[(103 + var43)] + int_div((((((((var43 & 1)) * 2) - 1)) * 16)), 8))
+                                        GradiusNeoGame.state[(103 + var43)] = (GradiusNeoGame.state[(103 + var43)] + int_div(((((((to_int(to_int(var43) & to_int(1))) * 2) - 1)) * 16)), 8))
                                 else:
                                     if (age >= 200):
                                         getAndIncrement(GradiusNeoGame.state, (EntityField.Parameter2 + entityId))
@@ -2617,11 +2617,11 @@ class GradiusNeoGame(GameSurface):
                                             GradiusNeoGame.state[(103 + var42)] = (GradiusNeoGame.state[(103 + var42)] + GradiusNeoGame.state[(127 + var42)])
                                             if ((GradiusNeoGame.state[(127 + var42)] < 0) and (GradiusNeoGame.state[(103 + var42)] <= 16)):
                                                 var89 = ((GradiusNeoGame.state[StateSlot.PlayerX] + GradiusNeoGame.state[StateSlot.PlayerY]) + getAndIncrement(GradiusNeoGame.state, (EntityField.Parameter1 + entityId)))
-                                                GradiusNeoGame.state[(127 + var42)] = ((4 + int_div((((int_div(GradiusNeoGame.state[25], 12)) * 16)), 8)) + int_div(((((GradiusNeoGame.state[(1055 + ((var89 & 63)))] & 3)) * 16)), 8))
+                                                GradiusNeoGame.state[(127 + var42)] = ((4 + int_div((((int_div(GradiusNeoGame.state[25], 12)) * 16)), 8)) + int_div((((to_int(to_int(GradiusNeoGame.state[(1055 + (to_int(to_int(var89) & to_int(63))))]) & to_int(3))) * 16)), 8))
                                             else:
                                                 if ((GradiusNeoGame.state[(127 + var42)] > 0) and (GradiusNeoGame.state[(103 + var42)] >= 192)):
                                                     var88 = ((GradiusNeoGame.state[StateSlot.PlayerX] + GradiusNeoGame.state[StateSlot.PlayerY]) + getAndIncrement(GradiusNeoGame.state, (EntityField.Parameter1 + entityId)))
-                                                    GradiusNeoGame.state[(127 + var42)] = ((4 + int_div((((int_div(GradiusNeoGame.state[25], 12)) * 16)), 8)) + int_div(((((GradiusNeoGame.state[(1055 + ((var88 & 63)))] & 3)) * 16)), 8))
+                                                    GradiusNeoGame.state[(127 + var42)] = ((4 + int_div((((int_div(GradiusNeoGame.state[25], 12)) * 16)), 8)) + int_div((((to_int(to_int(GradiusNeoGame.state[(1055 + (to_int(to_int(var88) & to_int(63))))]) & to_int(3))) * 16)), 8))
                                                     GradiusNeoGame.state[(127 + var42)] = (GradiusNeoGame.state[(127 + var42)] * (-1))
                             for var44 in range(0, 6):
                                 if (GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] <= var44):
@@ -2665,20 +2665,20 @@ class GradiusNeoGame(GameSurface):
                                             getAndIncrement(GradiusNeoGame.state, (EntityField.Parameter2 + entityId))
                                         else:
                                             var86 = (((GradiusNeoGame.state[StateSlot.LogicFrame] + GradiusNeoGame.state[StateSlot.PlayerX]) + GradiusNeoGame.state[StateSlot.PlayerY]) + GradiusNeoGame.state[(EntityField.Parameter1 + entityId)])
-                                            GradiusNeoGame.state[1] = (((GradiusNeoGame.state[(1055 + ((var86 & 63)))] & 7)) % 6)
+                                            GradiusNeoGame.state[1] = ((to_int(to_int(GradiusNeoGame.state[(1055 + (to_int(to_int(var86) & to_int(63))))]) & to_int(7))) % 6)
                                             if (GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] == 0):
                                                 if ((age % ((4 - int_div(GradiusNeoGame.state[25], 12)))) == 0):
                                                     GradiusNeoGame.state[2] = 0
                                                     if ((GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] % 16) == 0):
                                                         GradiusNeoGame.state[2] = 1
-                                                    GradiusNeoGame.spawnEntity(57, (GradiusNeoGame.state[(103 + GradiusNeoGame.state[1])] + 8), (GradiusNeoGame.state[(127 + GradiusNeoGame.state[1])] + 16), (8192 | GradiusNeoGame.state[2]))
+                                                    GradiusNeoGame.spawnEntity(57, (GradiusNeoGame.state[(103 + GradiusNeoGame.state[1])] + 8), (GradiusNeoGame.state[(127 + GradiusNeoGame.state[1])] + 16), to_int(to_int(8192) | to_int(GradiusNeoGame.state[2])))
                                                     getAndIncrement(GradiusNeoGame.state, (EntityField.Parameter1 + entityId))
                                             else:
                                                 if ((age % ((6 - int_div(GradiusNeoGame.state[25], 9)))) == 0):
                                                     GradiusNeoGame.state[2] = 0
                                                     if ((GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] % 16) == 0):
                                                         GradiusNeoGame.state[2] = 1
-                                                    GradiusNeoGame.spawnEntity(57, (GradiusNeoGame.state[(103 + GradiusNeoGame.state[1])] + 8), (GradiusNeoGame.state[(127 + GradiusNeoGame.state[1])] + (16 * (int_div(GradiusNeoGame.state[1], 3)))), ((((int_div((((int_div(GradiusNeoGame.state[1], 3)) * 64)), 2)) << 8)) | GradiusNeoGame.state[2]))
+                                                    GradiusNeoGame.spawnEntity(57, (GradiusNeoGame.state[(103 + GradiusNeoGame.state[1])] + 8), (GradiusNeoGame.state[(127 + GradiusNeoGame.state[1])] + (16 * (int_div(GradiusNeoGame.state[1], 3)))), to_int(to_int((to_int(to_int((int_div((((int_div(GradiusNeoGame.state[1], 3)) * 64)), 2))) << (to_int(8) & 31)))) | to_int(GradiusNeoGame.state[2])))
                                                     getAndIncrement(GradiusNeoGame.state, (EntityField.Parameter1 + entityId))
                             for var40 in range(0, 6):
                                 if (GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] == 0):
@@ -2708,13 +2708,13 @@ class GradiusNeoGame(GameSurface):
                                         GradiusNeoGame.state[(4606 + entityId)] = 0
                         if (4 <= GradiusNeoGame.state[(EntityField.Parameter0 + entityId)]):
                             getAndIncrement(GradiusNeoGame.state, (EntityField.Parameter0 + entityId))
-                            GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] = (4 + ((GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] & 1)))
+                            GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] = (4 + (to_int(to_int(GradiusNeoGame.state[(EntityField.Parameter0 + entityId)]) & to_int(1))))
                             GradiusNeoGame.state[0] = GradiusNeoGame.state[(EntityField.Parameter0 + entityId)]
                             if (GradiusNeoGame.state[(4606 + entityId)] == 0):
                                 GradiusNeoGame.state[0] = 4
                         else:
                             getAndIncrement(GradiusNeoGame.state, (EntityField.Parameter0 + entityId))
-                            GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] = (GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] & 3)
+                            GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] = to_int(to_int(GradiusNeoGame.state[(EntityField.Parameter0 + entityId)]) & to_int(3))
                             GradiusNeoGame.state[0] = GradiusNeoGame.state[(EntityField.Parameter0 + entityId)]
                             if (GradiusNeoGame.state[(4606 + entityId)] == 0):
                                 GradiusNeoGame.state[0] = 0
@@ -2741,7 +2741,7 @@ class GradiusNeoGame(GameSurface):
                         if ((age % ((3 + GradiusNeoGame.state[(EntityField.Parameter0 + entityId)]))) == 0):
                             GradiusNeoGame.state[2] = 0
                             var85 = (((int_div(GradiusNeoGame.state[StateSlot.Score], 100) + GradiusNeoGame.state[StateSlot.PlayerX]) + GradiusNeoGame.state[StateSlot.PlayerY]) + GradiusNeoGame.state[(EntityField.Parameter1 + entityId)])
-                            GradiusNeoGame.state[1] = (((GradiusNeoGame.state[(1055 + ((var85 & 63)))] & 255)) % 12)
+                            GradiusNeoGame.state[1] = ((to_int(to_int(GradiusNeoGame.state[(1055 + (to_int(to_int(var85) & to_int(63))))]) & to_int(255))) % 12)
                             if (GradiusNeoGame.state[((151 + (GradiusNeoGame.state[1] * 13)) + 12)] != 0):
                                 getAndIncrement(GradiusNeoGame.state, 2)
                                 for var36 in range(1, 12):
@@ -2751,7 +2751,7 @@ class GradiusNeoGame(GameSurface):
                                         break
                             if (GradiusNeoGame.state[2] == 0):
                                 getAndIncrement(GradiusNeoGame.state, (EntityField.Parameter1 + entityId))
-                                GradiusNeoGame.state[0] = (GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] & 3)
+                                GradiusNeoGame.state[0] = to_int(to_int(GradiusNeoGame.state[(EntityField.Parameter1 + entityId)]) & to_int(3))
                                 if ((GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] == 1) and ((GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] % ((8 - int_div(GradiusNeoGame.state[25], 7)))) == 0)):
                                     GradiusNeoGame.state[0] = 4
                                 GradiusNeoGame.spawnEntity(104, GAME_VIEW_WIDTH, (16 * ((GradiusNeoGame.state[1] + 1))), GradiusNeoGame.state[0])
@@ -2830,11 +2830,11 @@ class GradiusNeoGame(GameSurface):
                                     GradiusNeoGame.requestSoundEffect(3)
                                     if (3 <= GradiusNeoGame.state[(EntityField.Parameter3 + entityId)]):
                                         GradiusNeoGame.spawnEntity(16, ((entityX + 16) + ((GradiusNeoGame.entityDirectionSign * 4) * ((GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] - 3)))), (entityY + 24), 0)
-                                        GradiusNeoGame.spawnEntity(23, (entityX + 8), (entityY + 24), ((262144 | ((((1 + (2 * (int_div(GradiusNeoGame.state[25], 7))))) << 8))) | GradiusNeoGame.calculateDirectionToPlayer((entityX + 16), (entityY + 24))))
+                                        GradiusNeoGame.spawnEntity(23, (entityX + 8), (entityY + 24), to_int(to_int(to_int(to_int(262144) | to_int((to_int(to_int(((1 + (2 * (int_div(GradiusNeoGame.state[25], 7)))))) << (to_int(8) & 31)))))) | to_int(GradiusNeoGame.calculateDirectionToPlayer((entityX + 16), (entityY + 24)))))
                                     else:
                                         if (2 <= GradiusNeoGame.state[(EntityField.Parameter3 + entityId)]):
                                             GradiusNeoGame.spawnEntity(EntityType.ThreeFrameEffectA, (entityX + 25), (entityY + 24), 0)
-                                            GradiusNeoGame.spawnEntity(23, (entityX + 8), (entityY + 24), ((262144 | ((((1 + (2 * (int_div(GradiusNeoGame.state[25], 7))))) << 8))) | GradiusNeoGame.calculateDirectionToPlayer((entityX + 16), (entityY + 24))))
+                                            GradiusNeoGame.spawnEntity(23, (entityX + 8), (entityY + 24), to_int(to_int(to_int(to_int(262144) | to_int((to_int(to_int(((1 + (2 * (int_div(GradiusNeoGame.state[25], 7)))))) << (to_int(8) & 31)))))) | to_int(GradiusNeoGame.calculateDirectionToPlayer((entityX + 16), (entityY + 24)))))
                                         else:
                                             if (1 <= GradiusNeoGame.state[(EntityField.Parameter3 + entityId)]):
                                                 GradiusNeoGame.spawnEntity(EntityType.ThreeFrameEffectA, (entityX + 42), (entityY + 24), 0)
@@ -2868,7 +2868,7 @@ class GradiusNeoGame(GameSurface):
                             GradiusNeoGame.state[(4606 + entityId)] = 40
                             GradiusNeoGame.state[(5118 + entityId)] = 40
                             for var3 in range(0, 4):
-                                GradiusNeoGame.spawnAuxiliaryEntity(110, (GradiusNeoGame.state[(EntityField.XFixed + entityId)] + 0), (GradiusNeoGame.state[(EntityField.YFixed + entityId)] + 0), (((var3 << 8)) | entityId))
+                                GradiusNeoGame.spawnAuxiliaryEntity(110, (GradiusNeoGame.state[(EntityField.XFixed + entityId)] + 0), (GradiusNeoGame.state[(EntityField.YFixed + entityId)] + 0), to_int(to_int((to_int(to_int(var3) << (to_int(8) & 31)))) | to_int(entityId)))
                             GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] = (-1)
                             GradiusNeoGame.state[9738] = 0
                         else:
@@ -2889,7 +2889,7 @@ class GradiusNeoGame(GameSurface):
                                         GradiusNeoGame.state[(EntityField.Parameter3 + entityId)] = 0
                                     if ((GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] % 64) == 0):
                                         var13 = ((GradiusNeoGame.state[StateSlot.PlayerX] + GradiusNeoGame.state[StateSlot.PlayerY]) + getAndIncrement(GradiusNeoGame.state, 4))
-                                        GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] = (GradiusNeoGame.state[(1055 + ((var13 & 63)))] & 3)
+                                        GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] = to_int(to_int(GradiusNeoGame.state[(1055 + (to_int(to_int(var13) & to_int(63))))]) & to_int(3))
                                         GradiusNeoGame.state[(EntityField.Parameter1 + entityId)] = 0
                                         GradiusNeoGame.state[(EntityField.Parameter2 + entityId)] = 1
                                 else:
@@ -2963,7 +2963,7 @@ class GradiusNeoGame(GameSurface):
                             else:
                                 getAndDecrement(GradiusNeoGame.state, (EntityField.Parameter0 + entityId))
                                 if ((-30) <= GradiusNeoGame.state[(EntityField.Parameter0 + entityId)]):
-                                    if (((GradiusNeoGame.state[(EntityField.Parameter0 + entityId)] & 1)) == 0):
+                                    if ((to_int(to_int(GradiusNeoGame.state[(EntityField.Parameter0 + entityId)]) & to_int(1))) == 0):
                                         GradiusNeoGame.requestSoundEffect(9)
                                 else:
                                     getAndIncrement(GradiusNeoGame.state, 34)
@@ -2986,7 +2986,7 @@ class GradiusNeoGame(GameSurface):
                                     if ((age >= 180) and ((age % 4) == 0)):
                                         GradiusNeoGame.state[0] = 0
                             if (GradiusNeoGame.state[0] == 1):
-                                GradiusNeoGame.enqueueRenderCommand(1, entityX, entityY, 15, (var1 + ((age & 3))), 0)
+                                GradiusNeoGame.enqueueRenderCommand(1, entityX, entityY, 15, (var1 + (to_int(to_int(age) & to_int(3)))), 0)
                             if (age >= 252):
                                 GradiusNeoGame.removePrimaryEntity(entityId)
                             else:
@@ -3074,10 +3074,10 @@ class GradiusNeoGame(GameSurface):
                     GradiusNeoGame.state[(1165 + var29)] = GradiusNeoGame.state[(1143 + (var29 * 4))]
                 for var30 in range(1, (GradiusNeoGame.state[StateSlot.OptionCount]) + 1):
                     var6 = None
-                    if (((GradiusNeoGame.state[StateSlot.LogicFrame] & 3)) == 0):
+                    if ((to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(3))) == 0):
                         var6 = (104 + (GradiusNeoGame.state[84] * 3))
                     else:
-                        var6 = (((104 + ((GradiusNeoGame.state[StateSlot.LogicFrame] & 3))) - 1) + (GradiusNeoGame.state[84] * 3))
+                        var6 = (((104 + (to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(3)))) - 1) + (GradiusNeoGame.state[84] * 3))
                     GradiusNeoGame.renderQueue.beginMotionSource(((-1) - var30), 0, "current")
                     GradiusNeoGame.enqueueRenderCommand(1, (GradiusNeoGame.state[(1160 + var30)] + 8), GradiusNeoGame.state[(1165 + var30)], 15, var6, 0)
                     GradiusNeoGame.renderQueue.endEntity()
@@ -3087,7 +3087,7 @@ class GradiusNeoGame(GameSurface):
                 getAndIncrement(GradiusNeoGame.state, StateSlot.PlayerDamagePhase)
                 return
             if (GradiusNeoGame.state[StateSlot.PlayerDamagePhase] <= 0):
-                if ((((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.LeftSoftKey)) != 0) and (GradiusNeoGame.state[StateSlot.SelectedPowerUp] >= 1)):
+                if (((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.LeftSoftKey))) != 0) and (GradiusNeoGame.state[StateSlot.SelectedPowerUp] >= 1)):
                     try:
                         match GradiusNeoGame.state[StateSlot.SelectedPowerUp]:
                             case 1:
@@ -3149,18 +3149,18 @@ class GradiusNeoGame(GameSurface):
                         pass
                     GradiusNeoGame.synchronizeFormationWeapon()
                     GradiusNeoGame.updateAdaptiveDifficulty()
-                if (((((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.RightSoftKey)) != 0) and (GradiusNeoGame.state[StateSlot.SelectedFormation] >= 1)) and (GradiusNeoGame.state[(1119 + GradiusNeoGame.state[StateSlot.SelectedFormation])] == 0)):
+                if ((((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.RightSoftKey))) != 0) and (GradiusNeoGame.state[StateSlot.SelectedFormation] >= 1)) and (GradiusNeoGame.state[(1119 + GradiusNeoGame.state[StateSlot.SelectedFormation])] == 0)):
                     GradiusNeoGame.state[(1119 + GradiusNeoGame.state[StateSlot.SelectedFormation])] = 1
                     GradiusNeoGame.state[StateSlot.SelectedFormation] = 0
                     GradiusNeoGame.requestSoundEffect(7)
                 if (GradiusNeoGame.state[86] < 6):
-                    if (((GradiusNeoGame.state[StateSlot.HeldInputBits] & 102)) != 0):
+                    if ((to_int(to_int(GradiusNeoGame.state[StateSlot.HeldInputBits]) & to_int(102))) != 0):
                         for var10 in range(16, (1) - 1, -1):
                             GradiusNeoGame.state[(1126 + var10)] = GradiusNeoGame.state[(1126 + ((var10 - 1)))]
                             GradiusNeoGame.state[(1143 + var10)] = GradiusNeoGame.state[(1143 + ((var10 - 1)))]
                     var3 = 0
                     var11 = 0
-                    if (((GradiusNeoGame.state[StateSlot.HeldInputBits] & 64)) != 0):
+                    if ((to_int(to_int(GradiusNeoGame.state[StateSlot.HeldInputBits]) & to_int(64))) != 0):
                         if (GradiusNeoGame.state[41] != 3):
                             GradiusNeoGame.state[StateSlot.PlayerY] = (GradiusNeoGame.state[StateSlot.PlayerY] + GradiusNeoGame.state[StateSlot.PlayerMoveSpeed])
                         else:
@@ -3169,9 +3169,9 @@ class GradiusNeoGame(GameSurface):
                                 GradiusNeoGame.state[StateSlot.PendingCameraDeltaY] = (GradiusNeoGame.state[StateSlot.PendingCameraDeltaY] + GradiusNeoGame.state[StateSlot.PlayerMoveSpeed])
                         GradiusNeoGame.state[63] = (GradiusNeoGame.state[63] + 2)
                         var11 += 1
-                        if (((GradiusNeoGame.state[StateSlot.HeldInputBits] & 65568)) == 0):
+                        if ((to_int(to_int(GradiusNeoGame.state[StateSlot.HeldInputBits]) & to_int(65568))) == 0):
                             var3 += 64
-                    if (((GradiusNeoGame.state[StateSlot.HeldInputBits] & 2)) != 0):
+                    if ((to_int(to_int(GradiusNeoGame.state[StateSlot.HeldInputBits]) & to_int(2))) != 0):
                         if (GradiusNeoGame.state[41] != 3):
                             GradiusNeoGame.state[StateSlot.PlayerY] = (GradiusNeoGame.state[StateSlot.PlayerY] - GradiusNeoGame.state[StateSlot.PlayerMoveSpeed])
                         else:
@@ -3181,16 +3181,16 @@ class GradiusNeoGame(GameSurface):
                         GradiusNeoGame.state[63] = (GradiusNeoGame.state[63] - 2)
                         var11 += 1
                         var3 += 32
-                    if (((GradiusNeoGame.state[StateSlot.HeldInputBits] & 32)) != 0):
+                    if ((to_int(to_int(GradiusNeoGame.state[StateSlot.HeldInputBits]) & to_int(32))) != 0):
                         GradiusNeoGame.state[StateSlot.PlayerX] = (GradiusNeoGame.state[StateSlot.PlayerX] + GradiusNeoGame.state[StateSlot.PlayerMoveSpeed])
                         var11 += 1
                         var3 += 16
-                    if (((GradiusNeoGame.state[StateSlot.HeldInputBits] & 4)) != 0):
+                    if ((to_int(to_int(GradiusNeoGame.state[StateSlot.HeldInputBits]) & to_int(4))) != 0):
                         GradiusNeoGame.state[StateSlot.PlayerX] = (GradiusNeoGame.state[StateSlot.PlayerX] - GradiusNeoGame.state[StateSlot.PlayerMoveSpeed])
                         var11 += 1
                         var3 += 48
                     if (GradiusNeoGame.state[StateSlot.MainWeaponState] == 17):
-                        if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 4096)) != 0):
+                        if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(4096))) != 0):
                             GradiusNeoGame.runtimeFlags[6] = (not GradiusNeoGame.runtimeFlags[6])
                         if ((((not GradiusNeoGame.runtimeFlags[6]) and (0 < var11)) and (var11 <= 2)) and (((var3 := (((var3 := int_div(var3, var11))) % 64))) != GradiusNeoGame.state[64])):
                             var13 = None
@@ -3206,10 +3206,10 @@ class GradiusNeoGame(GameSurface):
                 var1 = 3
                 if (GradiusNeoGame.state[StateSlot.PlayerDamagePhase] != 0):
                     getAndIncrement(GradiusNeoGame.state, StateSlot.PlayerDamagePhase)
-                    if (((GradiusNeoGame.state[StateSlot.PlayerDamagePhase] & 3)) >= 2):
+                    if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PlayerDamagePhase]) & to_int(3))) >= 2):
                         var1 = 0
                 else:
-                    if ((0 < GradiusNeoGame.state[StateSlot.ShieldEnergy]) and (((GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[StateSlot.PlayerX] + 4), ((GradiusNeoGame.state[StateSlot.PlayerY] + 2) - GradiusNeoGame.state[StateSlot.CameraOffsetY])) | GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[StateSlot.PlayerX] + 20), ((GradiusNeoGame.state[StateSlot.PlayerY] + 2) - GradiusNeoGame.state[StateSlot.CameraOffsetY])))) < 0)):
+                    if ((0 < GradiusNeoGame.state[StateSlot.ShieldEnergy]) and ((to_int(to_int(GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[StateSlot.PlayerX] + 4), ((GradiusNeoGame.state[StateSlot.PlayerY] + 2) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | to_int(GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[StateSlot.PlayerX] + 20), ((GradiusNeoGame.state[StateSlot.PlayerY] + 2) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) < 0)):
                         getAndDecrement(GradiusNeoGame.state, StateSlot.ShieldEnergy)
                     if (GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[StateSlot.PlayerX] + 10), (GradiusNeoGame.state[StateSlot.PlayerY] - GradiusNeoGame.state[StateSlot.CameraOffsetY])) < 0):
                         GradiusNeoGame.state[StateSlot.PlayerDamagePhase] = (-52)
@@ -3230,18 +3230,18 @@ class GradiusNeoGame(GameSurface):
                 GradiusNeoGame.renderQueue.beginMotionSource((-1), 0, "current")
                 GradiusNeoGame.enqueueRenderCommand(var1, GradiusNeoGame.state[StateSlot.PlayerX], GradiusNeoGame.state[StateSlot.PlayerY], 15, 0, 0)
                 GradiusNeoGame.renderQueue.endEntity()
-                if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 1046784)) != 0):
+                if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(1046784))) != 0):
                     var33 = 0
                     for formationSlot in range(1, 7):
                         if (GradiusNeoGame.state[(1119 + formationSlot)] == 1):
                             var33 += 1
-                    if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 129024)) != 0):
+                    if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(129024))) != 0):
                         var33 = 0
                         for var4 in range(1, (6) + 1):
-                            if (((((((GradiusNeoGame.state[StateSlot.PressedInputBits] >> var4)) & 1024)) != 0) and (GradiusNeoGame.state[(1119 + var4)] == 1)) and (GradiusNeoGame.state[81] != var4)):
+                            if ((((to_int(to_int(((to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) >> (to_int(var4) & 31)))) & to_int(1024))) != 0) and (GradiusNeoGame.state[(1119 + var4)] == 1)) and (GradiusNeoGame.state[81] != var4)):
                                 var33 = var4
                     else:
-                        if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 917504)) != 0):
+                        if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(917504))) != 0):
                             var33 = 0
                             if (GradiusNeoGame.state[81] != 0):
                                 var33 = 7
@@ -3252,7 +3252,7 @@ class GradiusNeoGame(GameSurface):
                             if (GradiusNeoGame.state[81] == 6):
                                 for var15 in range(1, (GradiusNeoGame.state[StateSlot.OptionCount]) + 1):
                                     GradiusNeoGame.state[(1245 + (var15 * 4))] = (-1)
-                        if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.Fire)) != 0):
+                        if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.Fire))) != 0):
                             while True:
                                 getAndIncrement(GradiusNeoGame.state, 81)
                                 GradiusNeoGame.state[81] = (GradiusNeoGame.state[81] % 7)
@@ -3261,8 +3261,8 @@ class GradiusNeoGame(GameSurface):
                         else:
                             GradiusNeoGame.state[81] = (var33 % 7)
                         for var16 in range(1, 5):
-                            GradiusNeoGame.state[(1170 + var16)] = (GradiusNeoGame.state[(1160 + var16)] << 4)
-                            GradiusNeoGame.state[(1175 + var16)] = (GradiusNeoGame.state[(1165 + var16)] << 4)
+                            GradiusNeoGame.state[(1170 + var16)] = to_int(to_int(GradiusNeoGame.state[(1160 + var16)]) << (to_int(4) & 31))
+                            GradiusNeoGame.state[(1175 + var16)] = to_int(to_int(GradiusNeoGame.state[(1165 + var16)]) << (to_int(4) & 31))
                         GradiusNeoGame.state[82] = 1
                         GradiusNeoGame.requestSoundEffect(6)
                 GradiusNeoGame.state[1160] = GradiusNeoGame.state[StateSlot.PlayerX]
@@ -3277,8 +3277,8 @@ class GradiusNeoGame(GameSurface):
                                 raise _SwitchBreak()
                             case 1:
                                 for var18 in range(1, 5):
-                                    GradiusNeoGame.state[(1160 + var18)] = (GradiusNeoGame.state[StateSlot.PlayerX] + ((((GradiusNeoGame.state[(471 + ((((((GradiusNeoGame.state[StateSlot.LogicFrame] * 2) + (32 * var18)) + (16 * (int_div(var18, 3))))) % 64)))] * 48)) >> 4)))
-                                    GradiusNeoGame.state[(1165 + var18)] = (GradiusNeoGame.state[StateSlot.PlayerY] + ((((GradiusNeoGame.state[(455 + ((((((GradiusNeoGame.state[StateSlot.LogicFrame] * 2) + (32 * var18)) + (16 * (int_div(var18, 3))))) % 64)))] * 42)) >> 4)))
+                                    GradiusNeoGame.state[(1160 + var18)] = (GradiusNeoGame.state[StateSlot.PlayerX] + ((to_int(((GradiusNeoGame.state[(471 + ((((((GradiusNeoGame.state[StateSlot.LogicFrame] * 2) + (32 * var18)) + (16 * (int_div(var18, 3))))) % 64)))] * 48))) >> (to_int(4) & 31))))
+                                    GradiusNeoGame.state[(1165 + var18)] = (GradiusNeoGame.state[StateSlot.PlayerY] + ((to_int(((GradiusNeoGame.state[(455 + ((((((GradiusNeoGame.state[StateSlot.LogicFrame] * 2) + (32 * var18)) + (16 * (int_div(var18, 3))))) % 64)))] * 42))) >> (to_int(4) & 31))))
                                 raise _SwitchBreak()
                             case 2:
                                 GradiusNeoGame.state[1161] = (GradiusNeoGame.state[StateSlot.PlayerX] + 48)
@@ -3330,21 +3330,21 @@ class GradiusNeoGame(GameSurface):
                                     else:
                                         if (GradiusNeoGame.state[(1180 + var17)] == 1):
                                             GradiusNeoGame.state[(1160 + var17)] = (GradiusNeoGame.state[(1160 + var17)] - 4)
-                                            if ((((((((GradiusNeoGame.state[StateSlot.PlayerX] - 16) - GradiusNeoGame.state[(1160 + var17)])) & ((GradiusNeoGame.state[(1160 + var17)] - ((GradiusNeoGame.state[StateSlot.PlayerX] + 16))))) & (((GradiusNeoGame.state[StateSlot.PlayerY] - 16) - GradiusNeoGame.state[(1165 + var17)]))) & ((GradiusNeoGame.state[(1165 + var17)] - ((GradiusNeoGame.state[StateSlot.PlayerY] + 16)))))) < 0):
+                                            if ((to_int(to_int(to_int(to_int(to_int(to_int((((GradiusNeoGame.state[StateSlot.PlayerX] - 16) - GradiusNeoGame.state[(1160 + var17)]))) & to_int(((GradiusNeoGame.state[(1160 + var17)] - ((GradiusNeoGame.state[StateSlot.PlayerX] + 16))))))) & to_int((((GradiusNeoGame.state[StateSlot.PlayerY] - 16) - GradiusNeoGame.state[(1165 + var17)]))))) & to_int(((GradiusNeoGame.state[(1165 + var17)] - ((GradiusNeoGame.state[StateSlot.PlayerY] + 16))))))) < 0):
                                                 GradiusNeoGame.state[(1180 + var17)] = 0
                                                 GradiusNeoGame.state[(1165 + var17)] = GradiusNeoGame.state[StateSlot.PlayerY]
                                             else:
                                                 if (GradiusNeoGame.state[(1160 + var17)] <= (-8)):
                                                     GradiusNeoGame.state[(1180 + var17)] = 2
-                                                    GradiusNeoGame.state[(1170 + var17)] = (GradiusNeoGame.state[(1160 + var17)] << 4)
-                                                    GradiusNeoGame.state[(1175 + var17)] = (GradiusNeoGame.state[(1165 + var17)] << 4)
+                                                    GradiusNeoGame.state[(1170 + var17)] = to_int(to_int(GradiusNeoGame.state[(1160 + var17)]) << (to_int(4) & 31))
+                                                    GradiusNeoGame.state[(1175 + var17)] = to_int(to_int(GradiusNeoGame.state[(1165 + var17)]) << (to_int(4) & 31))
                                         else:
                                             if (GradiusNeoGame.state[(1180 + var17)] == 2):
-                                                GradiusNeoGame.state[(1170 + var17)] = (GradiusNeoGame.state[(1170 + var17)] + (GradiusNeoGame.state[(455 + GradiusNeoGame.calculateDirectionToPlayer((GradiusNeoGame.state[(1170 + var17)] >> 4), (GradiusNeoGame.state[(1175 + var17)] >> 4)))] * 8))
-                                                GradiusNeoGame.state[(1175 + var17)] = (GradiusNeoGame.state[(1175 + var17)] + (GradiusNeoGame.state[(471 + GradiusNeoGame.calculateDirectionToPlayer((GradiusNeoGame.state[(1170 + var17)] >> 4), (GradiusNeoGame.state[(1175 + var17)] >> 4)))] * 8))
-                                                GradiusNeoGame.state[(1160 + var17)] = (GradiusNeoGame.state[(1170 + var17)] >> 4)
-                                                GradiusNeoGame.state[(1165 + var17)] = (GradiusNeoGame.state[(1175 + var17)] >> 4)
-                                                if ((((((((GradiusNeoGame.state[StateSlot.PlayerX] - 8) - GradiusNeoGame.state[(1160 + var17)])) & ((GradiusNeoGame.state[(1160 + var17)] - ((GradiusNeoGame.state[StateSlot.PlayerX] + 8))))) & (((GradiusNeoGame.state[StateSlot.PlayerY] - 8) - GradiusNeoGame.state[(1165 + var17)]))) & ((GradiusNeoGame.state[(1165 + var17)] - ((GradiusNeoGame.state[StateSlot.PlayerY] + 8)))))) < 0):
+                                                GradiusNeoGame.state[(1170 + var17)] = (GradiusNeoGame.state[(1170 + var17)] + (GradiusNeoGame.state[(455 + GradiusNeoGame.calculateDirectionToPlayer((to_int(GradiusNeoGame.state[(1170 + var17)]) >> (to_int(4) & 31)), (to_int(GradiusNeoGame.state[(1175 + var17)]) >> (to_int(4) & 31))))] * 8))
+                                                GradiusNeoGame.state[(1175 + var17)] = (GradiusNeoGame.state[(1175 + var17)] + (GradiusNeoGame.state[(471 + GradiusNeoGame.calculateDirectionToPlayer((to_int(GradiusNeoGame.state[(1170 + var17)]) >> (to_int(4) & 31)), (to_int(GradiusNeoGame.state[(1175 + var17)]) >> (to_int(4) & 31))))] * 8))
+                                                GradiusNeoGame.state[(1160 + var17)] = (to_int(GradiusNeoGame.state[(1170 + var17)]) >> (to_int(4) & 31))
+                                                GradiusNeoGame.state[(1165 + var17)] = (to_int(GradiusNeoGame.state[(1175 + var17)]) >> (to_int(4) & 31))
+                                                if ((to_int(to_int(to_int(to_int(to_int(to_int((((GradiusNeoGame.state[StateSlot.PlayerX] - 8) - GradiusNeoGame.state[(1160 + var17)]))) & to_int(((GradiusNeoGame.state[(1160 + var17)] - ((GradiusNeoGame.state[StateSlot.PlayerX] + 8))))))) & to_int((((GradiusNeoGame.state[StateSlot.PlayerY] - 8) - GradiusNeoGame.state[(1165 + var17)]))))) & to_int(((GradiusNeoGame.state[(1165 + var17)] - ((GradiusNeoGame.state[StateSlot.PlayerY] + 8))))))) < 0):
                                                     GradiusNeoGame.state[(1180 + var17)] = 0
                                                     GradiusNeoGame.state[(1165 + var17)] = GradiusNeoGame.state[StateSlot.PlayerY]
                                             else:
@@ -3359,13 +3359,13 @@ class GradiusNeoGame(GameSurface):
                     match GradiusNeoGame.state[82]:
                         case 1:
                             for var23 in range(1, 5):
-                                GradiusNeoGame.state[(1170 + var23)] = (GradiusNeoGame.state[(1170 + var23)] + (GradiusNeoGame.state[(455 + GradiusNeoGame.calculateDirectionToPlayer((GradiusNeoGame.state[(1170 + var23)] >> 4), (GradiusNeoGame.state[(1175 + var23)] >> 4)))] * 8))
-                                GradiusNeoGame.state[(1175 + var23)] = (GradiusNeoGame.state[(1175 + var23)] + (GradiusNeoGame.state[(471 + GradiusNeoGame.calculateDirectionToPlayer((GradiusNeoGame.state[(1170 + var23)] >> 4), (GradiusNeoGame.state[(1175 + var23)] >> 4)))] * 8))
-                                GradiusNeoGame.state[(1160 + var23)] = (GradiusNeoGame.state[(1170 + var23)] >> 4)
-                                GradiusNeoGame.state[(1165 + var23)] = (GradiusNeoGame.state[(1175 + var23)] >> 4)
+                                GradiusNeoGame.state[(1170 + var23)] = (GradiusNeoGame.state[(1170 + var23)] + (GradiusNeoGame.state[(455 + GradiusNeoGame.calculateDirectionToPlayer((to_int(GradiusNeoGame.state[(1170 + var23)]) >> (to_int(4) & 31)), (to_int(GradiusNeoGame.state[(1175 + var23)]) >> (to_int(4) & 31))))] * 8))
+                                GradiusNeoGame.state[(1175 + var23)] = (GradiusNeoGame.state[(1175 + var23)] + (GradiusNeoGame.state[(471 + GradiusNeoGame.calculateDirectionToPlayer((to_int(GradiusNeoGame.state[(1170 + var23)]) >> (to_int(4) & 31)), (to_int(GradiusNeoGame.state[(1175 + var23)]) >> (to_int(4) & 31))))] * 8))
+                                GradiusNeoGame.state[(1160 + var23)] = (to_int(GradiusNeoGame.state[(1170 + var23)]) >> (to_int(4) & 31))
+                                GradiusNeoGame.state[(1165 + var23)] = (to_int(GradiusNeoGame.state[(1175 + var23)]) >> (to_int(4) & 31))
                             var34 = 0
                             for optionIndex in range(1, (GradiusNeoGame.state[StateSlot.OptionCount]) + 1):
-                                if ((((((((GradiusNeoGame.state[StateSlot.PlayerX] - 16) - GradiusNeoGame.state[(1160 + optionIndex)])) & ((GradiusNeoGame.state[(1160 + optionIndex)] - ((GradiusNeoGame.state[StateSlot.PlayerX] + 16))))) & (((GradiusNeoGame.state[StateSlot.PlayerY] - 16) - GradiusNeoGame.state[(1165 + optionIndex)]))) & ((GradiusNeoGame.state[(1165 + optionIndex)] - ((GradiusNeoGame.state[StateSlot.PlayerY] + 16)))))) < 0):
+                                if ((to_int(to_int(to_int(to_int(to_int(to_int((((GradiusNeoGame.state[StateSlot.PlayerX] - 16) - GradiusNeoGame.state[(1160 + optionIndex)]))) & to_int(((GradiusNeoGame.state[(1160 + optionIndex)] - ((GradiusNeoGame.state[StateSlot.PlayerX] + 16))))))) & to_int((((GradiusNeoGame.state[StateSlot.PlayerY] - 16) - GradiusNeoGame.state[(1165 + optionIndex)]))))) & to_int(((GradiusNeoGame.state[(1165 + optionIndex)] - ((GradiusNeoGame.state[StateSlot.PlayerY] + 16))))))) < 0):
                                     var34 += 1
                             if (var34 >= GradiusNeoGame.state[StateSlot.OptionCount]):
                                 GradiusNeoGame.state[82] = 2
@@ -3382,8 +3382,8 @@ class GradiusNeoGame(GameSurface):
                                         raise _SwitchBreak()
                                     case 1:
                                         for var21 in range(1, 5):
-                                            GradiusNeoGame.state[(1160 + var21)] = (GradiusNeoGame.state[StateSlot.PlayerX] + (((((GradiusNeoGame.state[(471 + ((((((GradiusNeoGame.state[StateSlot.LogicFrame] * 2) + (32 * var21)) + (16 * (int_div(var21, 3))))) % 64)))] * 16) * GradiusNeoGame.state[83])) >> 4)))
-                                            GradiusNeoGame.state[(1165 + var21)] = (GradiusNeoGame.state[StateSlot.PlayerY] + (((((GradiusNeoGame.state[(455 + ((((((GradiusNeoGame.state[StateSlot.LogicFrame] * 2) + (32 * var21)) + (16 * (int_div(var21, 3))))) % 64)))] * 14) * GradiusNeoGame.state[83])) >> 4)))
+                                            GradiusNeoGame.state[(1160 + var21)] = (GradiusNeoGame.state[StateSlot.PlayerX] + ((to_int((((GradiusNeoGame.state[(471 + ((((((GradiusNeoGame.state[StateSlot.LogicFrame] * 2) + (32 * var21)) + (16 * (int_div(var21, 3))))) % 64)))] * 16) * GradiusNeoGame.state[83]))) >> (to_int(4) & 31))))
+                                            GradiusNeoGame.state[(1165 + var21)] = (GradiusNeoGame.state[StateSlot.PlayerY] + ((to_int((((GradiusNeoGame.state[(455 + ((((((GradiusNeoGame.state[StateSlot.LogicFrame] * 2) + (32 * var21)) + (16 * (int_div(var21, 3))))) % 64)))] * 14) * GradiusNeoGame.state[83]))) >> (to_int(4) & 31))))
                                         if (getAndIncrement(GradiusNeoGame.state, 83) >= 3):
                                             GradiusNeoGame.state[82] = 0
                                         raise _SwitchBreak()
@@ -3450,17 +3450,17 @@ class GradiusNeoGame(GameSurface):
                 except _SwitchBreak:
                     pass
                 for var25 in range(1, (GradiusNeoGame.state[StateSlot.OptionCount]) + 1):
-                    if (((GradiusNeoGame.state[StateSlot.LogicFrame] & 3)) == 0):
+                    if ((to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(3))) == 0):
                         var1 = (104 + (GradiusNeoGame.state[84] * 3))
                     else:
-                        var1 = (((104 + ((GradiusNeoGame.state[StateSlot.LogicFrame] & 3))) - 1) + (GradiusNeoGame.state[84] * 3))
+                        var1 = (((104 + (to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(3)))) - 1) + (GradiusNeoGame.state[84] * 3))
                     GradiusNeoGame.renderQueue.beginMotionSource(((-1) - var25), 0, "current")
                     GradiusNeoGame.enqueueRenderCommand(1, (GradiusNeoGame.state[(1160 + var25)] + 8), GradiusNeoGame.state[(1165 + var25)], 15, var1, 0)
                     GradiusNeoGame.renderQueue.endEntity()
-                var26 = (GradiusNeoGame.state[StateSlot.HeldInputBits] | (-GradiusNeoGame.state[StateSlot.AutoFireSetting]))
-                if ((((GradiusNeoGame.state[StateSlot.HeldInputBits] & 1024)) * GradiusNeoGame.state[StateSlot.AutoFireSetting]) != 0):
+                var26 = to_int(to_int(GradiusNeoGame.state[StateSlot.HeldInputBits]) | to_int((-GradiusNeoGame.state[StateSlot.AutoFireSetting])))
+                if (((to_int(to_int(GradiusNeoGame.state[StateSlot.HeldInputBits]) & to_int(1024))) * GradiusNeoGame.state[StateSlot.AutoFireSetting]) != 0):
                     var26 = 0
-                if (((GradiusNeoGame.state[86] < 4) and (((var26 & 1024)) != 0)) and (GradiusNeoGame.state[82] == 0)):
+                if (((GradiusNeoGame.state[86] < 4) and ((to_int(to_int(var26) & to_int(1024))) != 0)) and (GradiusNeoGame.state[82] == 0)):
                     for var27 in range(0, (GradiusNeoGame.state[StateSlot.OptionCount]) + 1):
                         var35 = (var27 * 4)
                         if (GradiusNeoGame.state[StateSlot.MainWeaponState] == 10):
@@ -3581,10 +3581,10 @@ class GradiusNeoGame(GameSurface):
                 stageTileColumn = (int_div(((worldPixelX := (GradiusNeoGame.state[StateSlot.VisualStageScrollX] - GAME_VIEW_WIDTH))), 16) + screenTileColumn)
                 if ((worldPixelX < 0) and ((worldPixelX % 16) != 0)):
                     stageTileColumn -= 1
-                if ((stageTileColumn >= 0) and (((GradiusNeoGame.resourceBuffer[(GradiusNeoGame.state[48] + (((stageRowOffset + stageTileColumn)) * 2))] & 255)) > 0)):
+                if ((stageTileColumn >= 0) and ((to_int(to_int(GradiusNeoGame.resourceBuffer[(GradiusNeoGame.state[48] + (((stageRowOffset + stageTileColumn)) * 2))]) & to_int(255))) > 0)):
                     try:
-                        GradiusNeoGame.terrainTileSourceX = (((((((GradiusNeoGame.resourceBuffer[(GradiusNeoGame.state[48] + (((stageRowOffset + stageTileColumn)) * 2))] & 255)) - 189)) % 16)) * 16)
-                        GradiusNeoGame.terrainTileSourceY = (((int(int_div(((((GradiusNeoGame.resourceBuffer[(GradiusNeoGame.state[48] + (((stageRowOffset + stageTileColumn)) * 2))] & 255)) - 189)), 16)) + (((GradiusNeoGame.resourceBuffer[((GradiusNeoGame.state[48] + (((stageRowOffset + stageTileColumn)) * 2)) + 1)] & 3)) * 3))) * 16)
+                        GradiusNeoGame.terrainTileSourceX = ((((((to_int(to_int(GradiusNeoGame.resourceBuffer[(GradiusNeoGame.state[48] + (((stageRowOffset + stageTileColumn)) * 2))]) & to_int(255))) - 189)) % 16)) * 16)
+                        GradiusNeoGame.terrainTileSourceY = (((int(int_div((((to_int(to_int(GradiusNeoGame.resourceBuffer[(GradiusNeoGame.state[48] + (((stageRowOffset + stageTileColumn)) * 2))]) & to_int(255))) - 189)), 16)) + ((to_int(to_int(GradiusNeoGame.resourceBuffer[((GradiusNeoGame.state[48] + (((stageRowOffset + stageTileColumn)) * 2)) + 1)]) & to_int(3))) * 3))) * 16)
                         if ((GradiusNeoGame.terrainTileSourceX >= 0) and (GradiusNeoGame.terrainTileSourceY >= 0)):
                             gfx.drawRegionScaled(self.spriteSheets[4], toSpriteSheetPixels(GradiusNeoGame.terrainTileSourceX), toSpriteSheetPixels(GradiusNeoGame.terrainTileSourceY), 12, 12, 0, toRenderPixels(((screenTileColumn * 16) - ((GradiusNeoGame.state[StateSlot.VisualStageScrollX] % 16)))), toRenderPixels(((screenTileRow * 16) - ((GradiusNeoGame.state[StateSlot.CameraOffsetY] % 16)))), toRenderPixels(16), toRenderPixels(16), 20)
                     except Exception as error:
@@ -3679,7 +3679,7 @@ class GradiusNeoGame(GameSurface):
                 Clock.collectGarbage()
                 getAndIncrement(GradiusNeoGame.state, StateSlot.LogicFrame)
                 GradiusNeoGame.state[StateSlot.HeldInputBits] = self.heldInputBits
-                self.heldInputBits = (self.heldInputBits & (~self.releasedInputBits))
+                self.heldInputBits = to_int(to_int(self.heldInputBits) & to_int((~self.releasedInputBits)))
                 self.releasedInputBits = 0
                 GradiusNeoGame.state[StateSlot.PressedInputBits] = GradiusNeoGame.state[StateSlot.PressedInputAccumulator]
                 GradiusNeoGame.state[StateSlot.PressedInputAccumulator] = 0
@@ -3731,9 +3731,9 @@ class GradiusNeoGame(GameSurface):
                                     raise var27
                             self.loadSpriteSheet(1, "c2")
                             self.loadResourceIntoBuffer("c")
-                            var109 = (((GradiusNeoGame.resourceBuffer[4] << 8)) | ((GradiusNeoGame.resourceBuffer[5] & 255)))
+                            var109 = to_int(to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[4]) << (to_int(8) & 31)))) | to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[5]) & to_int(255)))))
                             for var92 in range(0, 20):
-                                GradiusNeoGame.state[(307 + var92)] = ((((((GradiusNeoGame.resourceBuffer[var109] & 255)) << 16)) | ((((GradiusNeoGame.resourceBuffer[(var109 + 1)] & 255)) << 8))) | ((GradiusNeoGame.resourceBuffer[(var109 + 2)] & 255)))
+                                GradiusNeoGame.state[(307 + var92)] = to_int(to_int(to_int(to_int((to_int(to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[var109]) & to_int(255)))) << (to_int(16) & 31)))) | to_int((to_int(to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[(var109 + 1)]) & to_int(255)))) << (to_int(8) & 31)))))) | to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[(var109 + 2)]) & to_int(255)))))
                                 var109 += 3
                             for var93 in range(0, 792):
                                 GradiusNeoGame.state[(327 + var93)] = GradiusNeoGame.resourceBuffer[var109]
@@ -3794,17 +3794,17 @@ class GradiusNeoGame(GameSurface):
                             var139 = False
                             self.drawBitmapText(gfx, "ABOUT", 43, 200)
                             self.drawBitmapText(gfx, "EXIT", 43, 216)
-                            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2)) != 0):
+                            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(2))) != 0):
                                 GradiusNeoGame.state[0] = (GradiusNeoGame.state[0] + 6)
                             else:
-                                if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64)) != 0):
+                                if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(64))) != 0):
                                     getAndIncrement(GradiusNeoGame.state, 0)
                             GradiusNeoGame.state[0] = (GradiusNeoGame.state[0] % 7)
-                            self.drawSpriteRegion(gfx, 0, (46 + ((GradiusNeoGame.state[StateSlot.LogicFrame] & 3))), toRenderPixels(20), toRenderPixels(((120 + (GradiusNeoGame.state[0] * 16)) - 2)), 20)
-                            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.RightSoftKey)) != 0):
+                            self.drawSpriteRegion(gfx, 0, (46 + (to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(3)))), toRenderPixels(20), toRenderPixels(((120 + (GradiusNeoGame.state[0] * 16)) - 2)), 20)
+                            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.RightSoftKey))) != 0):
                                 self.setSoftKeyLabels(6, 3)
                                 GradiusNeoGame.screenState = ScreenState.MainMenuExitConfirmation
-                            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.Fire)) != 0):
+                            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.Fire))) != 0):
                                 self.setSoftKeyLabels(6, 6)
                                 if (GradiusNeoGame.state[0] == 0):
                                     self.setSoftKeyLabels(6, 3)
@@ -3875,17 +3875,17 @@ class GradiusNeoGame(GameSurface):
                                 var15 = (-1)
                                 var16 = 4
                                 self.drawBitmapGlyphRun(gfx, 294, 7, 42, 208)
-                            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2)) != 0):
+                            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(2))) != 0):
                                 GradiusNeoGame.state[0] = (((GradiusNeoGame.state[0] + var16) - 1) + 1)
                             else:
-                                if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64)) != 0):
+                                if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(64))) != 0):
                                     getAndIncrement(GradiusNeoGame.state, 0)
                             GradiusNeoGame.state[0] = (GradiusNeoGame.state[0] % ((var16 + 1)))
-                            self.drawSpriteRegion(gfx, 0, (46 + ((GradiusNeoGame.state[StateSlot.LogicFrame] & 3))), 19, toRenderPixels(((144 + (16 * GradiusNeoGame.state[0])) - 2)), 20)
-                            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.RightSoftKey)) != 0):
+                            self.drawSpriteRegion(gfx, 0, (46 + (to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(3)))), 19, toRenderPixels(((144 + (16 * GradiusNeoGame.state[0])) - 2)), 20)
+                            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.RightSoftKey))) != 0):
                                 GradiusNeoGame.screenState = ScreenState.MenuTransition
                                 GradiusNeoGame.state[0] = _set_item(GradiusNeoGame.state, 1, 0)
-                            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.Fire)) != 0):
+                            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.Fire))) != 0):
                                 if (GradiusNeoGame.state[0] == 0):
                                     GradiusNeoGame.screenState = ScreenState.GameplayOptions
                                     GradiusNeoGame.state[0] = 0
@@ -3928,35 +3928,35 @@ class GradiusNeoGame(GameSurface):
                             self.drawBitmapText(gfx, (str("FRAME RATE - ") + str((("60 FPS" if (GradiusNeoGame.state[4] == 1) else "10 FPS")))), 28, 176)
                             self.drawBitmapGlyphRun(gfx, 198, 4, 28, 192)
                             self.drawBitmapGlyphRun(gfx, 294, 7, 28, 208)
-                            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2)) != 0):
+                            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(2))) != 0):
                                 GradiusNeoGame.state[0] = (GradiusNeoGame.state[0] + 5)
                             else:
-                                if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64)) != 0):
+                                if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(64))) != 0):
                                     getAndIncrement(GradiusNeoGame.state, 0)
                             GradiusNeoGame.state[0] = (GradiusNeoGame.state[0] % 6)
                             gameplayOptionCursorY = [46, 94, 142, 174, 190, 206][GradiusNeoGame.state[0]]
-                            self.drawSpriteRegion(gfx, 0, (46 + ((GradiusNeoGame.state[StateSlot.LogicFrame] & 3))), 9, toRenderPixels(gameplayOptionCursorY), 20)
-                            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.RightSoftKey)) != 0):
+                            self.drawSpriteRegion(gfx, 0, (46 + (to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(3)))), 9, toRenderPixels(gameplayOptionCursorY), 20)
+                            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.RightSoftKey))) != 0):
                                 GradiusNeoGame.screenState = ScreenState.OptionsMenu
                                 GradiusNeoGame.state[0] = 0
                             if (GradiusNeoGame.state[10] >= 0):
-                                if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 36)) != 0):
+                                if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(36))) != 0):
                                     if (GradiusNeoGame.state[0] == 0):
-                                        if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 4)) != 0):
+                                        if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(4))) != 0):
                                             GradiusNeoGame.state[1] = (GradiusNeoGame.state[1] + 3)
                                         else:
                                             getAndIncrement(GradiusNeoGame.state, 1)
                                         GradiusNeoGame.state[1] = (GradiusNeoGame.state[1] % 4)
                                     else:
                                         if (GradiusNeoGame.state[0] == 1):
-                                            GradiusNeoGame.state[2] = (GradiusNeoGame.state[2] ^ 1)
+                                            GradiusNeoGame.state[2] = to_int(to_int(GradiusNeoGame.state[2]) ^ to_int(1))
                                         else:
                                             if (GradiusNeoGame.state[0] == 2):
-                                                GradiusNeoGame.state[3] = (GradiusNeoGame.state[3] ^ 1)
+                                                GradiusNeoGame.state[3] = to_int(to_int(GradiusNeoGame.state[3]) ^ to_int(1))
                                             else:
                                                 if (GradiusNeoGame.state[0] == 3):
-                                                    GradiusNeoGame.state[4] = (GradiusNeoGame.state[4] ^ 1)
-                                if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.Fire)) != 0):
+                                                    GradiusNeoGame.state[4] = to_int(to_int(GradiusNeoGame.state[4]) ^ to_int(1))
+                                if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.Fire))) != 0):
                                     if (GradiusNeoGame.state[0] == 4):
                                         GradiusNeoGame.state[StateSlot.Difficulty] = GradiusNeoGame.state[1]
                                         GradiusNeoGame.state[StateSlot.AutoFireSetting] = GradiusNeoGame.state[2]
@@ -3978,7 +3978,7 @@ class GradiusNeoGame(GameSurface):
                             self.drawBitmapGlyphRun(gfx, 118, 3, 14, 96)
                             self.drawBitmapGlyphRun(gfx, 121, 3, 14, 144)
                             self.drawBitmapGlyphRun(gfx, 294, 7, 42, 192)
-                            self.drawSpriteRegion(gfx, 0, (46 + ((GradiusNeoGame.state[StateSlot.LogicFrame] & 3))), 19, 142, 20)
+                            self.drawSpriteRegion(gfx, 0, (46 + (to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(3)))), 19, 142, 20)
                             self.drawBitmapNumber(gfx, GradiusNeoGame.state[97], 9, 84, 64, 4)
                             self.drawBitmapNumber(gfx, (int_div(GradiusNeoGame.state[100], 5) + 1), 1, 28, 64, 4)
                             self.drawBitmapGlyphRun(gfx, 124, 1, 42, 64)
@@ -3991,7 +3991,7 @@ class GradiusNeoGame(GameSurface):
                             self.drawBitmapNumber(gfx, (int_div(GradiusNeoGame.state[102], 5) + 1), 1, 28, 160, 4)
                             self.drawBitmapGlyphRun(gfx, 124, 1, 42, 160)
                             self.drawBitmapNumber(gfx, (((GradiusNeoGame.state[102] % 5)) + 1), 1, 56, 160, 4)
-                            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 8388864)) != 0):
+                            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(8388864))) != 0):
                                 GradiusNeoGame.screenState = ScreenState.OptionsMenu
                                 GradiusNeoGame.state[0] = 0
                             raise _SwitchBreak()
@@ -4014,42 +4014,42 @@ class GradiusNeoGame(GameSurface):
                                 self.drawBitmapGlyphRun(gfx, (428 + (((GradiusNeoGame.state[3] - 1)) * 8)), 8, 112, 160)
                             self.drawBitmapGlyphRun(gfx, 198, 4, 28, 192)
                             self.drawBitmapGlyphRun(gfx, 294, 7, 28, 208)
-                            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2)) != 0):
+                            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(2))) != 0):
                                 GradiusNeoGame.state[0] = (GradiusNeoGame.state[0] + 4)
                             else:
-                                if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64)) != 0):
+                                if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(64))) != 0):
                                     getAndIncrement(GradiusNeoGame.state, 0)
                             GradiusNeoGame.state[0] = (GradiusNeoGame.state[0] % 5)
                             if (GradiusNeoGame.state[0] == 4):
-                                self.drawSpriteRegion(gfx, 0, (46 + ((GradiusNeoGame.state[StateSlot.LogicFrame] & 3))), 9, 154, 20)
+                                self.drawSpriteRegion(gfx, 0, (46 + (to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(3)))), 9, 154, 20)
                             else:
-                                self.drawSpriteRegion(gfx, 0, (46 + ((GradiusNeoGame.state[StateSlot.LogicFrame] & 3))), 9, toRenderPixels(((16 * ((3 + (GradiusNeoGame.state[0] * 3)))) - 2)), 20)
+                                self.drawSpriteRegion(gfx, 0, (46 + (to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(3)))), 9, toRenderPixels(((16 * ((3 + (GradiusNeoGame.state[0] * 3)))) - 2)), 20)
                             if (GradiusNeoGame.state[10] >= 0):
-                                if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 36)) != 0):
+                                if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(36))) != 0):
                                     if (GradiusNeoGame.state[0] == 0):
-                                        if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 4)) != 0):
+                                        if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(4))) != 0):
                                             GradiusNeoGame.state[1] = (GradiusNeoGame.state[1] + ((GradiusNeoGame.state[66] - 1)))
                                         else:
                                             getAndIncrement(GradiusNeoGame.state, 1)
                                         GradiusNeoGame.state[1] = (GradiusNeoGame.state[1] % GradiusNeoGame.state[66])
                                     else:
                                         if (GradiusNeoGame.state[0] == 1):
-                                            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 4)) != 0):
+                                            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(4))) != 0):
                                                 GradiusNeoGame.state[2] = (GradiusNeoGame.state[2] + ((GradiusNeoGame.state[67] - 1)))
                                             else:
                                                 getAndIncrement(GradiusNeoGame.state, 2)
                                             GradiusNeoGame.state[2] = (GradiusNeoGame.state[2] % GradiusNeoGame.state[67])
                                         else:
                                             if (GradiusNeoGame.state[0] == 2):
-                                                if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 4)) != 0):
+                                                if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(4))) != 0):
                                                     GradiusNeoGame.state[3] = (GradiusNeoGame.state[3] + ((GradiusNeoGame.state[68] - 1)))
                                                 else:
                                                     getAndIncrement(GradiusNeoGame.state, 3)
                                                 GradiusNeoGame.state[3] = (GradiusNeoGame.state[3] % GradiusNeoGame.state[68])
-                                if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.RightSoftKey)) != 0):
+                                if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.RightSoftKey))) != 0):
                                     GradiusNeoGame.screenState = ScreenState.OptionsMenu
                                     GradiusNeoGame.state[0] = 0
-                                if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.Fire)) != 0):
+                                if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.Fire))) != 0):
                                     if (GradiusNeoGame.state[0] == 3):
                                         GradiusNeoGame.state[StateSlot.MissileVariant] = GradiusNeoGame.state[1]
                                         GradiusNeoGame.state[70] = GradiusNeoGame.state[2]
@@ -4070,16 +4070,16 @@ class GradiusNeoGame(GameSurface):
                                 self.drawBitmapGlyphRun(gfx, (259 + (stageIndex * 7)), 7, 71, (96 + (stageIndex * 16)))
                             exitMenuRow = (GradiusNeoGame.state[StateSlot.HighestUnlockedStage] + 1)
                             self.drawBitmapGlyphRun(gfx, 294, 7, 71, (96 + (exitMenuRow * 16)))
-                            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2)) != 0):
+                            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(2))) != 0):
                                 GradiusNeoGame.state[0] = ((GradiusNeoGame.state[0] + GradiusNeoGame.state[StateSlot.HighestUnlockedStage]) + 1)
                             else:
-                                if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64)) != 0):
+                                if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(64))) != 0):
                                     getAndIncrement(GradiusNeoGame.state, 0)
                             GradiusNeoGame.state[0] = (GradiusNeoGame.state[0] % ((GradiusNeoGame.state[StateSlot.HighestUnlockedStage] + 2)))
-                            self.drawSpriteRegion(gfx, 0, (46 + ((GradiusNeoGame.state[StateSlot.LogicFrame] & 3))), 41, toRenderPixels(((48 + (16 * ((3 + GradiusNeoGame.state[0])))) - 2)), 20)
-                            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.RightSoftKey)) != 0):
+                            self.drawSpriteRegion(gfx, 0, (46 + (to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(3)))), 41, toRenderPixels(((48 + (16 * ((3 + GradiusNeoGame.state[0])))) - 2)), 20)
+                            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.RightSoftKey))) != 0):
                                 GradiusNeoGame.screenState = ScreenState.ReturnToTitle
-                            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.Fire)) != 0):
+                            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.Fire))) != 0):
                                 if (GradiusNeoGame.state[0] == (GradiusNeoGame.state[StateSlot.HighestUnlockedStage] + 1)):
                                     GradiusNeoGame.screenState = ScreenState.ReturnToTitle
                                 else:
@@ -4094,9 +4094,9 @@ class GradiusNeoGame(GameSurface):
                                     gfx.drawString("CHANGE DIFFICULTY", 90, 60, 17)
                                     gfx.drawString("TO HARD OR NORMAL", 90, 80, 17)
                                     gfx.drawString("TO CONTINUE", 90, 99, 17)
-                                    if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.RightSoftKey)) != 0):
+                                    if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.RightSoftKey))) != 0):
                                         GradiusNeoGame.screenState = ScreenState.ReturnToTitle
-                                    if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.Fire)) != 0):
+                                    if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.Fire))) != 0):
                                         GradiusNeoGame.screenState = ScreenState.ReturnToTitle
                                 else:
                                     getAndIncrement(GradiusNeoGame.state, 0)
@@ -4121,8 +4121,8 @@ class GradiusNeoGame(GameSurface):
                                                     if (GradiusNeoGame.state[3] == 3):
                                                         self.drawBitmapGlyphRun(gfx, 422, 6, 8, 120)
                                         self.drawBitmapGlyphRun(gfx, 301, 7, 88, 176)
-                                        self.drawSpriteRegion(gfx, 0, (46 + ((GradiusNeoGame.state[StateSlot.LogicFrame] & 3))), 54, 130, 20)
-                                        if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.Fire)) != 0):
+                                        self.drawSpriteRegion(gfx, 0, (46 + (to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(3)))), 54, 130, 20)
+                                        if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.Fire))) != 0):
                                             self.stopAllAudio()
                                             GradiusNeoGame.screenState = ScreenState.ContinueOrResults
                                             GradiusNeoGame.state[0] = 0
@@ -4139,16 +4139,16 @@ class GradiusNeoGame(GameSurface):
                                         self.drawBitmapNumber(gfx, GradiusNeoGame.extraModeBestScores[stageIndex], 7, 128, (48 + int_div((((stageIndex * 16) * 9)), 4)), 4)
                                     exitMenuRow = (GradiusNeoGame.state[StateSlot.HighestUnlockedStage] + 1)
                                     self.drawBitmapGlyphRun(gfx, 301, 7, 16, (32 + int_div((((exitMenuRow * 16) * 9)), 4)))
-                                    if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2)) != 0):
+                                    if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(2))) != 0):
                                         GradiusNeoGame.state[1] = ((GradiusNeoGame.state[1] + GradiusNeoGame.state[StateSlot.HighestUnlockedStage]) + 1)
                                     else:
-                                        if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64)) != 0):
+                                        if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(64))) != 0):
                                             getAndIncrement(GradiusNeoGame.state, 1)
                                     GradiusNeoGame.state[1] = (GradiusNeoGame.state[1] % ((GradiusNeoGame.state[StateSlot.HighestUnlockedStage] + 2)))
-                                    self.drawSpriteRegion(gfx, 0, (46 + ((GradiusNeoGame.state[StateSlot.LogicFrame] & 3))), 0, toRenderPixels(((32 + int_div((((GradiusNeoGame.state[1] * 16) * 9)), 4)) - 2)), 20)
-                                    if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.RightSoftKey)) != 0):
+                                    self.drawSpriteRegion(gfx, 0, (46 + (to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(3)))), 0, toRenderPixels(((32 + int_div((((GradiusNeoGame.state[1] * 16) * 9)), 4)) - 2)), 20)
+                                    if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.RightSoftKey))) != 0):
                                         GradiusNeoGame.screenState = ScreenState.ReturnToTitle
-                                    if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.Fire)) != 0):
+                                    if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.Fire))) != 0):
                                         if (GradiusNeoGame.state[1] == (GradiusNeoGame.state[StateSlot.HighestUnlockedStage] + 1)):
                                             GradiusNeoGame.screenState = ScreenState.ReturnToTitle
                                         else:
@@ -4158,7 +4158,7 @@ class GradiusNeoGame(GameSurface):
                                             GradiusNeoGame.runtimeFlags[9] = True
                                             GradiusNeoGame.requestSoundEffect(11)
                             self.drawBitmapGlyphRun(gfx, 37, 10, 50, 0)
-                            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.RightSoftKey)) != 0):
+                            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.RightSoftKey))) != 0):
                                 GradiusNeoGame.screenState = ScreenState.ReturnToTitle
                             raise _SwitchBreak()
                         case ScreenState.InitializeNewGame:
@@ -4239,14 +4239,14 @@ class GradiusNeoGame(GameSurface):
                             self.drawBitmapGlyphRun(gfx, 7, 10, 50, 176)
                             self.drawBitmapGlyphRun(gfx, 294, 7, 50, 192)
                             self.drawDifficultyLabel(gfx, GradiusNeoGame.state[3], 124)
-                            self.drawSpriteRegion(gfx, 0, (46 + ((GradiusNeoGame.state[StateSlot.LogicFrame] & 3))), 25, toRenderPixels(((32 + (16 * ((9 + GradiusNeoGame.state[0])))) - 2)), 20)
-                            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2)) != 0):
+                            self.drawSpriteRegion(gfx, 0, (46 + (to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(3)))), 25, toRenderPixels(((32 + (16 * ((9 + GradiusNeoGame.state[0])))) - 2)), 20)
+                            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(2))) != 0):
                                 getAndIncrement(GradiusNeoGame.state, 0)
                             else:
-                                if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64)) != 0):
+                                if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(64))) != 0):
                                     getAndIncrement(GradiusNeoGame.state, 0)
                             GradiusNeoGame.state[0] = (GradiusNeoGame.state[0] % 2)
-                            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.Fire)) != 0):
+                            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.Fire))) != 0):
                                 if (GradiusNeoGame.state[0] == 0):
                                     GradiusNeoGame.state[StateSlot.CurrentRound] = 0
                                     GradiusNeoGame.state[24] = 0
@@ -4334,22 +4334,22 @@ class GradiusNeoGame(GameSurface):
                                     GradiusNeoGame.state[90] = _set_item(GradiusNeoGame.state, 91, _set_item(GradiusNeoGame.state, 92, _set_item(GradiusNeoGame.state, 93, 0)))
                                     GradiusNeoGame.state[9739] = _set_item(GradiusNeoGame.state, 9740, _set_item(GradiusNeoGame.state, 9741, _set_item(GradiusNeoGame.state, 9742, _set_item(GradiusNeoGame.state, 9743, _set_item(GradiusNeoGame.state, 9744, _set_item(GradiusNeoGame.state, 9745, _set_item(GradiusNeoGame.state, 9746, 0)))))))
                             self.loadResourceIntoBuffer((str("") + str(GradiusNeoGame.state[StateSlot.CurrentStage])))
-                            var99 = (((GradiusNeoGame.resourceBuffer[0] << 8)) | ((GradiusNeoGame.resourceBuffer[1] & 255)))
-                            GradiusNeoGame.state[37] = (((GradiusNeoGame.resourceBuffer[var99] & 255)) << 8)
+                            var99 = to_int(to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[0]) << (to_int(8) & 31)))) | to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[1]) & to_int(255)))))
+                            GradiusNeoGame.state[37] = to_int(to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[var99]) & to_int(255)))) << (to_int(8) & 31))
                             var99 += 1
-                            GradiusNeoGame.state[37] = (GradiusNeoGame.state[37] | ((GradiusNeoGame.resourceBuffer[var99] & 255)))
+                            GradiusNeoGame.state[37] = to_int(to_int(GradiusNeoGame.state[37]) | to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[var99]) & to_int(255)))))
                             var99 += 1
-                            GradiusNeoGame.state[38] = (((GradiusNeoGame.resourceBuffer[var99] & 255)) << 8)
+                            GradiusNeoGame.state[38] = to_int(to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[var99]) & to_int(255)))) << (to_int(8) & 31))
                             var99 += 1
-                            GradiusNeoGame.state[38] = (GradiusNeoGame.state[38] | ((GradiusNeoGame.resourceBuffer[var99] & 255)))
+                            GradiusNeoGame.state[38] = to_int(to_int(GradiusNeoGame.state[38]) | to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[var99]) & to_int(255)))))
                             var99 += 1
-                            GradiusNeoGame.state[39] = (GradiusNeoGame.resourceBuffer[var99] & 255)
+                            GradiusNeoGame.state[39] = to_int(to_int(GradiusNeoGame.resourceBuffer[var99]) & to_int(255))
                             var99 += 1
-                            GradiusNeoGame.state[40] = (GradiusNeoGame.resourceBuffer[var99] & 255)
+                            GradiusNeoGame.state[40] = to_int(to_int(GradiusNeoGame.resourceBuffer[var99]) & to_int(255))
                             var99 += 1
-                            GradiusNeoGame.state[41] = (GradiusNeoGame.resourceBuffer[var99] & 255)
+                            GradiusNeoGame.state[41] = to_int(to_int(GradiusNeoGame.resourceBuffer[var99]) & to_int(255))
                             var99 += 1
-                            GradiusNeoGame.state[StateSlot.StageScrollSpeed] = (GradiusNeoGame.resourceBuffer[var99] & 255)
+                            GradiusNeoGame.state[StateSlot.StageScrollSpeed] = to_int(to_int(GradiusNeoGame.resourceBuffer[var99]) & to_int(255))
                             var99 += 1
                             GradiusNeoGame.state[StateSlot.StageWorldHeight] = GradiusNeoGame.state[37]
                             GradiusNeoGame.state[45] = 1
@@ -4364,20 +4364,20 @@ class GradiusNeoGame(GameSurface):
                                 GradiusNeoGame.state[StateSlot.PlayerY] = (GradiusNeoGame.state[StateSlot.PlayerY] + GradiusNeoGame.state[StateSlot.CameraOffsetY])
                                 for var83 in range(1, 17):
                                     GradiusNeoGame.state[(1143 + var83)] = (GradiusNeoGame.state[(1143 + var83)] + GradiusNeoGame.state[StateSlot.CameraOffsetY])
-                                    GradiusNeoGame.state[(1175 + var83)] = (GradiusNeoGame.state[(1175 + var83)] + ((GradiusNeoGame.state[StateSlot.CameraOffsetY] << 4)))
+                                    GradiusNeoGame.state[(1175 + var83)] = (GradiusNeoGame.state[(1175 + var83)] + (to_int(to_int(GradiusNeoGame.state[StateSlot.CameraOffsetY]) << (to_int(4) & 31))))
                             stageEventCount = 0
                             while (GradiusNeoGame.resourceBuffer[var99] != (-1)):
-                                GradiusNeoGame.stageEventScript[(3656 + stageEventCount)] = to_short((((GradiusNeoGame.resourceBuffer[var99] << 8)) + ((GradiusNeoGame.resourceBuffer[(var99 + 1)] & 255))))
+                                GradiusNeoGame.stageEventScript[(3656 + stageEventCount)] = to_short(((to_int(to_int(GradiusNeoGame.resourceBuffer[var99]) << (to_int(8) & 31))) + (to_int(to_int(GradiusNeoGame.resourceBuffer[(var99 + 1)]) & to_int(255)))))
                                 stageEventCount += 1
                                 var99 += 2
                             var99 += 1
                             GradiusNeoGame.state[StateSlot.StageScriptPosition] = stageEventCount
-                            stageEventWord = (((GradiusNeoGame.resourceBuffer[var99] << 8)) | ((GradiusNeoGame.resourceBuffer[(var99 + 1)] & 255)))
+                            stageEventWord = to_int(to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[var99]) << (to_int(8) & 31)))) | to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[(var99 + 1)]) & to_int(255)))))
                             while (stageEventWord != 32512):
                                 GradiusNeoGame.stageEventScript[(3656 + stageEventCount)] = to_short(stageEventWord)
                                 stageEventCount += 1
                                 var99 += 2
-                                stageEventWord = (((GradiusNeoGame.resourceBuffer[var99] << 8)) | ((GradiusNeoGame.resourceBuffer[(var99 + 1)] & 255)))
+                                stageEventWord = to_int(to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[var99]) << (to_int(8) & 31)))) | to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[(var99 + 1)]) & to_int(255)))))
                             if (GradiusNeoGame.state[StateSlot.CurrentStage] == 1):
                                 try:
                                     self.spriteSheets[4] = Image.createImage("/img_st2c")
@@ -4387,8 +4387,8 @@ class GradiusNeoGame(GameSurface):
                                     else:
                                         raise var25
                                 var140 = 0
-                                var140 = (((GradiusNeoGame.resourceBuffer[6] << 8)) | ((GradiusNeoGame.resourceBuffer[7] & 255)))
-                                GradiusNeoGame.state[48] = ((var140 + (((GradiusNeoGame.resourceBuffer[(var140 + 1)] & 255)) * 64)) + 6)
+                                var140 = to_int(to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[6]) << (to_int(8) & 31)))) | to_int((to_int(to_int(GradiusNeoGame.resourceBuffer[7]) & to_int(255)))))
+                                GradiusNeoGame.state[48] = ((var140 + ((to_int(to_int(GradiusNeoGame.resourceBuffer[(var140 + 1)]) & to_int(255))) * 64)) + 6)
                             GradiusNeoGame.state[24] = 0
                             if (2 <= GradiusNeoGame.state[StateSlot.Difficulty]):
                                 GradiusNeoGame.state[24] = (((((GradiusNeoGame.state[StateSlot.Difficulty] - 2)) * 8) + GradiusNeoGame.state[StateSlot.CurrentStage]) + (GradiusNeoGame.state[StateSlot.CurrentRound] * 8))
@@ -4435,11 +4435,11 @@ class GradiusNeoGame(GameSurface):
                                     self.drawBitmapNumber(gfx, 0, 1, 183, 120, 4)
                                 self.drawBitmapGlyphRun(gfx, 337, 3, 99, 152)
                                 self.drawBitmapGlyphRun(gfx, 340, 3, 99, 168)
-                                if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 66)) != 0):
-                                    GradiusNeoGame.state[0] = (GradiusNeoGame.state[0] ^ 1)
-                                self.drawSpriteRegion(gfx, 0, (46 + ((GradiusNeoGame.state[StateSlot.LogicFrame] & 3))), 62, toRenderPixels(((152 + (GradiusNeoGame.state[0] * 16)) - 2)), 20)
+                                if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(66))) != 0):
+                                    GradiusNeoGame.state[0] = to_int(to_int(GradiusNeoGame.state[0]) ^ to_int(1))
+                                self.drawSpriteRegion(gfx, 0, (46 + (to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(3)))), 62, toRenderPixels(((152 + (GradiusNeoGame.state[0] * 16)) - 2)), 20)
                             self.drawBitmapText(gfx, "PRESS OK", 64, 208)
-                            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.Fire)) != 0):
+                            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.Fire))) != 0):
                                 GradiusNeoGame.screenState = ScreenState.ReturnToTitle
                                 if ((GradiusNeoGame.state[StateSlot.Continues] > 0) and (GradiusNeoGame.state[0] == 0)):
                                     getAndDecrement(GradiusNeoGame.state, StateSlot.Continues)
@@ -4465,11 +4465,11 @@ class GradiusNeoGame(GameSurface):
                                     self.drawBitmapNumber(gfx, 0, 1, 183, 120, 4)
                                 self.drawBitmapGlyphRun(gfx, 337, 3, 99, 152)
                                 self.drawBitmapGlyphRun(gfx, 340, 3, 99, 168)
-                                if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 66)) != 0):
-                                    GradiusNeoGame.state[0] = (GradiusNeoGame.state[0] ^ 1)
-                                self.drawSpriteRegion(gfx, 0, (46 + ((GradiusNeoGame.state[StateSlot.LogicFrame] & 3))), 62, toRenderPixels(((152 + (GradiusNeoGame.state[0] * 16)) - 2)), 20)
+                                if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(66))) != 0):
+                                    GradiusNeoGame.state[0] = to_int(to_int(GradiusNeoGame.state[0]) ^ to_int(1))
+                                self.drawSpriteRegion(gfx, 0, (46 + (to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(3)))), 62, toRenderPixels(((152 + (GradiusNeoGame.state[0] * 16)) - 2)), 20)
                             self.drawBitmapText(gfx, "PRESS OK", 64, 208)
-                            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.Fire)) != 0):
+                            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.Fire))) != 0):
                                 GradiusNeoGame.screenState = ScreenState.ReturnToTitle
                                 if ((GradiusNeoGame.state[StateSlot.Continues] > 0) and (GradiusNeoGame.state[0] == 0)):
                                     getAndDecrement(GradiusNeoGame.state, StateSlot.Continues)
@@ -4513,15 +4513,15 @@ class GradiusNeoGame(GameSurface):
                             if (GradiusNeoGame.state[2] <= 1):
                                 self.drawSpriteRegion(gfx, 3, 283, toRenderPixels(((41 + int_div(GradiusNeoGame.state[1], 16)) - 16)), 0, 20)
                                 for var73 in range(0, 20):
-                                    var125 = (((GradiusNeoGame.state[(1055 + var73)] - (((int_div(GradiusNeoGame.state[1], 2)) * ((int_div(var73, 2) + 1))) * GradiusNeoGame.state[45]))) & 255)
-                                    var133 = (GradiusNeoGame.state[((1055 + 20) + var73)] & 255)
+                                    var125 = to_int(to_int(((GradiusNeoGame.state[(1055 + var73)] - (((int_div(GradiusNeoGame.state[1], 2)) * ((int_div(var73, 2) + 1))) * GradiusNeoGame.state[45])))) & to_int(255))
+                                    var133 = to_int(to_int(GradiusNeoGame.state[((1055 + 20) + var73)]) & to_int(255))
                                     gfx.setColor(GradiusNeoGame.state[(307 + var73)])
                                     gfx.drawLine(toRenderPixels(var125), toRenderPixels(var133), toRenderPixels(var125), toRenderPixels(var133))
                                 self.drawSpriteRegion(gfx, 2, 351, toRenderPixels(((GAME_VIEW_WIDTH - int_div(GradiusNeoGame.state[1], 6)) + 16)), 108, 20)
-                                if ((((GradiusNeoGame.state[StateSlot.LogicFrame] & 7)) == 0) or (((GradiusNeoGame.state[StateSlot.LogicFrame] & 7)) == 3)):
+                                if (((to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(7))) == 0) or ((to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(7))) == 3)):
                                     self.drawSpriteRegion(gfx, 2, 349, toRenderPixels(((GAME_VIEW_WIDTH - int_div(GradiusNeoGame.state[1], 6)) + 16)), 120, 20)
                                 else:
-                                    if ((((GradiusNeoGame.state[StateSlot.LogicFrame] & 7)) == 2) or (((GradiusNeoGame.state[StateSlot.LogicFrame] & 7)) == 4)):
+                                    if (((to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(7))) == 2) or ((to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(7))) == 4)):
                                         self.drawSpriteRegion(gfx, 2, 350, toRenderPixels(((GAME_VIEW_WIDTH - int_div(GradiusNeoGame.state[1], 6)) + 16)), 120, 20)
                                 if (GradiusNeoGame.state[2] == 0):
                                     var113 = 0
@@ -4547,7 +4547,7 @@ class GradiusNeoGame(GameSurface):
                                 GradiusNeoGame.state[0] = (GradiusNeoGame.state[0] - 4)
                                 GradiusNeoGame.state[1] = (GradiusNeoGame.state[1] + 2)
                                 GradiusNeoGame.state[3] = (GradiusNeoGame.state[3] + 8)
-                                if (((GradiusNeoGame.state[StateSlot.HeldInputBits] & InputBit.Fire)) != 0):
+                                if ((to_int(to_int(GradiusNeoGame.state[StateSlot.HeldInputBits]) & to_int(InputBit.Fire))) != 0):
                                     GradiusNeoGame.state[0] = (GradiusNeoGame.state[0] - 28)
                                     GradiusNeoGame.state[1] = (GradiusNeoGame.state[1] + 14)
                                     GradiusNeoGame.state[3] = (GradiusNeoGame.state[3] + 24)
@@ -4571,12 +4571,12 @@ class GradiusNeoGame(GameSurface):
                                     gfx.fillRect(0, 0, RENDERED_GAME_VIEW_WIDTH, toRenderPixels((120 - GradiusNeoGame.state[3])))
                                     gfx.fillRect(0, toRenderPixels((120 + GradiusNeoGame.state[3])), RENDERED_GAME_VIEW_WIDTH, RENDERED_GAME_VIEW_WIDTH)
                                     GradiusNeoGame.state[3] = (GradiusNeoGame.state[3] + 2)
-                                    if (((GradiusNeoGame.state[StateSlot.HeldInputBits] & InputBit.Fire)) != 0):
+                                    if ((to_int(to_int(GradiusNeoGame.state[StateSlot.HeldInputBits]) & to_int(InputBit.Fire))) != 0):
                                         GradiusNeoGame.state[3] = (GradiusNeoGame.state[3] + 14)
                                     if (52 <= GradiusNeoGame.state[3]):
                                         if (GradiusNeoGame.state[3] > 120):
                                             GradiusNeoGame.state[3] = 120
-                                        if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.Fire)) != 0):
+                                        if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.Fire))) != 0):
                                             self.stopAllAudio()
                                             GradiusNeoGame.screenState = ScreenState.ShowStageLoading
                                             if (3 <= GradiusNeoGame.state[StateSlot.CurrentRound]):
@@ -4599,24 +4599,24 @@ class GradiusNeoGame(GameSurface):
                             self.drawBitmapGlyphRun(gfx, 439, 3, 16, 128)
                             self.drawBitmapGlyphRun(gfx, 442, 4, 16, 208)
                             self.drawBitmapGlyphRun(gfx, 294, 7, 16, GAMEPLAY_HEIGHT)
-                            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2)) != 0):
+                            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(2))) != 0):
                                 GradiusNeoGame.state[0] = (GradiusNeoGame.state[0] + 3)
                             else:
-                                if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64)) != 0):
+                                if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(64))) != 0):
                                     getAndIncrement(GradiusNeoGame.state, 0)
                             GradiusNeoGame.state[0] = (GradiusNeoGame.state[0] % 4)
                             if (GradiusNeoGame.state[0] == 3):
-                                self.drawSpriteRegion(gfx, 0, (46 + ((GradiusNeoGame.state[StateSlot.LogicFrame] & 3))), (-1), 166, 20)
+                                self.drawSpriteRegion(gfx, 0, (46 + (to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(3)))), (-1), 166, 20)
                             else:
-                                self.drawSpriteRegion(gfx, 0, (46 + ((GradiusNeoGame.state[StateSlot.LogicFrame] & 3))), (-1), toRenderPixels(((16 * ((3 + (GradiusNeoGame.state[0] * 5)))) - 2)), 20)
-                            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 4)) != 0):
+                                self.drawSpriteRegion(gfx, 0, (46 + (to_int(to_int(GradiusNeoGame.state[StateSlot.LogicFrame]) & to_int(3)))), (-1), toRenderPixels(((16 * ((3 + (GradiusNeoGame.state[0] * 5)))) - 2)), 20)
+                            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(4))) != 0):
                                 if (GradiusNeoGame.state[0] == 0):
                                     GradiusNeoGame.state[1] = (GradiusNeoGame.state[1] + 8)
                                 else:
                                     if (GradiusNeoGame.state[0] == 1):
                                         GradiusNeoGame.state[2] = (GradiusNeoGame.state[2] + 11)
                             else:
-                                if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & 32)) != 0):
+                                if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(32))) != 0):
                                     if (GradiusNeoGame.state[0] == 0):
                                         getAndIncrement(GradiusNeoGame.state, 1)
                                     else:
@@ -4624,12 +4624,12 @@ class GradiusNeoGame(GameSurface):
                                             getAndIncrement(GradiusNeoGame.state, 2)
                             GradiusNeoGame.state[1] = (GradiusNeoGame.state[1] % 9)
                             GradiusNeoGame.state[2] = (GradiusNeoGame.state[2] % 12)
-                            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.RightSoftKey)) != 0):
+                            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.RightSoftKey))) != 0):
                                 GradiusNeoGame.screenState = ScreenState.OptionsMenu
                                 GradiusNeoGame.state[0] = 0
                                 self.stopAllAudio()
                                 self.soundTestActive = False
-                            if (((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.Fire)) != 0):
+                            if ((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(InputBit.Fire))) != 0):
                                 if (GradiusNeoGame.state[0] == 0):
                                     GradiusNeoGame.requestBackgroundMusic(SOUND_TEST_BGM_IDS[GradiusNeoGame.state[1]])
                                 else:
@@ -4681,7 +4681,7 @@ class GradiusNeoGame(GameSurface):
                                 if ((GradiusNeoGame.state[StateSlot.CheatUseCount] == 0) and (GradiusNeoGame.state[StateSlot.PressedInputBits] != 0)):
                                     self.updateCheatCode()
                             else:
-                                if ((((GradiusNeoGame.state[StateSlot.PressedInputBits] & 35651584)) != 0) or (not self.isShown())):
+                                if (((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(35651584))) != 0) or (not self.isShown())):
                                     GradiusNeoGame.runtimeFlags[4] = True
                                     GradiusNeoGame.screenState = ScreenState.EnterPauseMenu
                             if (not GradiusNeoGame.runtimeFlags[4]):
@@ -4691,7 +4691,7 @@ class GradiusNeoGame(GameSurface):
                                     while True:
                                         var34 = None
                                         try:
-                                            match ((var34 := (((((var4 := GradiusNeoGame.stageEventScript[(3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition])])) >> 8)) & 127))):
+                                            match ((var34 := to_int(to_int(((to_int(((var4 := GradiusNeoGame.stageEventScript[(3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition])]))) >> (to_int(8) & 31)))) & to_int(127)))):
                                                 case 0:
                                                     GradiusNeoGame.state[StateSlot.StageEventCountdown] = (GradiusNeoGame.state[StateSlot.StageEventCountdown] + (((var4 - 1)) * 8))
                                                     raise _SwitchBreak()
@@ -4700,10 +4700,10 @@ class GradiusNeoGame(GameSurface):
                                                     GradiusNeoGame.state[StateSlot.StageScriptAdvancePerTick] = 0
                                                     raise _SwitchBreak()
                                                 case 3:
-                                                    GradiusNeoGame.spawnEntity(var34, GAME_VIEW_WIDTH, 0, (var4 & 255))
+                                                    GradiusNeoGame.spawnEntity(var34, GAME_VIEW_WIDTH, 0, to_int(to_int(var4) & to_int(255)))
                                                     raise _SwitchBreak()
                                                 case 4:
-                                                    GradiusNeoGame.state[41] = (var4 & 255)
+                                                    GradiusNeoGame.state[41] = to_int(to_int(var4) & to_int(255))
                                                     if (GradiusNeoGame.state[41] == 1):
                                                         GradiusNeoGame.state[StateSlot.PlayerY] = (GradiusNeoGame.state[StateSlot.PlayerY] - GradiusNeoGame.state[StateSlot.CameraOffsetY])
                                                         for var35 in range(1, 17):
@@ -4712,7 +4712,7 @@ class GradiusNeoGame(GameSurface):
                                                         while (var5 != (-1)):
                                                             var6 = GradiusNeoGame.state[(EntityField.Next + var5)]
                                                             GradiusNeoGame.state[(EntityField.Y + var5)] = (GradiusNeoGame.state[(EntityField.Y + var5)] - GradiusNeoGame.state[StateSlot.CameraOffsetY])
-                                                            GradiusNeoGame.state[(EntityField.YFixed + var5)] = (GradiusNeoGame.state[(EntityField.YFixed + var5)] - ((GradiusNeoGame.state[StateSlot.CameraOffsetY] << 4)))
+                                                            GradiusNeoGame.state[(EntityField.YFixed + var5)] = (GradiusNeoGame.state[(EntityField.YFixed + var5)] - (to_int(to_int(GradiusNeoGame.state[StateSlot.CameraOffsetY]) << (to_int(4) & 31))))
                                                             var5 = var6
                                                         GradiusNeoGame.state[StateSlot.CameraOffsetY] = _set_item(GradiusNeoGame.state, StateSlot.PendingCameraDeltaY, 0)
                                                         GradiusNeoGame.state[StateSlot.StageWorldHeight] = GAMEPLAY_HEIGHT
@@ -4726,11 +4726,11 @@ class GradiusNeoGame(GameSurface):
                                                             GradiusNeoGame.state[((1265 + 240) + var37)] = 1
                                                     raise _SwitchBreak()
                                                 case 6:
-                                                    GradiusNeoGame.state[StateSlot.StageScrollSpeed] = (var4 & 255)
+                                                    GradiusNeoGame.state[StateSlot.StageScrollSpeed] = to_int(to_int(var4) & to_int(255))
                                                     raise _SwitchBreak()
                                                 case 7:
                                                     if (GradiusNeoGame.state[22] == 0):
-                                                        if (((var4 & 128)) != 0):
+                                                        if ((to_int(to_int(var4) & to_int(128))) != 0):
                                                             GradiusNeoGame.runtimeFlags[8] = True
                                                             GradiusNeoGame.spawnEntity(var34, GAME_VIEW_WIDTH, 0, 0)
                                                         else:
@@ -4738,41 +4738,41 @@ class GradiusNeoGame(GameSurface):
                                                     raise _SwitchBreak()
                                                 case 8:
                                                     if (GradiusNeoGame.state[22] == 0):
-                                                        if (((var4 & 128)) != 0):
+                                                        if ((to_int(to_int(var4) & to_int(128))) != 0):
                                                             GradiusNeoGame.runtimeFlags[7] = True
                                                             GradiusNeoGame.spawnEntity(var34, GAME_VIEW_WIDTH, 0, 0)
                                                         else:
                                                             GradiusNeoGame.runtimeFlags[7] = False
                                                     raise _SwitchBreak()
                                                 case 9:
-                                                    GradiusNeoGame.spawnEntity((((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & 65280)) >> 8), GAME_VIEW_WIDTH, (((var4 & 255)) * 4), ((((((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & 63)) << 16)) | ((((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & 64)) << 2))) | ((((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & 128)) >> 7))))
+                                                    GradiusNeoGame.spawnEntity((to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(65280)))) >> (to_int(8) & 31)), GAME_VIEW_WIDTH, ((to_int(to_int(var4) & to_int(255))) * 4), to_int(to_int(to_int(to_int((to_int(to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(63)))) << (to_int(16) & 31)))) | to_int((to_int(to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(64)))) << (to_int(2) & 31)))))) | to_int(((to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(128)))) >> (to_int(7) & 31))))))
                                                     getAndIncrement(GradiusNeoGame.state, StateSlot.StageScriptPosition)
                                                     raise _SwitchBreak()
                                                 case 43 | 44 | 45 | 46:
                                                     if (var34 >= 45):
-                                                        GradiusNeoGame.spawnEntity((var34 - 2), GAME_VIEW_WIDTH, (((var4 & 63)) * 16), (((((((var4 & 192)) << 18)) | ((((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & 61440)) << 4))) | ((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & 3840))) | ((((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & GAME_VIEW_WIDTH)) >> 4))))
+                                                        GradiusNeoGame.spawnEntity((var34 - 2), GAME_VIEW_WIDTH, ((to_int(to_int(var4) & to_int(63))) * 16), to_int(to_int(to_int(to_int(to_int(to_int((to_int(to_int((to_int(to_int(var4) & to_int(192)))) << (to_int(18) & 31)))) | to_int((to_int(to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(61440)))) << (to_int(4) & 31)))))) | to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(3840)))))) | to_int(((to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(GAME_VIEW_WIDTH)))) >> (to_int(4) & 31))))))
                                                     else:
-                                                        GradiusNeoGame.spawnEntity(var34, GAME_VIEW_WIDTH, (((var4 & 63)) * 4), (((((((var4 & 192)) << 18)) | ((((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & 61440)) << 4))) | ((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & 3840))) | ((((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & GAME_VIEW_WIDTH)) >> 4))))
-                                                    GradiusNeoGame.state[StateSlot.StageEventCountdown] = (GradiusNeoGame.state[StateSlot.StageEventCountdown] + (8 * ((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & 15))))
+                                                        GradiusNeoGame.spawnEntity(var34, GAME_VIEW_WIDTH, ((to_int(to_int(var4) & to_int(63))) * 4), to_int(to_int(to_int(to_int(to_int(to_int((to_int(to_int((to_int(to_int(var4) & to_int(192)))) << (to_int(18) & 31)))) | to_int((to_int(to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(61440)))) << (to_int(4) & 31)))))) | to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(3840)))))) | to_int(((to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(GAME_VIEW_WIDTH)))) >> (to_int(4) & 31))))))
+                                                    GradiusNeoGame.state[StateSlot.StageEventCountdown] = (GradiusNeoGame.state[StateSlot.StageEventCountdown] + (8 * (to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(15)))))
                                                     getAndIncrement(GradiusNeoGame.state, StateSlot.StageScriptPosition)
                                                     raise _SwitchBreak()
                                                 case 76 | 88 | 90:
-                                                    GradiusNeoGame.spawnEntity(var34, GAME_VIEW_WIDTH, (((var4 & 255)) * 4), ((((((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & 61440)) << 4)) | ((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & 3840))) | ((((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & GAME_VIEW_WIDTH)) >> 4))))
-                                                    GradiusNeoGame.state[StateSlot.StageEventCountdown] = (GradiusNeoGame.state[StateSlot.StageEventCountdown] + (8 * ((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & 15))))
+                                                    GradiusNeoGame.spawnEntity(var34, GAME_VIEW_WIDTH, ((to_int(to_int(var4) & to_int(255))) * 4), to_int(to_int(to_int(to_int((to_int(to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(61440)))) << (to_int(4) & 31)))) | to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(3840)))))) | to_int(((to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(GAME_VIEW_WIDTH)))) >> (to_int(4) & 31))))))
+                                                    GradiusNeoGame.state[StateSlot.StageEventCountdown] = (GradiusNeoGame.state[StateSlot.StageEventCountdown] + (8 * (to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(15)))))
                                                     getAndIncrement(GradiusNeoGame.state, StateSlot.StageScriptPosition)
                                                     raise _SwitchBreak()
                                                 case 111:
-                                                    GradiusNeoGame.spawnAuxiliaryEntity(var34, GAME_VIEW_WIDTH, (((var4 & 63)) * 4), (((((var4 & 64)) << 2)) | ((((var4 & 128)) >> 7))))
+                                                    GradiusNeoGame.spawnAuxiliaryEntity(var34, GAME_VIEW_WIDTH, ((to_int(to_int(var4) & to_int(63))) * 4), to_int(to_int((to_int(to_int((to_int(to_int(var4) & to_int(64)))) << (to_int(2) & 31)))) | to_int(((to_int((to_int(to_int(var4) & to_int(128)))) >> (to_int(7) & 31))))))
                                                     raise _SwitchBreak()
                                                 case 126:
                                                     getAndDecrement(GradiusNeoGame.state, StateSlot.StageScriptPosition)
                                                     raise _SwitchBreak()
                                                 case _:
-                                                    GradiusNeoGame.spawnEntity(var34, GAME_VIEW_WIDTH, (((var4 & 63)) * 4), (((((var4 & 64)) << 2)) | ((((var4 & 128)) >> 7))))
+                                                    GradiusNeoGame.spawnEntity(var34, GAME_VIEW_WIDTH, ((to_int(to_int(var4) & to_int(63))) * 4), to_int(to_int((to_int(to_int((to_int(to_int(var4) & to_int(64)))) << (to_int(2) & 31)))) | to_int(((to_int((to_int(to_int(var4) & to_int(128)))) >> (to_int(7) & 31))))))
                                         except _SwitchBreak:
                                             pass
                                         getAndIncrement(GradiusNeoGame.state, StateSlot.StageScriptPosition)
-                                        if not ((((var4 & 32768)) != 0)):
+                                        if not (((to_int(to_int(var4) & to_int(32768))) != 0)):
                                             break
                                 self.updatePlayerWeaponsAndCollisions()
                                 for var38 in range(0, 20):
@@ -4783,28 +4783,28 @@ class GradiusNeoGame(GameSurface):
                                                 if (GradiusNeoGame.state[(1245 + var38)] == 16):
                                                     var33 = 273
                                                 GradiusNeoGame.state[(1185 + var38)] = (GradiusNeoGame.state[(1185 + var38)] + 32)
-                                                if ((((GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY])) | GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[(1185 + var38)] - 8), (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | ((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)])))) < 0):
+                                                if ((to_int(to_int(to_int(to_int(GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | to_int(GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[(1185 + var38)] - 8), (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) | to_int(((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))))) < 0):
                                                     GradiusNeoGame.state[(1245 + var38)] = (-1)
                                                 GradiusNeoGame.enqueueProjectileRenderCommand(var38, 1, GradiusNeoGame.state[(1185 + var38)], GradiusNeoGame.state[(1205 + var38)], 15, var33, 0)
                                                 raise _SwitchBreak()
                                             case 2:
                                                 GradiusNeoGame.state[(1185 + var38)] = (GradiusNeoGame.state[(1185 + var38)] + 20)
                                                 GradiusNeoGame.state[(1205 + var38)] = (GradiusNeoGame.state[(1205 + var38)] - 20)
-                                                if (((((GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY])) | GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[(1185 + var38)] - 10), ((GradiusNeoGame.state[(1205 + var38)] + 10) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | ((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))) | (((16 + GradiusNeoGame.state[(1205 + var38)]) - GradiusNeoGame.state[StateSlot.CameraOffsetY])))) < 0):
+                                                if ((to_int(to_int(to_int(to_int(to_int(to_int(GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | to_int(GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[(1185 + var38)] - 10), ((GradiusNeoGame.state[(1205 + var38)] + 10) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) | to_int(((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))))) | to_int((((16 + GradiusNeoGame.state[(1205 + var38)]) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) < 0):
                                                     GradiusNeoGame.state[(1245 + var38)] = (-1)
                                                 if (GradiusNeoGame.state[(1245 + var38)] >= 0):
                                                     GradiusNeoGame.enqueueProjectileRenderCommand(var38, 1, GradiusNeoGame.state[(1185 + var38)], GradiusNeoGame.state[(1205 + var38)], 15, 118, 0)
                                                 raise _SwitchBreak()
                                             case 4:
                                                 GradiusNeoGame.state[(1185 + var38)] = (GradiusNeoGame.state[(1185 + var38)] - 32)
-                                                if ((((GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY])) | GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[(1185 + var38)] + 16), (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | ((16 + GradiusNeoGame.state[(1185 + var38)])))) < 0):
+                                                if ((to_int(to_int(to_int(to_int(GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | to_int(GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[(1185 + var38)] + 16), (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) | to_int(((16 + GradiusNeoGame.state[(1185 + var38)]))))) < 0):
                                                     GradiusNeoGame.state[(1245 + var38)] = (-1)
                                                 if (GradiusNeoGame.state[(1245 + var38)] >= 0):
                                                     GradiusNeoGame.enqueueProjectileRenderCommand(var38, 1, GradiusNeoGame.state[(1185 + var38)], GradiusNeoGame.state[(1205 + var38)], 15, 119, 0)
                                                 raise _SwitchBreak()
                                             case 6:
                                                 GradiusNeoGame.state[(1205 + var38)] = (GradiusNeoGame.state[(1205 + var38)] - 32)
-                                                if (((((GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY])) | GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], ((GradiusNeoGame.state[(1205 + var38)] - 16) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | ((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))) | (((16 + GradiusNeoGame.state[(1205 + var38)]) - GradiusNeoGame.state[StateSlot.CameraOffsetY])))) < 0):
+                                                if ((to_int(to_int(to_int(to_int(to_int(to_int(GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | to_int(GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], ((GradiusNeoGame.state[(1205 + var38)] - 16) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) | to_int(((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))))) | to_int((((16 + GradiusNeoGame.state[(1205 + var38)]) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) < 0):
                                                     GradiusNeoGame.state[(1245 + var38)] = (-1)
                                                 if (GradiusNeoGame.state[(1245 + var38)] >= 0):
                                                     GradiusNeoGame.enqueueProjectileRenderCommand(var38, 1, GradiusNeoGame.state[(1185 + var38)], GradiusNeoGame.state[(1205 + var38)], 15, 120, 0)
@@ -4815,7 +4815,7 @@ class GradiusNeoGame(GameSurface):
                                                     GradiusNeoGame.state[(1225 + var38)] = 3
                                                 var32 = (266 + (((GradiusNeoGame.state[(1225 + var38)] - 1)) * 1))
                                                 GradiusNeoGame.state[(1185 + var38)] = (GradiusNeoGame.state[(1185 + var38)] + 32)
-                                                if ((GradiusNeoGame.state[(1225 + var38)] > 0) and ((((((GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], ((GradiusNeoGame.state[(1205 + var38)] + 8) - GradiusNeoGame.state[StateSlot.CameraOffsetY])) | GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], ((GradiusNeoGame.state[(1205 + var38)] + 24) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[(1185 + var38)] - 16), ((GradiusNeoGame.state[(1205 + var38)] + 8) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[(1185 + var38)] - 16), ((GradiusNeoGame.state[(1205 + var38)] + 24) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | ((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)])))) < 0)):
+                                                if ((GradiusNeoGame.state[(1225 + var38)] > 0) and ((to_int(to_int(to_int(to_int(to_int(to_int(to_int(to_int(GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], ((GradiusNeoGame.state[(1205 + var38)] + 8) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | to_int(GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], ((GradiusNeoGame.state[(1205 + var38)] + 24) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) | to_int(GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[(1185 + var38)] - 16), ((GradiusNeoGame.state[(1205 + var38)] + 8) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) | to_int(GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[(1185 + var38)] - 16), ((GradiusNeoGame.state[(1205 + var38)] + 24) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) | to_int(((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))))) < 0)):
                                                     GradiusNeoGame.state[(1245 + var38)] = (-1)
                                                 if ((GradiusNeoGame.state[(1245 + var38)] >= 0) and (1 <= GradiusNeoGame.state[(1225 + var38)])):
                                                     GradiusNeoGame.enqueueProjectileRenderCommand(var38, 0, GradiusNeoGame.state[(1185 + var38)], GradiusNeoGame.state[(1205 + var38)], 15, var32, 66305)
@@ -4878,7 +4878,7 @@ class GradiusNeoGame(GameSurface):
                                                 if (GradiusNeoGame.state[(1205 + var38)] >= 3):
                                                     terrainProbeX = (GradiusNeoGame.state[StateSlot.PlayerX] + 40)
                                                     while (terrainProbeX < GradiusNeoGame.state[(1185 + var38)]):
-                                                        if ((((GradiusNeoGame.sampleTerrainCollision(terrainProbeX, ((GradiusNeoGame.state[StateSlot.PlayerY] - 16) - GradiusNeoGame.state[StateSlot.CameraOffsetY])) | GradiusNeoGame.sampleTerrainCollision(terrainProbeX, ((GradiusNeoGame.state[StateSlot.PlayerY] + 0) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | GradiusNeoGame.sampleTerrainCollision(terrainProbeX, ((GradiusNeoGame.state[StateSlot.PlayerY] + 16) - GradiusNeoGame.state[StateSlot.CameraOffsetY])))) < 0):
+                                                        if ((to_int(to_int(to_int(to_int(GradiusNeoGame.sampleTerrainCollision(terrainProbeX, ((GradiusNeoGame.state[StateSlot.PlayerY] - 16) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | to_int(GradiusNeoGame.sampleTerrainCollision(terrainProbeX, ((GradiusNeoGame.state[StateSlot.PlayerY] + 0) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) | to_int(GradiusNeoGame.sampleTerrainCollision(terrainProbeX, ((GradiusNeoGame.state[StateSlot.PlayerY] + 16) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) < 0):
                                                             GradiusNeoGame.state[(1185 + var38)] = terrainProbeX
                                                             GradiusNeoGame.spawnEntity(11, (GradiusNeoGame.state[(1185 + var38)] - 8), GradiusNeoGame.state[StateSlot.PlayerY], 0)
                                                         terrainProbeX += 16
@@ -4904,17 +4904,17 @@ class GradiusNeoGame(GameSurface):
                                                         GradiusNeoGame.enqueueRenderCommand(1, (GradiusNeoGame.state[(1185 + var38)] + (var94 * 16)), GradiusNeoGame.state[(1205 + var38)], 15, (250 + ((((var94 + var111)) % 4))), 0)
                                                 raise _SwitchBreak()
                                             case 17:
-                                                GradiusNeoGame.state[(1185 + var38)] = (GradiusNeoGame.state[(1185 + var38)] + ((((GradiusNeoGame.state[(455 + GradiusNeoGame.state[(1225 + var38)])] * 24)) >> 4)))
-                                                GradiusNeoGame.state[(1205 + var38)] = (GradiusNeoGame.state[(1205 + var38)] + ((((GradiusNeoGame.state[(471 + GradiusNeoGame.state[(1225 + var38)])] * 24)) >> 4)))
-                                                if (((((((GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY])) | GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[(1185 + var38)] - ((((GradiusNeoGame.state[(455 + GradiusNeoGame.state[(1225 + var38)])] * 12)) >> 4))), ((GradiusNeoGame.state[(1205 + var38)] - ((((GradiusNeoGame.state[(471 + GradiusNeoGame.state[(1225 + var38)])] * 12)) >> 4))) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | GradiusNeoGame.state[(1185 + var38)]) | ((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))) | ((GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | (((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1205 + var38)]) + GradiusNeoGame.state[StateSlot.CameraOffsetY])))) < 0):
+                                                GradiusNeoGame.state[(1185 + var38)] = (GradiusNeoGame.state[(1185 + var38)] + ((to_int(((GradiusNeoGame.state[(455 + GradiusNeoGame.state[(1225 + var38)])] * 24))) >> (to_int(4) & 31))))
+                                                GradiusNeoGame.state[(1205 + var38)] = (GradiusNeoGame.state[(1205 + var38)] + ((to_int(((GradiusNeoGame.state[(471 + GradiusNeoGame.state[(1225 + var38)])] * 24))) >> (to_int(4) & 31))))
+                                                if ((to_int(to_int(to_int(to_int(to_int(to_int(to_int(to_int(to_int(to_int(GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | to_int(GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[(1185 + var38)] - ((to_int(((GradiusNeoGame.state[(455 + GradiusNeoGame.state[(1225 + var38)])] * 12))) >> (to_int(4) & 31)))), ((GradiusNeoGame.state[(1205 + var38)] - ((to_int(((GradiusNeoGame.state[(471 + GradiusNeoGame.state[(1225 + var38)])] * 12))) >> (to_int(4) & 31)))) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) | to_int(GradiusNeoGame.state[(1185 + var38)]))) | to_int(((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))))) | to_int(((GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) | to_int((((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1205 + var38)]) + GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) < 0):
                                                     GradiusNeoGame.state[(1245 + var38)] = (-1)
                                                 if (GradiusNeoGame.state[(1245 + var38)] >= 0):
                                                     GradiusNeoGame.enqueueRenderCommand(1, GradiusNeoGame.state[(1185 + var38)], GradiusNeoGame.state[(1205 + var38)], 15, 91, 0)
                                                 raise _SwitchBreak()
                                             case 18:
-                                                GradiusNeoGame.state[(1185 + var38)] = (GradiusNeoGame.state[(1185 + var38)] + ((((GradiusNeoGame.state[(455 + OPTION_SHOT_DIRECTIONS[int_div(var38, 4)])] * 24)) >> 4)))
-                                                GradiusNeoGame.state[(1205 + var38)] = (GradiusNeoGame.state[(1205 + var38)] + ((((GradiusNeoGame.state[(471 + OPTION_SHOT_DIRECTIONS[int_div(var38, 4)])] * 24)) >> 4)))
-                                                if (((((GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY])) | ((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))) | ((GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | (((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1205 + var38)]) + GradiusNeoGame.state[StateSlot.CameraOffsetY])))) < 0):
+                                                GradiusNeoGame.state[(1185 + var38)] = (GradiusNeoGame.state[(1185 + var38)] + ((to_int(((GradiusNeoGame.state[(455 + OPTION_SHOT_DIRECTIONS[int_div(var38, 4)])] * 24))) >> (to_int(4) & 31))))
+                                                GradiusNeoGame.state[(1205 + var38)] = (GradiusNeoGame.state[(1205 + var38)] + ((to_int(((GradiusNeoGame.state[(471 + OPTION_SHOT_DIRECTIONS[int_div(var38, 4)])] * 24))) >> (to_int(4) & 31))))
+                                                if ((to_int(to_int(to_int(to_int(to_int(to_int(GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | to_int(((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))))) | to_int(((GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) | to_int((((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1205 + var38)]) + GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) < 0):
                                                     GradiusNeoGame.state[(1245 + var38)] = (-1)
                                                 if (GradiusNeoGame.state[(1245 + var38)] >= 0):
                                                     GradiusNeoGame.enqueueRenderCommand(1, GradiusNeoGame.state[(1185 + var38)], GradiusNeoGame.state[(1205 + var38)], 15, 91, 0)
@@ -4945,7 +4945,7 @@ class GradiusNeoGame(GameSurface):
                                                     var31 = 99
                                                     if (GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY])) < 0):
                                                         GradiusNeoGame.state[(1245 + var38)] = (-1)
-                                                if (((((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)])) | (((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1205 + var38)]) + GradiusNeoGame.state[StateSlot.CameraOffsetY])))) < 0):
+                                                if ((to_int(to_int(((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))) | to_int((((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1205 + var38)]) + GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) < 0):
                                                     GradiusNeoGame.state[(1245 + var38)] = (-1)
                                                 if (GradiusNeoGame.state[(1245 + var38)] >= 0):
                                                     GradiusNeoGame.enqueueRenderCommand(1, GradiusNeoGame.state[(1185 + var38)], GradiusNeoGame.state[(1205 + var38)], 15, var31, 0)
@@ -4958,12 +4958,12 @@ class GradiusNeoGame(GameSurface):
                                                 if (GradiusNeoGame.state[(1245 + var38)] == 21):
                                                     GradiusNeoGame.state[(1205 + var38)] = ((GradiusNeoGame.state[(1205 + var38)] + 8) + GradiusNeoGame.state[(1225 + var38)])
                                                     var2 = (98 - var2)
-                                                    if ((((GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY])) | ((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))) | (((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1205 + var38)]) + GradiusNeoGame.state[StateSlot.CameraOffsetY])))) < 0):
+                                                    if ((to_int(to_int(to_int(to_int(GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | to_int(((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))))) | to_int((((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1205 + var38)]) + GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) < 0):
                                                         GradiusNeoGame.state[(1245 + var38)] = (-1)
                                                 else:
                                                     GradiusNeoGame.state[(1205 + var38)] = (GradiusNeoGame.state[(1205 + var38)] - ((8 + GradiusNeoGame.state[(1225 + var38)])))
                                                     var2 = (103 - var2)
-                                                    if ((((GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY])) | ((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))) | (((16 + GradiusNeoGame.state[(1205 + var38)]) - GradiusNeoGame.state[StateSlot.CameraOffsetY])))) < 0):
+                                                    if ((to_int(to_int(to_int(to_int(GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | to_int(((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))))) | to_int((((16 + GradiusNeoGame.state[(1205 + var38)]) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) < 0):
                                                         GradiusNeoGame.state[(1245 + var38)] = (-1)
                                                 if (GradiusNeoGame.state[(1245 + var38)] >= 0):
                                                     GradiusNeoGame.enqueueRenderCommand(1, GradiusNeoGame.state[(1185 + var38)], GradiusNeoGame.state[(1205 + var38)], 15, var2, 0)
@@ -4985,44 +4985,44 @@ class GradiusNeoGame(GameSurface):
                                                     if (GradiusNeoGame.state[StateSlot.CurrentStage] == 2):
                                                         self.drawSpriteRegion(gfx, 3, 292, toRenderPixels(((128 - int_div(int_div(GradiusNeoGame.state[StateSlot.CollisionMapScrollX], 24), 2)) - 16)), 36, 20)
                                             for var50 in range(0, 20):
-                                                var122 = (((GradiusNeoGame.state[(1055 + var50)] - ((GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var50, 2) + 1))) * GradiusNeoGame.state[45]))) & 255)
-                                                var130 = (GradiusNeoGame.state[((1055 + 20) + var50)] & 255)
+                                                var122 = to_int(to_int(((GradiusNeoGame.state[(1055 + var50)] - ((GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var50, 2) + 1))) * GradiusNeoGame.state[45])))) & to_int(255))
+                                                var130 = to_int(to_int(GradiusNeoGame.state[((1055 + 20) + var50)]) & to_int(255))
                                                 gfx.setColor(GradiusNeoGame.state[(307 + var50)])
                                                 gfx.drawLine(toRenderPixels(var122), toRenderPixels(var130), toRenderPixels(var122), toRenderPixels(var130))
                                             for var51 in range(0, 20):
-                                                var123 = ((((GradiusNeoGame.state[(1055 + var51)] - ((GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var51, 2) + 1))) * GradiusNeoGame.state[45])) + 160)) & 255)
-                                                var131 = (((GradiusNeoGame.state[((1055 + 20) + var51)] + 80)) & 255)
+                                                var123 = to_int(to_int((((GradiusNeoGame.state[(1055 + var51)] - ((GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var51, 2) + 1))) * GradiusNeoGame.state[45])) + 160))) & to_int(255))
+                                                var131 = to_int(to_int(((GradiusNeoGame.state[((1055 + 20) + var51)] + 80))) & to_int(255))
                                                 gfx.setColor(GradiusNeoGame.state[(307 + var51)])
                                                 gfx.drawLine(toRenderPixels(var123), toRenderPixels(var131), toRenderPixels(var123), toRenderPixels(var131))
                                             raise _SwitchBreak()
                                         case 2 | 3:
                                             for var49 in range(0, 20):
-                                                var121 = (((GradiusNeoGame.state[(1055 + var49)] - (GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var49, 2) + 1))))) & 255)
-                                                var129 = (((GradiusNeoGame.state[((1055 + 20) + var49)] - GradiusNeoGame.state[StateSlot.CameraOffsetY])) & 255)
+                                                var121 = to_int(to_int(((GradiusNeoGame.state[(1055 + var49)] - (GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var49, 2) + 1)))))) & to_int(255))
+                                                var129 = to_int(to_int(((GradiusNeoGame.state[((1055 + 20) + var49)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) & to_int(255))
                                                 gfx.setColor(GradiusNeoGame.state[(307 + var49)])
                                                 gfx.drawLine(toRenderPixels(var121), toRenderPixels(var129), toRenderPixels(var121), toRenderPixels(var129))
                                             raise _SwitchBreak()
                                         case 4:
                                             for var47 in range(0, 20):
-                                                var127 = (GradiusNeoGame.state[((1055 + 20) + var47)] & 255)
-                                                GradiusNeoGame.state[0] = (((((int_div(((((((GradiusNeoGame.state[(307 + var47)] >> 16)) & 255)) * ((92 - (8 * GradiusNeoGame.state[46]))))), 100)) << 16)) | (((int_div(((((((GradiusNeoGame.state[(307 + var47)] >> 8)) & 255)) * ((92 - (8 * GradiusNeoGame.state[46]))))), 100)) << 8))) | (int_div(((((GradiusNeoGame.state[(307 + var47)] & 255)) * ((92 - (8 * GradiusNeoGame.state[46]))))), 100)))
+                                                var127 = to_int(to_int(GradiusNeoGame.state[((1055 + 20) + var47)]) & to_int(255))
+                                                GradiusNeoGame.state[0] = to_int(to_int(to_int(to_int((to_int(to_int((int_div((((to_int(to_int(((to_int(GradiusNeoGame.state[(307 + var47)]) >> (to_int(16) & 31)))) & to_int(255))) * ((92 - (8 * GradiusNeoGame.state[46]))))), 100))) << (to_int(16) & 31)))) | to_int((to_int(to_int((int_div((((to_int(to_int(((to_int(GradiusNeoGame.state[(307 + var47)]) >> (to_int(8) & 31)))) & to_int(255))) * ((92 - (8 * GradiusNeoGame.state[46]))))), 100))) << (to_int(8) & 31)))))) | to_int((int_div((((to_int(to_int(GradiusNeoGame.state[(307 + var47)]) & to_int(255))) * ((92 - (8 * GradiusNeoGame.state[46]))))), 100))))
                                                 gfx.setColor(GradiusNeoGame.state[0])
                                                 if (GradiusNeoGame.state[46] < 8):
-                                                    var117 = (((GradiusNeoGame.state[(1055 + var47)] - ((GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var47, 2) + 1))) * GradiusNeoGame.state[45]))) & 255)
-                                                    gfx.drawLine(toRenderPixels((var117 - ((GradiusNeoGame.state[(1055 + var47)] & ((((1 << GradiusNeoGame.state[46])) - 1)))))), toRenderPixels(var127), toRenderPixels(var117), toRenderPixels(var127))
+                                                    var117 = to_int(to_int(((GradiusNeoGame.state[(1055 + var47)] - ((GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var47, 2) + 1))) * GradiusNeoGame.state[45])))) & to_int(255))
+                                                    gfx.drawLine(toRenderPixels((var117 - (to_int(to_int(GradiusNeoGame.state[(1055 + var47)]) & to_int((((to_int(to_int(1) << (to_int(GradiusNeoGame.state[46]) & 31))) - 1))))))), toRenderPixels(var127), toRenderPixels(var117), toRenderPixels(var127))
                                                 else:
-                                                    var118 = (((GradiusNeoGame.state[(1055 + var47)] - (GradiusNeoGame.state[StateSlot.LogicFrame] * (((((int_div(var47, 2)) * GradiusNeoGame.state[45]) + (((GradiusNeoGame.state[46] - 1)) * 4)) + 1))))) & 255)
-                                                    gfx.drawLine(toRenderPixels((var118 - ((GradiusNeoGame.state[(1055 + var47)] & ((((1 << ((GradiusNeoGame.state[46] - 1)))) - 1)))))), toRenderPixels(var127), toRenderPixels(var118), toRenderPixels(var127))
+                                                    var118 = to_int(to_int(((GradiusNeoGame.state[(1055 + var47)] - (GradiusNeoGame.state[StateSlot.LogicFrame] * (((((int_div(var47, 2)) * GradiusNeoGame.state[45]) + (((GradiusNeoGame.state[46] - 1)) * 4)) + 1)))))) & to_int(255))
+                                                    gfx.drawLine(toRenderPixels((var118 - (to_int(to_int(GradiusNeoGame.state[(1055 + var47)]) & to_int((((to_int(to_int(1) << (to_int(((GradiusNeoGame.state[46] - 1))) & 31))) - 1))))))), toRenderPixels(var127), toRenderPixels(var118), toRenderPixels(var127))
                                             for var48 in range(0, 20):
-                                                var128 = (((GradiusNeoGame.state[((1055 + 20) + var48)] + 80)) & 255)
-                                                GradiusNeoGame.state[0] = (((((int_div(((((((GradiusNeoGame.state[(307 + var48)] >> 16)) & 255)) * ((92 - (8 * GradiusNeoGame.state[46]))))), 100)) << 16)) | (((int_div(((((((GradiusNeoGame.state[(307 + var48)] >> 8)) & 255)) * ((92 - (8 * GradiusNeoGame.state[46]))))), 100)) << 8))) | (int_div(((((GradiusNeoGame.state[(307 + var48)] & 255)) * ((92 - (8 * GradiusNeoGame.state[46]))))), 100)))
+                                                var128 = to_int(to_int(((GradiusNeoGame.state[((1055 + 20) + var48)] + 80))) & to_int(255))
+                                                GradiusNeoGame.state[0] = to_int(to_int(to_int(to_int((to_int(to_int((int_div((((to_int(to_int(((to_int(GradiusNeoGame.state[(307 + var48)]) >> (to_int(16) & 31)))) & to_int(255))) * ((92 - (8 * GradiusNeoGame.state[46]))))), 100))) << (to_int(16) & 31)))) | to_int((to_int(to_int((int_div((((to_int(to_int(((to_int(GradiusNeoGame.state[(307 + var48)]) >> (to_int(8) & 31)))) & to_int(255))) * ((92 - (8 * GradiusNeoGame.state[46]))))), 100))) << (to_int(8) & 31)))))) | to_int((int_div((((to_int(to_int(GradiusNeoGame.state[(307 + var48)]) & to_int(255))) * ((92 - (8 * GradiusNeoGame.state[46]))))), 100))))
                                                 gfx.setColor(GradiusNeoGame.state[0])
                                                 if (GradiusNeoGame.state[46] < 8):
-                                                    var119 = ((((GradiusNeoGame.state[(1055 + var48)] - ((GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var48, 2) + 1))) * GradiusNeoGame.state[45])) + 160)) & 255)
-                                                    gfx.drawLine(toRenderPixels((var119 - ((GradiusNeoGame.state[(1055 + var48)] & ((((1 << GradiusNeoGame.state[46])) - 1)))))), toRenderPixels(var128), toRenderPixels(var119), toRenderPixels(var128))
+                                                    var119 = to_int(to_int((((GradiusNeoGame.state[(1055 + var48)] - ((GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var48, 2) + 1))) * GradiusNeoGame.state[45])) + 160))) & to_int(255))
+                                                    gfx.drawLine(toRenderPixels((var119 - (to_int(to_int(GradiusNeoGame.state[(1055 + var48)]) & to_int((((to_int(to_int(1) << (to_int(GradiusNeoGame.state[46]) & 31))) - 1))))))), toRenderPixels(var128), toRenderPixels(var119), toRenderPixels(var128))
                                                 else:
-                                                    var120 = ((((GradiusNeoGame.state[(1055 + var48)] - (GradiusNeoGame.state[StateSlot.LogicFrame] * (((((int_div(var48, 2)) * GradiusNeoGame.state[45]) + (((GradiusNeoGame.state[46] - 1)) * 4)) + 1)))) + 160)) & 255)
-                                                    gfx.drawLine(toRenderPixels((var120 - ((GradiusNeoGame.state[(1055 + var48)] & ((((1 << ((GradiusNeoGame.state[46] - 1)))) - 1)))))), toRenderPixels(var128), toRenderPixels(var120), toRenderPixels(var128))
+                                                    var120 = to_int(to_int((((GradiusNeoGame.state[(1055 + var48)] - (GradiusNeoGame.state[StateSlot.LogicFrame] * (((((int_div(var48, 2)) * GradiusNeoGame.state[45]) + (((GradiusNeoGame.state[46] - 1)) * 4)) + 1)))) + 160))) & to_int(255))
+                                                    gfx.drawLine(toRenderPixels((var120 - (to_int(to_int(GradiusNeoGame.state[(1055 + var48)]) & to_int((((to_int(to_int(1) << (to_int(((GradiusNeoGame.state[46] - 1))) & 31))) - 1))))))), toRenderPixels(var128), toRenderPixels(var120), toRenderPixels(var128))
                                             raise _SwitchBreak()
                                         case 5:
                                             GradiusNeoGame.state[0] = _set_item(GradiusNeoGame.state, 1, 0)
@@ -5037,13 +5037,13 @@ class GradiusNeoGame(GameSurface):
                                                 if (GradiusNeoGame.state[StateSlot.VisualStageScrollX] < 192):
                                                     GradiusNeoGame.state[1] = (((4 * GradiusNeoGame.state[StateSlot.StageScrollSpeed]) - GradiusNeoGame.state[StateSlot.VisualStageScrollX]) + 128)
                                             for var43 in range(0, 20):
-                                                var8 = (((GradiusNeoGame.state[(1055 + var43)] - ((GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var43, 2) + 1))) * GradiusNeoGame.state[45]))) & 255)
-                                                var9 = (GradiusNeoGame.state[((1055 + 20) + var43)] & 255)
+                                                var8 = to_int(to_int(((GradiusNeoGame.state[(1055 + var43)] - ((GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var43, 2) + 1))) * GradiusNeoGame.state[45])))) & to_int(255))
+                                                var9 = to_int(to_int(GradiusNeoGame.state[((1055 + 20) + var43)]) & to_int(255))
                                                 gfx.setColor(GradiusNeoGame.state[(307 + var43)])
                                                 gfx.drawLine(toRenderPixels(var8), toRenderPixels(var9), toRenderPixels(var8), toRenderPixels(var9))
                                             for var44 in range(0, 20):
-                                                var116 = ((((GradiusNeoGame.state[(1055 + var44)] - ((GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var44, 2) + 1))) * GradiusNeoGame.state[45])) + 160)) & 255)
-                                                var126 = (((GradiusNeoGame.state[((1055 + 20) + var44)] + 80)) & 255)
+                                                var116 = to_int(to_int((((GradiusNeoGame.state[(1055 + var44)] - ((GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var44, 2) + 1))) * GradiusNeoGame.state[45])) + 160))) & to_int(255))
+                                                var126 = to_int(to_int(((GradiusNeoGame.state[((1055 + 20) + var44)] + 80))) & to_int(255))
                                                 gfx.setColor(GradiusNeoGame.state[(307 + var44)])
                                                 gfx.drawLine(toRenderPixels(var116), toRenderPixels(var126), toRenderPixels(var116), toRenderPixels(var126))
                                             for var45 in range(0, 6):
@@ -5304,7 +5304,7 @@ class GradiusNeoGame(GameSurface):
                                         var112 = (GradiusNeoGame.state[48] + (int_div(GradiusNeoGame.state[StateSlot.VisualStageScrollX], 16) * 2))
                                         for var59 in range(0, int_div(GradiusNeoGame.state[37], 16)):
                                             var115 = 0
-                                            if (((GradiusNeoGame.resourceBuffer[var112] & 255)) >= ((GradiusNeoGame.state[39] + GradiusNeoGame.state[40]) - 1)):
+                                            if ((to_int(to_int(GradiusNeoGame.resourceBuffer[var112]) & to_int(255))) >= ((GradiusNeoGame.state[39] + GradiusNeoGame.state[40]) - 1)):
                                                 var115 = 1
                                             GradiusNeoGame.state[((1265 + (var59 * 16)) + ((((int_div(GradiusNeoGame.state[StateSlot.CollisionMapScrollX], 16) - 1)) % 16)))] = var115
                                             var112 += (int_div(GradiusNeoGame.state[38], 16) * 2)
@@ -5407,7 +5407,7 @@ class GradiusNeoGame(GameSurface):
                                 if ((GradiusNeoGame.state[StateSlot.CheatUseCount] == 0) and (GradiusNeoGame.state[StateSlot.PressedInputBits] != 0)):
                                     self.updateCheatCode()
                             else:
-                                if ((((GradiusNeoGame.state[StateSlot.PressedInputBits] & 35651584)) != 0) or (not self.isShown())):
+                                if (((to_int(to_int(GradiusNeoGame.state[StateSlot.PressedInputBits]) & to_int(35651584))) != 0) or (not self.isShown())):
                                     GradiusNeoGame.runtimeFlags[4] = True
                                     GradiusNeoGame.screenState = ScreenState.EnterPauseMenu
                             if (not GradiusNeoGame.runtimeFlags[4]):
@@ -5417,7 +5417,7 @@ class GradiusNeoGame(GameSurface):
                                     while True:
                                         var34 = None
                                         try:
-                                            match ((var34 := (((((var4 := GradiusNeoGame.stageEventScript[(3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition])])) >> 8)) & 127))):
+                                            match ((var34 := to_int(to_int(((to_int(((var4 := GradiusNeoGame.stageEventScript[(3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition])]))) >> (to_int(8) & 31)))) & to_int(127)))):
                                                 case 0:
                                                     GradiusNeoGame.state[StateSlot.StageEventCountdown] = (GradiusNeoGame.state[StateSlot.StageEventCountdown] + (((var4 - 1)) * 8))
                                                     raise _SwitchBreak()
@@ -5426,10 +5426,10 @@ class GradiusNeoGame(GameSurface):
                                                     GradiusNeoGame.state[StateSlot.StageScriptAdvancePerTick] = 0
                                                     raise _SwitchBreak()
                                                 case 3:
-                                                    GradiusNeoGame.spawnEntity(var34, GAME_VIEW_WIDTH, 0, (var4 & 255))
+                                                    GradiusNeoGame.spawnEntity(var34, GAME_VIEW_WIDTH, 0, to_int(to_int(var4) & to_int(255)))
                                                     raise _SwitchBreak()
                                                 case 4:
-                                                    GradiusNeoGame.state[41] = (var4 & 255)
+                                                    GradiusNeoGame.state[41] = to_int(to_int(var4) & to_int(255))
                                                     if (GradiusNeoGame.state[41] == 1):
                                                         GradiusNeoGame.state[StateSlot.PlayerY] = (GradiusNeoGame.state[StateSlot.PlayerY] - GradiusNeoGame.state[StateSlot.CameraOffsetY])
                                                         for var35 in range(1, 17):
@@ -5438,7 +5438,7 @@ class GradiusNeoGame(GameSurface):
                                                         while (var5 != (-1)):
                                                             var6 = GradiusNeoGame.state[(EntityField.Next + var5)]
                                                             GradiusNeoGame.state[(EntityField.Y + var5)] = (GradiusNeoGame.state[(EntityField.Y + var5)] - GradiusNeoGame.state[StateSlot.CameraOffsetY])
-                                                            GradiusNeoGame.state[(EntityField.YFixed + var5)] = (GradiusNeoGame.state[(EntityField.YFixed + var5)] - ((GradiusNeoGame.state[StateSlot.CameraOffsetY] << 4)))
+                                                            GradiusNeoGame.state[(EntityField.YFixed + var5)] = (GradiusNeoGame.state[(EntityField.YFixed + var5)] - (to_int(to_int(GradiusNeoGame.state[StateSlot.CameraOffsetY]) << (to_int(4) & 31))))
                                                             var5 = var6
                                                         GradiusNeoGame.state[StateSlot.CameraOffsetY] = _set_item(GradiusNeoGame.state, StateSlot.PendingCameraDeltaY, 0)
                                                         GradiusNeoGame.state[StateSlot.StageWorldHeight] = GAMEPLAY_HEIGHT
@@ -5452,11 +5452,11 @@ class GradiusNeoGame(GameSurface):
                                                             GradiusNeoGame.state[((1265 + 240) + var37)] = 1
                                                     raise _SwitchBreak()
                                                 case 6:
-                                                    GradiusNeoGame.state[StateSlot.StageScrollSpeed] = (var4 & 255)
+                                                    GradiusNeoGame.state[StateSlot.StageScrollSpeed] = to_int(to_int(var4) & to_int(255))
                                                     raise _SwitchBreak()
                                                 case 7:
                                                     if (GradiusNeoGame.state[22] == 0):
-                                                        if (((var4 & 128)) != 0):
+                                                        if ((to_int(to_int(var4) & to_int(128))) != 0):
                                                             GradiusNeoGame.runtimeFlags[8] = True
                                                             GradiusNeoGame.spawnEntity(var34, GAME_VIEW_WIDTH, 0, 0)
                                                         else:
@@ -5464,41 +5464,41 @@ class GradiusNeoGame(GameSurface):
                                                     raise _SwitchBreak()
                                                 case 8:
                                                     if (GradiusNeoGame.state[22] == 0):
-                                                        if (((var4 & 128)) != 0):
+                                                        if ((to_int(to_int(var4) & to_int(128))) != 0):
                                                             GradiusNeoGame.runtimeFlags[7] = True
                                                             GradiusNeoGame.spawnEntity(var34, GAME_VIEW_WIDTH, 0, 0)
                                                         else:
                                                             GradiusNeoGame.runtimeFlags[7] = False
                                                     raise _SwitchBreak()
                                                 case 9:
-                                                    GradiusNeoGame.spawnEntity((((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & 65280)) >> 8), GAME_VIEW_WIDTH, (((var4 & 255)) * 4), ((((((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & 63)) << 16)) | ((((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & 64)) << 2))) | ((((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & 128)) >> 7))))
+                                                    GradiusNeoGame.spawnEntity((to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(65280)))) >> (to_int(8) & 31)), GAME_VIEW_WIDTH, ((to_int(to_int(var4) & to_int(255))) * 4), to_int(to_int(to_int(to_int((to_int(to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(63)))) << (to_int(16) & 31)))) | to_int((to_int(to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(64)))) << (to_int(2) & 31)))))) | to_int(((to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(128)))) >> (to_int(7) & 31))))))
                                                     getAndIncrement(GradiusNeoGame.state, StateSlot.StageScriptPosition)
                                                     raise _SwitchBreak()
                                                 case 43 | 44 | 45 | 46:
                                                     if (var34 >= 45):
-                                                        GradiusNeoGame.spawnEntity((var34 - 2), GAME_VIEW_WIDTH, (((var4 & 63)) * 16), (((((((var4 & 192)) << 18)) | ((((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & 61440)) << 4))) | ((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & 3840))) | ((((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & GAME_VIEW_WIDTH)) >> 4))))
+                                                        GradiusNeoGame.spawnEntity((var34 - 2), GAME_VIEW_WIDTH, ((to_int(to_int(var4) & to_int(63))) * 16), to_int(to_int(to_int(to_int(to_int(to_int((to_int(to_int((to_int(to_int(var4) & to_int(192)))) << (to_int(18) & 31)))) | to_int((to_int(to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(61440)))) << (to_int(4) & 31)))))) | to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(3840)))))) | to_int(((to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(GAME_VIEW_WIDTH)))) >> (to_int(4) & 31))))))
                                                     else:
-                                                        GradiusNeoGame.spawnEntity(var34, GAME_VIEW_WIDTH, (((var4 & 63)) * 4), (((((((var4 & 192)) << 18)) | ((((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & 61440)) << 4))) | ((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & 3840))) | ((((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & GAME_VIEW_WIDTH)) >> 4))))
-                                                    GradiusNeoGame.state[StateSlot.StageEventCountdown] = (GradiusNeoGame.state[StateSlot.StageEventCountdown] + (8 * ((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & 15))))
+                                                        GradiusNeoGame.spawnEntity(var34, GAME_VIEW_WIDTH, ((to_int(to_int(var4) & to_int(63))) * 4), to_int(to_int(to_int(to_int(to_int(to_int((to_int(to_int((to_int(to_int(var4) & to_int(192)))) << (to_int(18) & 31)))) | to_int((to_int(to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(61440)))) << (to_int(4) & 31)))))) | to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(3840)))))) | to_int(((to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(GAME_VIEW_WIDTH)))) >> (to_int(4) & 31))))))
+                                                    GradiusNeoGame.state[StateSlot.StageEventCountdown] = (GradiusNeoGame.state[StateSlot.StageEventCountdown] + (8 * (to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(15)))))
                                                     getAndIncrement(GradiusNeoGame.state, StateSlot.StageScriptPosition)
                                                     raise _SwitchBreak()
                                                 case 76 | 88 | 90:
-                                                    GradiusNeoGame.spawnEntity(var34, GAME_VIEW_WIDTH, (((var4 & 255)) * 4), ((((((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & 61440)) << 4)) | ((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & 3840))) | ((((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & GAME_VIEW_WIDTH)) >> 4))))
-                                                    GradiusNeoGame.state[StateSlot.StageEventCountdown] = (GradiusNeoGame.state[StateSlot.StageEventCountdown] + (8 * ((GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)] & 15))))
+                                                    GradiusNeoGame.spawnEntity(var34, GAME_VIEW_WIDTH, ((to_int(to_int(var4) & to_int(255))) * 4), to_int(to_int(to_int(to_int((to_int(to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(61440)))) << (to_int(4) & 31)))) | to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(3840)))))) | to_int(((to_int((to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(GAME_VIEW_WIDTH)))) >> (to_int(4) & 31))))))
+                                                    GradiusNeoGame.state[StateSlot.StageEventCountdown] = (GradiusNeoGame.state[StateSlot.StageEventCountdown] + (8 * (to_int(to_int(GradiusNeoGame.stageEventScript[((3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition]) + 1)]) & to_int(15)))))
                                                     getAndIncrement(GradiusNeoGame.state, StateSlot.StageScriptPosition)
                                                     raise _SwitchBreak()
                                                 case 111:
-                                                    GradiusNeoGame.spawnAuxiliaryEntity(var34, GAME_VIEW_WIDTH, (((var4 & 63)) * 4), (((((var4 & 64)) << 2)) | ((((var4 & 128)) >> 7))))
+                                                    GradiusNeoGame.spawnAuxiliaryEntity(var34, GAME_VIEW_WIDTH, ((to_int(to_int(var4) & to_int(63))) * 4), to_int(to_int((to_int(to_int((to_int(to_int(var4) & to_int(64)))) << (to_int(2) & 31)))) | to_int(((to_int((to_int(to_int(var4) & to_int(128)))) >> (to_int(7) & 31))))))
                                                     raise _SwitchBreak()
                                                 case 126:
                                                     getAndDecrement(GradiusNeoGame.state, StateSlot.StageScriptPosition)
                                                     raise _SwitchBreak()
                                                 case _:
-                                                    GradiusNeoGame.spawnEntity(var34, GAME_VIEW_WIDTH, (((var4 & 63)) * 4), (((((var4 & 64)) << 2)) | ((((var4 & 128)) >> 7))))
+                                                    GradiusNeoGame.spawnEntity(var34, GAME_VIEW_WIDTH, ((to_int(to_int(var4) & to_int(63))) * 4), to_int(to_int((to_int(to_int((to_int(to_int(var4) & to_int(64)))) << (to_int(2) & 31)))) | to_int(((to_int((to_int(to_int(var4) & to_int(128)))) >> (to_int(7) & 31))))))
                                         except _SwitchBreak:
                                             pass
                                         getAndIncrement(GradiusNeoGame.state, StateSlot.StageScriptPosition)
-                                        if not ((((var4 & 32768)) != 0)):
+                                        if not (((to_int(to_int(var4) & to_int(32768))) != 0)):
                                             break
                                 self.updatePlayerWeaponsAndCollisions()
                                 for var38 in range(0, 20):
@@ -5509,28 +5509,28 @@ class GradiusNeoGame(GameSurface):
                                                 if (GradiusNeoGame.state[(1245 + var38)] == 16):
                                                     var33 = 273
                                                 GradiusNeoGame.state[(1185 + var38)] = (GradiusNeoGame.state[(1185 + var38)] + 32)
-                                                if ((((GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY])) | GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[(1185 + var38)] - 8), (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | ((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)])))) < 0):
+                                                if ((to_int(to_int(to_int(to_int(GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | to_int(GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[(1185 + var38)] - 8), (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) | to_int(((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))))) < 0):
                                                     GradiusNeoGame.state[(1245 + var38)] = (-1)
                                                 GradiusNeoGame.enqueueProjectileRenderCommand(var38, 1, GradiusNeoGame.state[(1185 + var38)], GradiusNeoGame.state[(1205 + var38)], 15, var33, 0)
                                                 raise _SwitchBreak()
                                             case 2:
                                                 GradiusNeoGame.state[(1185 + var38)] = (GradiusNeoGame.state[(1185 + var38)] + 20)
                                                 GradiusNeoGame.state[(1205 + var38)] = (GradiusNeoGame.state[(1205 + var38)] - 20)
-                                                if (((((GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY])) | GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[(1185 + var38)] - 10), ((GradiusNeoGame.state[(1205 + var38)] + 10) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | ((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))) | (((16 + GradiusNeoGame.state[(1205 + var38)]) - GradiusNeoGame.state[StateSlot.CameraOffsetY])))) < 0):
+                                                if ((to_int(to_int(to_int(to_int(to_int(to_int(GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | to_int(GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[(1185 + var38)] - 10), ((GradiusNeoGame.state[(1205 + var38)] + 10) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) | to_int(((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))))) | to_int((((16 + GradiusNeoGame.state[(1205 + var38)]) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) < 0):
                                                     GradiusNeoGame.state[(1245 + var38)] = (-1)
                                                 if (GradiusNeoGame.state[(1245 + var38)] >= 0):
                                                     GradiusNeoGame.enqueueProjectileRenderCommand(var38, 1, GradiusNeoGame.state[(1185 + var38)], GradiusNeoGame.state[(1205 + var38)], 15, 118, 0)
                                                 raise _SwitchBreak()
                                             case 4:
                                                 GradiusNeoGame.state[(1185 + var38)] = (GradiusNeoGame.state[(1185 + var38)] - 32)
-                                                if ((((GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY])) | GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[(1185 + var38)] + 16), (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | ((16 + GradiusNeoGame.state[(1185 + var38)])))) < 0):
+                                                if ((to_int(to_int(to_int(to_int(GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | to_int(GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[(1185 + var38)] + 16), (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) | to_int(((16 + GradiusNeoGame.state[(1185 + var38)]))))) < 0):
                                                     GradiusNeoGame.state[(1245 + var38)] = (-1)
                                                 if (GradiusNeoGame.state[(1245 + var38)] >= 0):
                                                     GradiusNeoGame.enqueueProjectileRenderCommand(var38, 1, GradiusNeoGame.state[(1185 + var38)], GradiusNeoGame.state[(1205 + var38)], 15, 119, 0)
                                                 raise _SwitchBreak()
                                             case 6:
                                                 GradiusNeoGame.state[(1205 + var38)] = (GradiusNeoGame.state[(1205 + var38)] - 32)
-                                                if (((((GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY])) | GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], ((GradiusNeoGame.state[(1205 + var38)] - 16) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | ((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))) | (((16 + GradiusNeoGame.state[(1205 + var38)]) - GradiusNeoGame.state[StateSlot.CameraOffsetY])))) < 0):
+                                                if ((to_int(to_int(to_int(to_int(to_int(to_int(GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | to_int(GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], ((GradiusNeoGame.state[(1205 + var38)] - 16) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) | to_int(((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))))) | to_int((((16 + GradiusNeoGame.state[(1205 + var38)]) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) < 0):
                                                     GradiusNeoGame.state[(1245 + var38)] = (-1)
                                                 if (GradiusNeoGame.state[(1245 + var38)] >= 0):
                                                     GradiusNeoGame.enqueueProjectileRenderCommand(var38, 1, GradiusNeoGame.state[(1185 + var38)], GradiusNeoGame.state[(1205 + var38)], 15, 120, 0)
@@ -5541,7 +5541,7 @@ class GradiusNeoGame(GameSurface):
                                                     GradiusNeoGame.state[(1225 + var38)] = 3
                                                 var32 = (266 + (((GradiusNeoGame.state[(1225 + var38)] - 1)) * 1))
                                                 GradiusNeoGame.state[(1185 + var38)] = (GradiusNeoGame.state[(1185 + var38)] + 32)
-                                                if ((GradiusNeoGame.state[(1225 + var38)] > 0) and ((((((GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], ((GradiusNeoGame.state[(1205 + var38)] + 8) - GradiusNeoGame.state[StateSlot.CameraOffsetY])) | GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], ((GradiusNeoGame.state[(1205 + var38)] + 24) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[(1185 + var38)] - 16), ((GradiusNeoGame.state[(1205 + var38)] + 8) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[(1185 + var38)] - 16), ((GradiusNeoGame.state[(1205 + var38)] + 24) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | ((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)])))) < 0)):
+                                                if ((GradiusNeoGame.state[(1225 + var38)] > 0) and ((to_int(to_int(to_int(to_int(to_int(to_int(to_int(to_int(GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], ((GradiusNeoGame.state[(1205 + var38)] + 8) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | to_int(GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], ((GradiusNeoGame.state[(1205 + var38)] + 24) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) | to_int(GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[(1185 + var38)] - 16), ((GradiusNeoGame.state[(1205 + var38)] + 8) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) | to_int(GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[(1185 + var38)] - 16), ((GradiusNeoGame.state[(1205 + var38)] + 24) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) | to_int(((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))))) < 0)):
                                                     GradiusNeoGame.state[(1245 + var38)] = (-1)
                                                 if ((GradiusNeoGame.state[(1245 + var38)] >= 0) and (1 <= GradiusNeoGame.state[(1225 + var38)])):
                                                     GradiusNeoGame.enqueueProjectileRenderCommand(var38, 0, GradiusNeoGame.state[(1185 + var38)], GradiusNeoGame.state[(1205 + var38)], 15, var32, 66305)
@@ -5604,7 +5604,7 @@ class GradiusNeoGame(GameSurface):
                                                 if (GradiusNeoGame.state[(1205 + var38)] >= 3):
                                                     terrainProbeX = (GradiusNeoGame.state[StateSlot.PlayerX] + 40)
                                                     while (terrainProbeX < GradiusNeoGame.state[(1185 + var38)]):
-                                                        if ((((GradiusNeoGame.sampleTerrainCollision(terrainProbeX, ((GradiusNeoGame.state[StateSlot.PlayerY] - 16) - GradiusNeoGame.state[StateSlot.CameraOffsetY])) | GradiusNeoGame.sampleTerrainCollision(terrainProbeX, ((GradiusNeoGame.state[StateSlot.PlayerY] + 0) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | GradiusNeoGame.sampleTerrainCollision(terrainProbeX, ((GradiusNeoGame.state[StateSlot.PlayerY] + 16) - GradiusNeoGame.state[StateSlot.CameraOffsetY])))) < 0):
+                                                        if ((to_int(to_int(to_int(to_int(GradiusNeoGame.sampleTerrainCollision(terrainProbeX, ((GradiusNeoGame.state[StateSlot.PlayerY] - 16) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | to_int(GradiusNeoGame.sampleTerrainCollision(terrainProbeX, ((GradiusNeoGame.state[StateSlot.PlayerY] + 0) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) | to_int(GradiusNeoGame.sampleTerrainCollision(terrainProbeX, ((GradiusNeoGame.state[StateSlot.PlayerY] + 16) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) < 0):
                                                             GradiusNeoGame.state[(1185 + var38)] = terrainProbeX
                                                             GradiusNeoGame.spawnEntity(11, (GradiusNeoGame.state[(1185 + var38)] - 8), GradiusNeoGame.state[StateSlot.PlayerY], 0)
                                                         terrainProbeX += 16
@@ -5630,17 +5630,17 @@ class GradiusNeoGame(GameSurface):
                                                         GradiusNeoGame.enqueueRenderCommand(1, (GradiusNeoGame.state[(1185 + var38)] + (var94 * 16)), GradiusNeoGame.state[(1205 + var38)], 15, (250 + ((((var94 + var111)) % 4))), 0)
                                                 raise _SwitchBreak()
                                             case 17:
-                                                GradiusNeoGame.state[(1185 + var38)] = (GradiusNeoGame.state[(1185 + var38)] + ((((GradiusNeoGame.state[(455 + GradiusNeoGame.state[(1225 + var38)])] * 24)) >> 4)))
-                                                GradiusNeoGame.state[(1205 + var38)] = (GradiusNeoGame.state[(1205 + var38)] + ((((GradiusNeoGame.state[(471 + GradiusNeoGame.state[(1225 + var38)])] * 24)) >> 4)))
-                                                if (((((((GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY])) | GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[(1185 + var38)] - ((((GradiusNeoGame.state[(455 + GradiusNeoGame.state[(1225 + var38)])] * 12)) >> 4))), ((GradiusNeoGame.state[(1205 + var38)] - ((((GradiusNeoGame.state[(471 + GradiusNeoGame.state[(1225 + var38)])] * 12)) >> 4))) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | GradiusNeoGame.state[(1185 + var38)]) | ((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))) | ((GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | (((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1205 + var38)]) + GradiusNeoGame.state[StateSlot.CameraOffsetY])))) < 0):
+                                                GradiusNeoGame.state[(1185 + var38)] = (GradiusNeoGame.state[(1185 + var38)] + ((to_int(((GradiusNeoGame.state[(455 + GradiusNeoGame.state[(1225 + var38)])] * 24))) >> (to_int(4) & 31))))
+                                                GradiusNeoGame.state[(1205 + var38)] = (GradiusNeoGame.state[(1205 + var38)] + ((to_int(((GradiusNeoGame.state[(471 + GradiusNeoGame.state[(1225 + var38)])] * 24))) >> (to_int(4) & 31))))
+                                                if ((to_int(to_int(to_int(to_int(to_int(to_int(to_int(to_int(to_int(to_int(GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | to_int(GradiusNeoGame.sampleTerrainCollision((GradiusNeoGame.state[(1185 + var38)] - ((to_int(((GradiusNeoGame.state[(455 + GradiusNeoGame.state[(1225 + var38)])] * 12))) >> (to_int(4) & 31)))), ((GradiusNeoGame.state[(1205 + var38)] - ((to_int(((GradiusNeoGame.state[(471 + GradiusNeoGame.state[(1225 + var38)])] * 12))) >> (to_int(4) & 31)))) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) | to_int(GradiusNeoGame.state[(1185 + var38)]))) | to_int(((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))))) | to_int(((GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) | to_int((((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1205 + var38)]) + GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) < 0):
                                                     GradiusNeoGame.state[(1245 + var38)] = (-1)
                                                 if (GradiusNeoGame.state[(1245 + var38)] >= 0):
                                                     GradiusNeoGame.enqueueRenderCommand(1, GradiusNeoGame.state[(1185 + var38)], GradiusNeoGame.state[(1205 + var38)], 15, 91, 0)
                                                 raise _SwitchBreak()
                                             case 18:
-                                                GradiusNeoGame.state[(1185 + var38)] = (GradiusNeoGame.state[(1185 + var38)] + ((((GradiusNeoGame.state[(455 + OPTION_SHOT_DIRECTIONS[int_div(var38, 4)])] * 24)) >> 4)))
-                                                GradiusNeoGame.state[(1205 + var38)] = (GradiusNeoGame.state[(1205 + var38)] + ((((GradiusNeoGame.state[(471 + OPTION_SHOT_DIRECTIONS[int_div(var38, 4)])] * 24)) >> 4)))
-                                                if (((((GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY])) | ((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))) | ((GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | (((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1205 + var38)]) + GradiusNeoGame.state[StateSlot.CameraOffsetY])))) < 0):
+                                                GradiusNeoGame.state[(1185 + var38)] = (GradiusNeoGame.state[(1185 + var38)] + ((to_int(((GradiusNeoGame.state[(455 + OPTION_SHOT_DIRECTIONS[int_div(var38, 4)])] * 24))) >> (to_int(4) & 31))))
+                                                GradiusNeoGame.state[(1205 + var38)] = (GradiusNeoGame.state[(1205 + var38)] + ((to_int(((GradiusNeoGame.state[(471 + OPTION_SHOT_DIRECTIONS[int_div(var38, 4)])] * 24))) >> (to_int(4) & 31))))
+                                                if ((to_int(to_int(to_int(to_int(to_int(to_int(GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | to_int(((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))))) | to_int(((GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) | to_int((((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1205 + var38)]) + GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) < 0):
                                                     GradiusNeoGame.state[(1245 + var38)] = (-1)
                                                 if (GradiusNeoGame.state[(1245 + var38)] >= 0):
                                                     GradiusNeoGame.enqueueRenderCommand(1, GradiusNeoGame.state[(1185 + var38)], GradiusNeoGame.state[(1205 + var38)], 15, 91, 0)
@@ -5671,7 +5671,7 @@ class GradiusNeoGame(GameSurface):
                                                     var31 = 99
                                                     if (GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY])) < 0):
                                                         GradiusNeoGame.state[(1245 + var38)] = (-1)
-                                                if (((((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)])) | (((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1205 + var38)]) + GradiusNeoGame.state[StateSlot.CameraOffsetY])))) < 0):
+                                                if ((to_int(to_int(((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))) | to_int((((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1205 + var38)]) + GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) < 0):
                                                     GradiusNeoGame.state[(1245 + var38)] = (-1)
                                                 if (GradiusNeoGame.state[(1245 + var38)] >= 0):
                                                     GradiusNeoGame.enqueueRenderCommand(1, GradiusNeoGame.state[(1185 + var38)], GradiusNeoGame.state[(1205 + var38)], 15, var31, 0)
@@ -5684,12 +5684,12 @@ class GradiusNeoGame(GameSurface):
                                                 if (GradiusNeoGame.state[(1245 + var38)] == 21):
                                                     GradiusNeoGame.state[(1205 + var38)] = ((GradiusNeoGame.state[(1205 + var38)] + 8) + GradiusNeoGame.state[(1225 + var38)])
                                                     var2 = (98 - var2)
-                                                    if ((((GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY])) | ((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))) | (((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1205 + var38)]) + GradiusNeoGame.state[StateSlot.CameraOffsetY])))) < 0):
+                                                    if ((to_int(to_int(to_int(to_int(GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | to_int(((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))))) | to_int((((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1205 + var38)]) + GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) < 0):
                                                         GradiusNeoGame.state[(1245 + var38)] = (-1)
                                                 else:
                                                     GradiusNeoGame.state[(1205 + var38)] = (GradiusNeoGame.state[(1205 + var38)] - ((8 + GradiusNeoGame.state[(1225 + var38)])))
                                                     var2 = (103 - var2)
-                                                    if ((((GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY])) | ((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))) | (((16 + GradiusNeoGame.state[(1205 + var38)]) - GradiusNeoGame.state[StateSlot.CameraOffsetY])))) < 0):
+                                                    if ((to_int(to_int(to_int(to_int(GradiusNeoGame.sampleTerrainCollision(GradiusNeoGame.state[(1185 + var38)], (GradiusNeoGame.state[(1205 + var38)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) | to_int(((GAME_VIEW_WIDTH - GradiusNeoGame.state[(1185 + var38)]))))) | to_int((((16 + GradiusNeoGame.state[(1205 + var38)]) - GradiusNeoGame.state[StateSlot.CameraOffsetY]))))) < 0):
                                                         GradiusNeoGame.state[(1245 + var38)] = (-1)
                                                 if (GradiusNeoGame.state[(1245 + var38)] >= 0):
                                                     GradiusNeoGame.enqueueRenderCommand(1, GradiusNeoGame.state[(1185 + var38)], GradiusNeoGame.state[(1205 + var38)], 15, var2, 0)
@@ -5711,44 +5711,44 @@ class GradiusNeoGame(GameSurface):
                                                     if (GradiusNeoGame.state[StateSlot.CurrentStage] == 2):
                                                         self.drawSpriteRegion(gfx, 3, 292, toRenderPixels(((128 - int_div(int_div(GradiusNeoGame.state[StateSlot.CollisionMapScrollX], 24), 2)) - 16)), 36, 20)
                                             for var50 in range(0, 20):
-                                                var122 = (((GradiusNeoGame.state[(1055 + var50)] - ((GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var50, 2) + 1))) * GradiusNeoGame.state[45]))) & 255)
-                                                var130 = (GradiusNeoGame.state[((1055 + 20) + var50)] & 255)
+                                                var122 = to_int(to_int(((GradiusNeoGame.state[(1055 + var50)] - ((GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var50, 2) + 1))) * GradiusNeoGame.state[45])))) & to_int(255))
+                                                var130 = to_int(to_int(GradiusNeoGame.state[((1055 + 20) + var50)]) & to_int(255))
                                                 gfx.setColor(GradiusNeoGame.state[(307 + var50)])
                                                 gfx.drawLine(toRenderPixels(var122), toRenderPixels(var130), toRenderPixels(var122), toRenderPixels(var130))
                                             for var51 in range(0, 20):
-                                                var123 = ((((GradiusNeoGame.state[(1055 + var51)] - ((GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var51, 2) + 1))) * GradiusNeoGame.state[45])) + 160)) & 255)
-                                                var131 = (((GradiusNeoGame.state[((1055 + 20) + var51)] + 80)) & 255)
+                                                var123 = to_int(to_int((((GradiusNeoGame.state[(1055 + var51)] - ((GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var51, 2) + 1))) * GradiusNeoGame.state[45])) + 160))) & to_int(255))
+                                                var131 = to_int(to_int(((GradiusNeoGame.state[((1055 + 20) + var51)] + 80))) & to_int(255))
                                                 gfx.setColor(GradiusNeoGame.state[(307 + var51)])
                                                 gfx.drawLine(toRenderPixels(var123), toRenderPixels(var131), toRenderPixels(var123), toRenderPixels(var131))
                                             raise _SwitchBreak()
                                         case 2 | 3:
                                             for var49 in range(0, 20):
-                                                var121 = (((GradiusNeoGame.state[(1055 + var49)] - (GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var49, 2) + 1))))) & 255)
-                                                var129 = (((GradiusNeoGame.state[((1055 + 20) + var49)] - GradiusNeoGame.state[StateSlot.CameraOffsetY])) & 255)
+                                                var121 = to_int(to_int(((GradiusNeoGame.state[(1055 + var49)] - (GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var49, 2) + 1)))))) & to_int(255))
+                                                var129 = to_int(to_int(((GradiusNeoGame.state[((1055 + 20) + var49)] - GradiusNeoGame.state[StateSlot.CameraOffsetY]))) & to_int(255))
                                                 gfx.setColor(GradiusNeoGame.state[(307 + var49)])
                                                 gfx.drawLine(toRenderPixels(var121), toRenderPixels(var129), toRenderPixels(var121), toRenderPixels(var129))
                                             raise _SwitchBreak()
                                         case 4:
                                             for var47 in range(0, 20):
-                                                var127 = (GradiusNeoGame.state[((1055 + 20) + var47)] & 255)
-                                                GradiusNeoGame.state[0] = (((((int_div(((((((GradiusNeoGame.state[(307 + var47)] >> 16)) & 255)) * ((92 - (8 * GradiusNeoGame.state[46]))))), 100)) << 16)) | (((int_div(((((((GradiusNeoGame.state[(307 + var47)] >> 8)) & 255)) * ((92 - (8 * GradiusNeoGame.state[46]))))), 100)) << 8))) | (int_div(((((GradiusNeoGame.state[(307 + var47)] & 255)) * ((92 - (8 * GradiusNeoGame.state[46]))))), 100)))
+                                                var127 = to_int(to_int(GradiusNeoGame.state[((1055 + 20) + var47)]) & to_int(255))
+                                                GradiusNeoGame.state[0] = to_int(to_int(to_int(to_int((to_int(to_int((int_div((((to_int(to_int(((to_int(GradiusNeoGame.state[(307 + var47)]) >> (to_int(16) & 31)))) & to_int(255))) * ((92 - (8 * GradiusNeoGame.state[46]))))), 100))) << (to_int(16) & 31)))) | to_int((to_int(to_int((int_div((((to_int(to_int(((to_int(GradiusNeoGame.state[(307 + var47)]) >> (to_int(8) & 31)))) & to_int(255))) * ((92 - (8 * GradiusNeoGame.state[46]))))), 100))) << (to_int(8) & 31)))))) | to_int((int_div((((to_int(to_int(GradiusNeoGame.state[(307 + var47)]) & to_int(255))) * ((92 - (8 * GradiusNeoGame.state[46]))))), 100))))
                                                 gfx.setColor(GradiusNeoGame.state[0])
                                                 if (GradiusNeoGame.state[46] < 8):
-                                                    var117 = (((GradiusNeoGame.state[(1055 + var47)] - ((GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var47, 2) + 1))) * GradiusNeoGame.state[45]))) & 255)
-                                                    gfx.drawLine(toRenderPixels((var117 - ((GradiusNeoGame.state[(1055 + var47)] & ((((1 << GradiusNeoGame.state[46])) - 1)))))), toRenderPixels(var127), toRenderPixels(var117), toRenderPixels(var127))
+                                                    var117 = to_int(to_int(((GradiusNeoGame.state[(1055 + var47)] - ((GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var47, 2) + 1))) * GradiusNeoGame.state[45])))) & to_int(255))
+                                                    gfx.drawLine(toRenderPixels((var117 - (to_int(to_int(GradiusNeoGame.state[(1055 + var47)]) & to_int((((to_int(to_int(1) << (to_int(GradiusNeoGame.state[46]) & 31))) - 1))))))), toRenderPixels(var127), toRenderPixels(var117), toRenderPixels(var127))
                                                 else:
-                                                    var118 = (((GradiusNeoGame.state[(1055 + var47)] - (GradiusNeoGame.state[StateSlot.LogicFrame] * (((((int_div(var47, 2)) * GradiusNeoGame.state[45]) + (((GradiusNeoGame.state[46] - 1)) * 4)) + 1))))) & 255)
-                                                    gfx.drawLine(toRenderPixels((var118 - ((GradiusNeoGame.state[(1055 + var47)] & ((((1 << ((GradiusNeoGame.state[46] - 1)))) - 1)))))), toRenderPixels(var127), toRenderPixels(var118), toRenderPixels(var127))
+                                                    var118 = to_int(to_int(((GradiusNeoGame.state[(1055 + var47)] - (GradiusNeoGame.state[StateSlot.LogicFrame] * (((((int_div(var47, 2)) * GradiusNeoGame.state[45]) + (((GradiusNeoGame.state[46] - 1)) * 4)) + 1)))))) & to_int(255))
+                                                    gfx.drawLine(toRenderPixels((var118 - (to_int(to_int(GradiusNeoGame.state[(1055 + var47)]) & to_int((((to_int(to_int(1) << (to_int(((GradiusNeoGame.state[46] - 1))) & 31))) - 1))))))), toRenderPixels(var127), toRenderPixels(var118), toRenderPixels(var127))
                                             for var48 in range(0, 20):
-                                                var128 = (((GradiusNeoGame.state[((1055 + 20) + var48)] + 80)) & 255)
-                                                GradiusNeoGame.state[0] = (((((int_div(((((((GradiusNeoGame.state[(307 + var48)] >> 16)) & 255)) * ((92 - (8 * GradiusNeoGame.state[46]))))), 100)) << 16)) | (((int_div(((((((GradiusNeoGame.state[(307 + var48)] >> 8)) & 255)) * ((92 - (8 * GradiusNeoGame.state[46]))))), 100)) << 8))) | (int_div(((((GradiusNeoGame.state[(307 + var48)] & 255)) * ((92 - (8 * GradiusNeoGame.state[46]))))), 100)))
+                                                var128 = to_int(to_int(((GradiusNeoGame.state[((1055 + 20) + var48)] + 80))) & to_int(255))
+                                                GradiusNeoGame.state[0] = to_int(to_int(to_int(to_int((to_int(to_int((int_div((((to_int(to_int(((to_int(GradiusNeoGame.state[(307 + var48)]) >> (to_int(16) & 31)))) & to_int(255))) * ((92 - (8 * GradiusNeoGame.state[46]))))), 100))) << (to_int(16) & 31)))) | to_int((to_int(to_int((int_div((((to_int(to_int(((to_int(GradiusNeoGame.state[(307 + var48)]) >> (to_int(8) & 31)))) & to_int(255))) * ((92 - (8 * GradiusNeoGame.state[46]))))), 100))) << (to_int(8) & 31)))))) | to_int((int_div((((to_int(to_int(GradiusNeoGame.state[(307 + var48)]) & to_int(255))) * ((92 - (8 * GradiusNeoGame.state[46]))))), 100))))
                                                 gfx.setColor(GradiusNeoGame.state[0])
                                                 if (GradiusNeoGame.state[46] < 8):
-                                                    var119 = ((((GradiusNeoGame.state[(1055 + var48)] - ((GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var48, 2) + 1))) * GradiusNeoGame.state[45])) + 160)) & 255)
-                                                    gfx.drawLine(toRenderPixels((var119 - ((GradiusNeoGame.state[(1055 + var48)] & ((((1 << GradiusNeoGame.state[46])) - 1)))))), toRenderPixels(var128), toRenderPixels(var119), toRenderPixels(var128))
+                                                    var119 = to_int(to_int((((GradiusNeoGame.state[(1055 + var48)] - ((GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var48, 2) + 1))) * GradiusNeoGame.state[45])) + 160))) & to_int(255))
+                                                    gfx.drawLine(toRenderPixels((var119 - (to_int(to_int(GradiusNeoGame.state[(1055 + var48)]) & to_int((((to_int(to_int(1) << (to_int(GradiusNeoGame.state[46]) & 31))) - 1))))))), toRenderPixels(var128), toRenderPixels(var119), toRenderPixels(var128))
                                                 else:
-                                                    var120 = ((((GradiusNeoGame.state[(1055 + var48)] - (GradiusNeoGame.state[StateSlot.LogicFrame] * (((((int_div(var48, 2)) * GradiusNeoGame.state[45]) + (((GradiusNeoGame.state[46] - 1)) * 4)) + 1)))) + 160)) & 255)
-                                                    gfx.drawLine(toRenderPixels((var120 - ((GradiusNeoGame.state[(1055 + var48)] & ((((1 << ((GradiusNeoGame.state[46] - 1)))) - 1)))))), toRenderPixels(var128), toRenderPixels(var120), toRenderPixels(var128))
+                                                    var120 = to_int(to_int((((GradiusNeoGame.state[(1055 + var48)] - (GradiusNeoGame.state[StateSlot.LogicFrame] * (((((int_div(var48, 2)) * GradiusNeoGame.state[45]) + (((GradiusNeoGame.state[46] - 1)) * 4)) + 1)))) + 160))) & to_int(255))
+                                                    gfx.drawLine(toRenderPixels((var120 - (to_int(to_int(GradiusNeoGame.state[(1055 + var48)]) & to_int((((to_int(to_int(1) << (to_int(((GradiusNeoGame.state[46] - 1))) & 31))) - 1))))))), toRenderPixels(var128), toRenderPixels(var120), toRenderPixels(var128))
                                             raise _SwitchBreak()
                                         case 5:
                                             GradiusNeoGame.state[0] = _set_item(GradiusNeoGame.state, 1, 0)
@@ -5763,13 +5763,13 @@ class GradiusNeoGame(GameSurface):
                                                 if (GradiusNeoGame.state[StateSlot.VisualStageScrollX] < 192):
                                                     GradiusNeoGame.state[1] = (((4 * GradiusNeoGame.state[StateSlot.StageScrollSpeed]) - GradiusNeoGame.state[StateSlot.VisualStageScrollX]) + 128)
                                             for var43 in range(0, 20):
-                                                var8 = (((GradiusNeoGame.state[(1055 + var43)] - ((GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var43, 2) + 1))) * GradiusNeoGame.state[45]))) & 255)
-                                                var9 = (GradiusNeoGame.state[((1055 + 20) + var43)] & 255)
+                                                var8 = to_int(to_int(((GradiusNeoGame.state[(1055 + var43)] - ((GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var43, 2) + 1))) * GradiusNeoGame.state[45])))) & to_int(255))
+                                                var9 = to_int(to_int(GradiusNeoGame.state[((1055 + 20) + var43)]) & to_int(255))
                                                 gfx.setColor(GradiusNeoGame.state[(307 + var43)])
                                                 gfx.drawLine(toRenderPixels(var8), toRenderPixels(var9), toRenderPixels(var8), toRenderPixels(var9))
                                             for var44 in range(0, 20):
-                                                var116 = ((((GradiusNeoGame.state[(1055 + var44)] - ((GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var44, 2) + 1))) * GradiusNeoGame.state[45])) + 160)) & 255)
-                                                var126 = (((GradiusNeoGame.state[((1055 + 20) + var44)] + 80)) & 255)
+                                                var116 = to_int(to_int((((GradiusNeoGame.state[(1055 + var44)] - ((GradiusNeoGame.state[StateSlot.LogicFrame] * ((int_div(var44, 2) + 1))) * GradiusNeoGame.state[45])) + 160))) & to_int(255))
+                                                var126 = to_int(to_int(((GradiusNeoGame.state[((1055 + 20) + var44)] + 80))) & to_int(255))
                                                 gfx.setColor(GradiusNeoGame.state[(307 + var44)])
                                                 gfx.drawLine(toRenderPixels(var116), toRenderPixels(var126), toRenderPixels(var116), toRenderPixels(var126))
                                             for var45 in range(0, 6):
@@ -6030,7 +6030,7 @@ class GradiusNeoGame(GameSurface):
                                         var112 = (GradiusNeoGame.state[48] + (int_div(GradiusNeoGame.state[StateSlot.VisualStageScrollX], 16) * 2))
                                         for var59 in range(0, int_div(GradiusNeoGame.state[37], 16)):
                                             var115 = 0
-                                            if (((GradiusNeoGame.resourceBuffer[var112] & 255)) >= ((GradiusNeoGame.state[39] + GradiusNeoGame.state[40]) - 1)):
+                                            if ((to_int(to_int(GradiusNeoGame.resourceBuffer[var112]) & to_int(255))) >= ((GradiusNeoGame.state[39] + GradiusNeoGame.state[40]) - 1)):
                                                 var115 = 1
                                             GradiusNeoGame.state[((1265 + (var59 * 16)) + ((((int_div(GradiusNeoGame.state[StateSlot.CollisionMapScrollX], 16) - 1)) % 16)))] = var115
                                             var112 += (int_div(GradiusNeoGame.state[38], 16) * 2)
