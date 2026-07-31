@@ -7,6 +7,7 @@ export { Clock } from './Clock';
 export { Font } from './Font';
 export { Graphics } from './Graphics';
 export { Image } from './Image';
+export { intDiv, intRemainder, toByte, toInt, toShort, uint8, uint16, uint32 } from './IntegerMath';
 export { GameSurface, type ResourceStream } from './GameSurface';
 export { AudioManager } from './audio/AudioManager';
 export { AudioPlayer, type AudioPlayerListener } from './audio/AudioPlayer';
