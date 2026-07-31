@@ -98,7 +98,12 @@ class PygameGraphics:
         self.fill_rect(int(x + self.translate_x), int(y + self.translate_y), int(width), int(height))
 
     def drawLine(self, x1: int, y1: int, x2: int, y2: int) -> None:
-        self.draw_line(int(x1), int(y1), int(x2), int(y2))
+        self.draw_line(
+            int(x1 + self.translate_x),
+            int(y1 + self.translate_y),
+            int(x2 + self.translate_x),
+            int(y2 + self.translate_y),
+        )
 
     def drawImage(self, image: Any, x: int, y: int, anchor: int) -> None:
         self.draw_image(image, int(x + self.translate_x), int(y + self.translate_y), anchor)

@@ -2,14 +2,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from .display_effects import LcdDisplayEffect
 from .generated_runtime import configure_generated_runtime
-from .monolithic_generated import GradiusNeoGame
+from .monolithic_generated import GradiusNeoGame, ScreenState
 from .platform import ResourceLoader, SaveStorage
 
 LOGIC_HZ = 10
 LOGIC_STEP_SECONDS = 1.0 / LOGIC_HZ
 RENDER_WIDTH = 180
 RENDER_HEIGHT = 220
+WINDOW_WIDTH = 1_280
+WINDOW_HEIGHT = 720
 
 
 def repository_root() -> Path:
@@ -26,10 +29,18 @@ def main() -> None:
 
     pygame.init()
     scale = 3
-    window = pygame.display.set_mode((RENDER_WIDTH * scale, RENDER_HEIGHT * scale))
+    window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
     logical_surface = pygame.Surface((RENDER_WIDTH, RENDER_HEIGHT))
+    game_surface = pygame.Surface((RENDER_WIDTH * scale, RENDER_HEIGHT * scale))
     graphics = PygameGraphics(logical_surface)
+    display_effect = LcdDisplayEffect(scale)
     root = repository_root()
+    background = pygame.image.load(str(root / "assets" / "gradius-neo-1080-v2.png")).convert()
+    background = pygame.transform.smoothscale(background, window.get_size())
+    game_position = (
+        (WINDOW_WIDTH - game_surface.get_width()) // 2,
+        (WINDOW_HEIGHT - game_surface.get_height()) // 2,
+    )
     resources = ResourceLoader(root / "browser-prototype-ts" / "public" / "assets")
     saves = SaveStorage(root / "python-prototype" / ".saves")
     images = PygameImageLoader()
@@ -56,6 +67,12 @@ def main() -> None:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 game.running = False
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_p:
+                if GradiusNeoGame.screenState == ScreenState.Gameplay:
+                    game.keyPressed(-7 if GradiusNeoGame.runtimeFlags[4] else -8)
+            elif event.type == pygame.KEYUP and event.key == pygame.K_p:
+                game.keyReleased(-7)
+                game.keyReleased(-8)
             elif event.type == pygame.KEYDOWN and event.key in key_codes:
                 game.keyPressed(key_codes[event.key])
             elif event.type == pygame.KEYUP and event.key in key_codes:
@@ -72,7 +89,9 @@ def main() -> None:
 
         interpolation_alpha = accumulator / LOGIC_STEP_SECONDS
         game.renderInterpolatedFrame(graphics, interpolation_alpha)
-        pygame.transform.scale(logical_surface, window.get_size(), window)
+        window.blit(background, (0, 0))
+        display_effect.present(logical_surface, game_surface)
+        window.blit(game_surface, game_position)
         pygame.display.flip()
 
     pygame.quit()
