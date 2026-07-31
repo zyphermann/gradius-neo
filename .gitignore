@@ -31,3 +31,13 @@ browser-prototype/build/
 *.temp
 *.bak
 .cache/
+
+# Python environments, caches, builds, and local saves
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+python-prototype/build/
+python-prototype/.saves/

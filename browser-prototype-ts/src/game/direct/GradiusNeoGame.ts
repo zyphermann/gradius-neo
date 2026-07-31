@@ -45,6 +45,28 @@ function fromLegacyRenderPixels(legacyScreenCoordinate: number): number {
   return Math.trunc((legacyScreenCoordinate * RENDER_SCALE) / SPRITE_SHEET_SCALE);
 }
 
+function incrementAndGet(values: Int32Array, index: number): number {
+  values[index] += 1;
+  return values[index];
+}
+
+function getAndIncrement(values: Int32Array, index: number): number {
+  const previousValue = values[index];
+  values[index] += 1;
+  return previousValue;
+}
+
+function decrementAndGet(values: Int32Array, index: number): number {
+  values[index] -= 1;
+  return values[index];
+}
+
+function getAndDecrement(values: Int32Array, index: number): number {
+  const previousValue = values[index];
+  values[index] -= 1;
+  return previousValue;
+}
+
 // The original game uses a 240×224 coordinate system. Keep the conversion to
 // physical render pixels in one place so native-resolution rendering can later
 // be enabled by changing this value from 3 / 4 to 1.
@@ -538,7 +560,7 @@ export class GradiusNeoGame extends GameSurface {
             let var7: number = 80;
             if (GradiusNeoGame.state[63] < 0) {
               if (advanceVisualState) {
-                GradiusNeoGame.state[63]++;
+                getAndIncrement(GradiusNeoGame.state, 63);
                 if (GradiusNeoGame.state[63] < -7) {
                   GradiusNeoGame.state[63] = -7;
                 }
@@ -551,7 +573,7 @@ export class GradiusNeoGame extends GameSurface {
             } else {
               if (GradiusNeoGame.state[63] > 0) {
                 if (advanceVisualState) {
-                  GradiusNeoGame.state[63]--;
+                  getAndDecrement(GradiusNeoGame.state, 63);
                   if (GradiusNeoGame.state[63] > 7) {
                     GradiusNeoGame.state[63] = 7;
                   }
@@ -629,16 +651,13 @@ export class GradiusNeoGame extends GameSurface {
                   );
                 }
 
-                for (
-                  let var9: number = GradiusNeoGame.state[StateSlot.PlayerX] + 64;
-                  var9 < GradiusNeoGame.state[1185];
-                  var9 += 16
-                ) {
+                let formationBeamX = GradiusNeoGame.state[StateSlot.PlayerX] + 64;
+                while (formationBeamX < GradiusNeoGame.state[1185]) {
                   this.drawSpriteRegion(
                     gfx,
                     1,
                     264,
-                    toRenderPixels(var9),
+                    toRenderPixels(formationBeamX),
                     toRenderPixels(
                       GradiusNeoGame.state[StateSlot.PlayerY] + 0 - GradiusNeoGame.state[StateSlot.CameraOffsetY],
                     ),
@@ -648,7 +667,7 @@ export class GradiusNeoGame extends GameSurface {
                     gfx,
                     1,
                     263,
-                    toRenderPixels(var9),
+                    toRenderPixels(formationBeamX),
                     toRenderPixels(
                       GradiusNeoGame.state[StateSlot.PlayerY] +
                         -16 +
@@ -661,7 +680,7 @@ export class GradiusNeoGame extends GameSurface {
                     gfx,
                     1,
                     265,
-                    toRenderPixels(var9),
+                    toRenderPixels(formationBeamX),
                     toRenderPixels(
                       GradiusNeoGame.state[StateSlot.PlayerY] +
                         16 -
@@ -670,6 +689,7 @@ export class GradiusNeoGame extends GameSurface {
                     ),
                     20,
                   );
+                  formationBeamX += 16;
                 }
               }
             }
@@ -928,18 +948,16 @@ export class GradiusNeoGame extends GameSurface {
   private static calculateDirectionToPlayer(sourceX: number, sourceY: number): number {
     sourceX = GradiusNeoGame.state[StateSlot.PlayerX] - sourceX;
 
-    for (
-      sourceY = GradiusNeoGame.state[StateSlot.PlayerY] - sourceY;
-      ((sourceY + 8) | (8 - sourceY)) < 0;
-      sourceY /= 2
-    ) {
-      sourceX /= 2;
+    sourceY = GradiusNeoGame.state[StateSlot.PlayerY] - sourceY;
+    while (((sourceY + 8) | (8 - sourceY)) < 0) {
+      sourceX = intDiv(sourceX, 2);
+      sourceY = intDiv(sourceY, 2);
     }
 
     if (0 <= sourceX) {
       while (8 <= sourceX) {
-        sourceX /= 2;
-        sourceY /= 2;
+        sourceX = intDiv(sourceX, 2);
+        sourceY = intDiv(sourceY, 2);
       }
 
       return 0 <= sourceY
@@ -947,8 +965,8 @@ export class GradiusNeoGame extends GameSurface {
         : 32 - GradiusNeoGame.state[327 + sourceX - sourceY * 8];
     } else {
       while (-8 >= sourceX) {
-        sourceX /= 2;
-        sourceY /= 2;
+        sourceX = intDiv(sourceX, 2);
+        sourceY = intDiv(sourceY, 2);
       }
 
       return 0 <= sourceY
@@ -972,7 +990,7 @@ export class GradiusNeoGame extends GameSurface {
     if (directionDelta === 0) {
       return currentDirection;
     } else {
-      return directionDelta > 0 ? ++currentDirection % 64 : (currentDirection + 64 - 1) % 64;
+      return directionDelta > 0 ? (currentDirection + 1) % 64 : (currentDirection + 64 - 1) % 64;
     }
   }
 
@@ -1002,7 +1020,7 @@ export class GradiusNeoGame extends GameSurface {
         GradiusNeoGame.state[25] = GradiusNeoGame.state[25] + 4;
       } else {
         if (GradiusNeoGame.state[StateSlot.MainWeaponState] >= 1) {
-          GradiusNeoGame.state[25]++;
+          getAndIncrement(GradiusNeoGame.state, 25);
         }
       }
 
@@ -1195,7 +1213,7 @@ export class GradiusNeoGame extends GameSurface {
     GradiusNeoGame.updateAdaptiveDifficulty();
     GradiusNeoGame.requestSoundEffect(7);
     if (GradiusNeoGame.state[StateSlot.Difficulty] >= 2) {
-      GradiusNeoGame.state[StateSlot.CheatUseCount]++;
+      getAndIncrement(GradiusNeoGame.state, StateSlot.CheatUseCount);
     }
   }
 
@@ -1417,7 +1435,7 @@ export class GradiusNeoGame extends GameSurface {
       GradiusNeoGame.state[StateSlot.PlayerY] + 6 - 6 < hitBoxY + hitBoxHeight &&
       hitBoxY < GradiusNeoGame.state[StateSlot.PlayerY] + 8 + 8
     ) {
-      GradiusNeoGame.state[StateSlot.ShieldEnergy]--;
+      getAndDecrement(GradiusNeoGame.state, StateSlot.ShieldEnergy);
       return 1;
     } else {
       if (
@@ -1508,7 +1526,7 @@ export class GradiusNeoGame extends GameSurface {
                     GradiusNeoGame.state[1205 + var8] - 8 < hitBoxY + hitBoxHeight &&
                     hitBoxY < GradiusNeoGame.state[1205 + var8] + 8 + 16
                   ) {
-                    GradiusNeoGame.state[1245 + var8]--;
+                    getAndDecrement(GradiusNeoGame.state, 1245 + var8);
                     collisionStrength++;
                   }
                 } else {
@@ -1574,7 +1592,7 @@ export class GradiusNeoGame extends GameSurface {
                     GradiusNeoGame.state[1165 + var8 / 4],
                     0,
                   );
-                  if (++GradiusNeoGame.state[1245 + var8] > 9) {
+                  if (incrementAndGet(GradiusNeoGame.state, 1245 + var8) > 9) {
                     GradiusNeoGame.state[1245 + var8] = -1;
                   }
                 }
@@ -1853,10 +1871,10 @@ export class GradiusNeoGame extends GameSurface {
     this.drawBitmapText(gfx, 'YES', 92, 112);
     this.drawBitmapText(gfx, 'NO', 92, 128);
     if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2) !== 0) {
-      GradiusNeoGame.state[0]++;
+      getAndIncrement(GradiusNeoGame.state, 0);
     } else {
       if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64) !== 0) {
-        GradiusNeoGame.state[0]++;
+        getAndIncrement(GradiusNeoGame.state, 0);
       }
     }
 
@@ -1952,7 +1970,7 @@ export class GradiusNeoGame extends GameSurface {
       GradiusNeoGame.state[0] = GradiusNeoGame.state[0] + 3;
     } else {
       if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64) !== 0) {
-        GradiusNeoGame.state[0]++;
+        getAndIncrement(GradiusNeoGame.state, 0);
       }
     }
 
@@ -2122,7 +2140,7 @@ export class GradiusNeoGame extends GameSurface {
                 GradiusNeoGame.state[4606 + entityId] =
                   GradiusNeoGame.state[4606 + entityId] + (GradiusNeoGame.entityDirectionSign * 16 * 9) / 2;
                 if (age == 4) {
-                  GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 } else {
                   GradiusNeoGame.state[5118 + entityId] =
                     GradiusNeoGame.state[5118 + entityId] + (GradiusNeoGame.entityDirectionSign * 16 * 7) / 1;
@@ -2458,7 +2476,7 @@ export class GradiusNeoGame extends GameSurface {
                     GradiusNeoGame.entityDirectionSign <
                   0
                 ) {
-                  GradiusNeoGame.state[4606 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, 4606 + entityId);
                 }
               } else {
                 if (GradiusNeoGame.state[4606 + entityId] == 2) {
@@ -2480,7 +2498,7 @@ export class GradiusNeoGame extends GameSurface {
                   entityY = GradiusNeoGame.state[EntityField.YFixed + entityId] >> 4;
                 }
 
-                GradiusNeoGame.state[4606 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, 4606 + entityId);
               }
               break;
             case 2:
@@ -2498,11 +2516,11 @@ export class GradiusNeoGame extends GameSurface {
                     GradiusNeoGame.entityDirectionSign <
                   0
                 ) {
-                  GradiusNeoGame.state[4606 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, 4606 + entityId);
                 }
               } else {
                 if ((GradiusNeoGame.state[StateSlot.PlayerY] - entityY) * var84 < 0) {
-                  GradiusNeoGame.state[4606 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, 4606 + entityId);
                 }
 
                 if (GradiusNeoGame.state[4606 + entityId] == 1) {
@@ -2572,7 +2590,7 @@ export class GradiusNeoGame extends GameSurface {
           GradiusNeoGame.enqueueRenderCommand(2, entityX, entityY, 13, var27 + (age % 4), 0);
           if (
             GradiusNeoGame.applyEntityCollisionDamage(entityId, entityX + 4, entityY, 26, 16, 16) &&
-            ++GradiusNeoGame.state[9731 + GradiusNeoGame.state[EntityField.Parameter2 + entityId]] >=
+            incrementAndGet(GradiusNeoGame.state, 9731 + GradiusNeoGame.state[EntityField.Parameter2 + entityId]) >=
               GradiusNeoGame.state[EntityField.Parameter0 + entityId]
           ) {
             GradiusNeoGame.spawnEntity(114, entityX + 8, entityY, 0);
@@ -2608,7 +2626,7 @@ export class GradiusNeoGame extends GameSurface {
             if (GradiusNeoGame.state[EntityField.Parameter2 + entityId] <= age) {
               GradiusNeoGame.state[EntityField.Type + entityId] = 49;
               if (entityX < GradiusNeoGame.state[StateSlot.PlayerX]) {
-                GradiusNeoGame.state[EntityField.Type + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Type + entityId);
               }
 
               GradiusNeoGame.state[EntityField.Parameter1 + entityId] = 1;
@@ -2646,7 +2664,7 @@ export class GradiusNeoGame extends GameSurface {
           GradiusNeoGame.enqueueRenderCommand(2, entityX, entityY, 13, var26 + (age % 4), 0);
           if (GradiusNeoGame.applyEntityCollisionDamage(entityId, entityX + 4, entityY, 26, 16, 16)) {
             if (GradiusNeoGame.state[86] == 2) {
-              GradiusNeoGame.state[95]++;
+              getAndIncrement(GradiusNeoGame.state, 95);
             }
 
             if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] != 0) {
@@ -2770,7 +2788,7 @@ export class GradiusNeoGame extends GameSurface {
                     0 <= entityX &&
                     entityX <= 144
                   ) {
-                    GradiusNeoGame.state[EntityField.Parameter2 + entityId]++;
+                    getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId);
                     age = 3;
                   }
                 } else if (
@@ -2781,7 +2799,7 @@ export class GradiusNeoGame extends GameSurface {
                   GradiusNeoGame.state[EntityField.Parameter3 + entityId] * 16 <= entityX &&
                   entityX <= GAME_VIEW_WIDTH - (2 + GradiusNeoGame.state[EntityField.Parameter3 + entityId]) * 16
                 ) {
-                  GradiusNeoGame.state[EntityField.Parameter2 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId);
                   age = 3;
                 }
               } else {
@@ -2802,7 +2820,7 @@ export class GradiusNeoGame extends GameSurface {
                     GradiusNeoGame.entityDirectionSign <=
                   0
                 ) {
-                  GradiusNeoGame.state[EntityField.Parameter2 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId);
                   GradiusNeoGame.state[4606 + entityId] = GradiusNeoGame.entityDirectionSign * 16;
                   age = 0;
                 }
@@ -2877,7 +2895,7 @@ export class GradiusNeoGame extends GameSurface {
                 }
 
                 if (age > 80) {
-                  GradiusNeoGame.state[EntityField.Parameter2 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId);
                   age = 1;
                   GradiusNeoGame.spawnEntity(
                     21,
@@ -2898,7 +2916,7 @@ export class GradiusNeoGame extends GameSurface {
                   GradiusNeoGame.state[471 + GradiusNeoGame.state[4606 + entityId]] *
                     (6 + GradiusNeoGame.state[25] / 12);
                 if (age >= 48) {
-                  GradiusNeoGame.state[EntityField.Parameter2 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId);
                   age = 1;
                 }
               }
@@ -2949,7 +2967,7 @@ export class GradiusNeoGame extends GameSurface {
             ) {
               GradiusNeoGame.spawnEntity(114, entityX + 8, entityY, 0);
               if (GradiusNeoGame.state[86] > 0) {
-                GradiusNeoGame.state[95]++;
+                getAndIncrement(GradiusNeoGame.state, 95);
               }
             }
           }
@@ -3146,7 +3164,7 @@ export class GradiusNeoGame extends GameSurface {
                 ((64 / GradiusNeoGame.state[1]) << 16) | (GradiusNeoGame.state[1] << 8) | 0,
               );
               if (GradiusNeoGame.state[86] > 0) {
-                GradiusNeoGame.state[95]++;
+                getAndIncrement(GradiusNeoGame.state, 95);
               }
             }
 
@@ -3177,7 +3195,7 @@ export class GradiusNeoGame extends GameSurface {
             if (GradiusNeoGame.state[EntityField.Parameter2 + entityId] == 0) {
               entityX += (GradiusNeoGame.state[EntityField.Parameter3 + entityId] * 16) / 8;
               if (age % 24 == 0) {
-                GradiusNeoGame.state[EntityField.Parameter2 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId);
               }
             } else {
               if (
@@ -3196,7 +3214,7 @@ export class GradiusNeoGame extends GameSurface {
                 );
               }
 
-              if (GradiusNeoGame.state[EntityField.Parameter2 + entityId]++ >= 3) {
+              if (getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId) >= 3) {
                 GradiusNeoGame.state[EntityField.Parameter2 + entityId] = 0;
               }
 
@@ -3291,7 +3309,7 @@ export class GradiusNeoGame extends GameSurface {
                 }
 
                 if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 1 && entityY <= -32) {
-                  GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 }
 
                 if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 3 && GAME_VIEW_WIDTH <= entityY) {
@@ -3306,13 +3324,13 @@ export class GradiusNeoGame extends GameSurface {
               }
 
               if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 0 && 192 <= entityX) {
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 GradiusNeoGame.state[EntityField.Parameter3 + entityId] = -1;
                 entityX = 192;
               }
 
               if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 2 && entityX <= 0) {
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 GradiusNeoGame.state[EntityField.Parameter3 + entityId] = 1;
                 entityX = 0;
               }
@@ -3341,7 +3359,7 @@ export class GradiusNeoGame extends GameSurface {
               GradiusNeoGame.spawnEntity(115, entityX + 16, entityY + 4, 0);
               GradiusNeoGame.requestSoundEffect(3);
               if (GradiusNeoGame.state[86] > 0) {
-                GradiusNeoGame.state[95]++;
+                getAndIncrement(GradiusNeoGame.state, 95);
               } else {
                 GradiusNeoGame.state[StateSlot.StageScrollSpeed] = 1;
                 GradiusNeoGame.state[StateSlot.StageScriptAdvancePerTick] = 1;
@@ -3365,7 +3383,7 @@ export class GradiusNeoGame extends GameSurface {
                   GradiusNeoGame.state[EntityField.Parameter1 + entityId] = -1;
                 }
 
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
               }
             } else if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 1) {
               if (GradiusNeoGame.state[StateSlot.PlayerY] + 24 < entityY) {
@@ -3386,7 +3404,7 @@ export class GradiusNeoGame extends GameSurface {
                 GradiusNeoGame.state[StateSlot.PlayerY] - 8 <= entityY &&
                 entityY <= GradiusNeoGame.state[StateSlot.PlayerY] + 8
               ) {
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 GradiusNeoGame.state[EntityField.Parameter2 + entityId] = 1;
                 GradiusNeoGame.spawnEntity(30, entityX, entityY, 8);
               }
@@ -3428,7 +3446,7 @@ export class GradiusNeoGame extends GameSurface {
                 GradiusNeoGame.spawnEntity(115, entityX + 16, entityY, 0);
                 GradiusNeoGame.requestSoundEffect(3);
                 if (GradiusNeoGame.state[86] > 0) {
-                  GradiusNeoGame.state[95]++;
+                  getAndIncrement(GradiusNeoGame.state, 95);
                 } else {
                   GradiusNeoGame.state[StateSlot.StageScrollSpeed] = 1;
                   GradiusNeoGame.state[StateSlot.StageScriptAdvancePerTick] = 1;
@@ -3441,7 +3459,7 @@ export class GradiusNeoGame extends GameSurface {
           if (age >= 128) {
             if (age >= 140) {
               GradiusNeoGame.removePrimaryEntity(entityId);
-              GradiusNeoGame.state[95]++;
+              getAndIncrement(GradiusNeoGame.state, 95);
             }
           } else if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] <= 2) {
             if (age % (5 - GradiusNeoGame.state[25] / 9) == 0) {
@@ -3452,9 +3470,9 @@ export class GradiusNeoGame extends GameSurface {
               GradiusNeoGame.state[0] = 0;
               if (
                 GradiusNeoGame.state[EntityField.Parameter0 + entityId] % 2 == 0 &&
-                ++GradiusNeoGame.state[EntityField.Parameter1 + entityId] % 8 == 0
+                incrementAndGet(GradiusNeoGame.state, EntityField.Parameter1 + entityId) % 8 == 0
               ) {
-                GradiusNeoGame.state[0]++;
+                getAndIncrement(GradiusNeoGame.state, 0);
               }
 
               GradiusNeoGame.spawnEntity(
@@ -3475,9 +3493,9 @@ export class GradiusNeoGame extends GameSurface {
             GradiusNeoGame.state[0] = 1;
             if (
               GradiusNeoGame.state[EntityField.Parameter0 + entityId] % 2 == 0 &&
-              ++GradiusNeoGame.state[EntityField.Parameter1 + entityId] % 8 == 0
+              incrementAndGet(GradiusNeoGame.state, EntityField.Parameter1 + entityId) % 8 == 0
             ) {
-              GradiusNeoGame.state[0]++;
+              getAndIncrement(GradiusNeoGame.state, 0);
             }
 
             GradiusNeoGame.spawnEntity(
@@ -3580,10 +3598,10 @@ export class GradiusNeoGame extends GameSurface {
             } else {
               if (age == 24) {
                 GradiusNeoGame.state[0] = 382;
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 GradiusNeoGame.state[EntityField.Parameter1 + entityId] = age + 16 + (GradiusNeoGame.state[25] / 4) * 4;
               } else if (age == 16) {
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
               }
 
               if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 1) {
@@ -3643,7 +3661,7 @@ export class GradiusNeoGame extends GameSurface {
               GradiusNeoGame.state[EntityField.XFixed + entityId] =
                 GradiusNeoGame.state[EntityField.XFixed + entityId] - 96;
               if (GradiusNeoGame.state[EntityField.XFixed + entityId] >> 4 <= 160) {
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 age = 47;
               }
             } else if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 1) {
@@ -3664,13 +3682,13 @@ export class GradiusNeoGame extends GameSurface {
                 GradiusNeoGame.state[StateSlot.Score] = GradiusNeoGame.state[StateSlot.Score] + 1000;
               }
 
-              GradiusNeoGame.state[5118 + entityId]++;
+              getAndIncrement(GradiusNeoGame.state, 5118 + entityId);
               GradiusNeoGame.spawnEntity(EntityType.TwoFrameLargeExplosion, entityX + 16, entityY + 16, 0);
-              GradiusNeoGame.state[9738]++;
+              getAndIncrement(GradiusNeoGame.state, 9738);
               GradiusNeoGame.spawnEntity(115, entityX + 16, entityY + 16, 0);
               GradiusNeoGame.requestSoundEffect(3);
               if (GradiusNeoGame.state[86] > 0) {
-                GradiusNeoGame.state[95]++;
+                getAndIncrement(GradiusNeoGame.state, 95);
               } else {
                 GradiusNeoGame.state[StateSlot.StageScrollSpeed] = 1;
                 GradiusNeoGame.state[StateSlot.StageScriptAdvancePerTick] = 1;
@@ -3819,7 +3837,7 @@ export class GradiusNeoGame extends GameSurface {
                 GradiusNeoGame.state[EntityField.Parameter2 + entityId],
                 6,
               );
-              GradiusNeoGame.state[EntityField.Parameter1 + entityId]--;
+              getAndDecrement(GradiusNeoGame.state, EntityField.Parameter1 + entityId);
             } else if (age <= 80) {
               GradiusNeoGame.state[EntityField.Parameter2 + entityId] = GradiusNeoGame.rotateDirectionTowardPlayer(
                 GradiusNeoGame.state[EntityField.XFixed + entityId],
@@ -3974,7 +3992,7 @@ export class GradiusNeoGame extends GameSurface {
                   16 -
                   directionSideIndex * GradiusNeoGame.state[4606 + entityId]
               ) {
-                GradiusNeoGame.state[1]++;
+                getAndIncrement(GradiusNeoGame.state, 1);
               }
 
               GradiusNeoGame.state[2] = 0;
@@ -4088,18 +4106,18 @@ export class GradiusNeoGame extends GameSurface {
             if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 0) {
               entityX -= 6;
               if (entityX <= 144) {
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
               }
             } else if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 1) {
               entityY += GradiusNeoGame.state[EntityField.Parameter1 + entityId] * (GradiusNeoGame.state[25] / 12 + 2);
               if (age % (64 - GradiusNeoGame.state[25]) == 0) {
                 GradiusNeoGame.spawnAuxiliaryEntity(33, -16, 24, 16777216 | (entityId << 16) | 256 | 12);
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 GradiusNeoGame.state[EntityField.Parameter2 + entityId] = 0;
               }
             } else if (
               GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 2 &&
-              ++GradiusNeoGame.state[EntityField.Parameter2 + entityId] >= 20
+              incrementAndGet(GradiusNeoGame.state, EntityField.Parameter2 + entityId) >= 20
             ) {
               GradiusNeoGame.state[EntityField.Parameter0 + entityId] = 1;
               GradiusNeoGame.state[EntityField.Parameter1 + entityId] = -1;
@@ -4140,11 +4158,11 @@ export class GradiusNeoGame extends GameSurface {
 
               GradiusNeoGame.spawnEntity(EntityType.TwoFrameLargeExplosion, entityX + 40, entityY + 24, 0);
               GradiusNeoGame.spawnEntity(20, entityX + 40, entityY + 24, 2627594);
-              GradiusNeoGame.state[9738]++;
-              GradiusNeoGame.state[85]++;
+              getAndIncrement(GradiusNeoGame.state, 9738);
+              getAndIncrement(GradiusNeoGame.state, 85);
               this.stopAllAudio();
               GradiusNeoGame.requestSoundEffect(9);
-              GradiusNeoGame.state[34]++;
+              getAndIncrement(GradiusNeoGame.state, 34);
               GradiusNeoGame.removePrimaryEntity(entityId);
             }
 
@@ -4170,7 +4188,7 @@ export class GradiusNeoGame extends GameSurface {
             if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == -2) {
               entityX -= 4;
               if (entityX <= 176) {
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 GradiusNeoGame.state[EntityField.Parameter2 + entityId] = 4;
               }
             } else if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] >= -1) {
@@ -4182,7 +4200,7 @@ export class GradiusNeoGame extends GameSurface {
                 }
               }
 
-              GradiusNeoGame.state[EntityField.Parameter2 + entityId]++;
+              getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId);
               if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] >= 0) {
                 if (GradiusNeoGame.state[4606 + entityId] == 0) {
                   entityY -= GradiusNeoGame.state[EntityField.YFixed + entityId] * (2 + GradiusNeoGame.state[25] / 8);
@@ -4198,14 +4216,14 @@ export class GradiusNeoGame extends GameSurface {
                     GradiusNeoGame.state[EntityField.Parameter0 + entityId] = -1;
                   }
                 } else if (GradiusNeoGame.state[4606 + entityId] == 1) {
-                  if (GradiusNeoGame.state[EntityField.Parameter0 + entityId]++ == 0) {
+                  if (getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId) == 0) {
                     GradiusNeoGame.spawnAuxiliaryEntity(
                       35,
                       8 + (GradiusNeoGame.state[EntityField.XFixed + entityId] * 16 * 3) / 2,
                       0,
                       16777216 | (entityId << 16) | 512 | 20,
                     );
-                    GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                    getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                   }
                 } else if (GradiusNeoGame.state[4606 + entityId] == 2) {
                   entityY -= GradiusNeoGame.state[EntityField.YFixed + entityId] * (2 + GradiusNeoGame.state[25] / 8);
@@ -4302,10 +4320,10 @@ export class GradiusNeoGame extends GameSurface {
 
               GradiusNeoGame.spawnEntity(EntityType.TwoFrameLargeExplosion, entityX + 8, entityY + 8, 0);
               GradiusNeoGame.spawnEntity(20, entityX + 8, entityY - 16, 2109450);
-              GradiusNeoGame.state[85]++;
+              getAndIncrement(GradiusNeoGame.state, 85);
               this.stopAllAudio();
               GradiusNeoGame.requestSoundEffect(9);
-              GradiusNeoGame.state[34]++;
+              getAndIncrement(GradiusNeoGame.state, 34);
               GradiusNeoGame.removePrimaryEntity(entityId);
             }
 
@@ -4347,7 +4365,7 @@ export class GradiusNeoGame extends GameSurface {
             if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == -4) {
               entityX -= 8;
               if (entityX + 256 < 0) {
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 entityY = 88;
               }
             } else if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == -3) {
@@ -4479,11 +4497,11 @@ export class GradiusNeoGame extends GameSurface {
 
               GradiusNeoGame.spawnEntity(EntityType.TwoFrameLargeExplosion, entityX + 80, entityY + 32, 0);
               GradiusNeoGame.spawnEntity(20, entityX + 40, entityY + 32, 2625546);
-              GradiusNeoGame.state[9738]++;
+              getAndIncrement(GradiusNeoGame.state, 9738);
               this.stopAllAudio();
               GradiusNeoGame.requestSoundEffect(9);
-              GradiusNeoGame.state[34]++;
-              GradiusNeoGame.state[5118 + entityId]++;
+              getAndIncrement(GradiusNeoGame.state, 34);
+              getAndIncrement(GradiusNeoGame.state, 5118 + entityId);
             }
 
             GradiusNeoGame.resolveEntityCollisions(entityId, entityX + 80, entityY + 16, 128, 44);
@@ -4521,7 +4539,7 @@ export class GradiusNeoGame extends GameSurface {
                   let var93: number =
                     GradiusNeoGame.state[StateSlot.PlayerX] +
                     GradiusNeoGame.state[StateSlot.PlayerY] +
-                    GradiusNeoGame.state[4]++;
+                    getAndIncrement(GradiusNeoGame.state, 4);
                   GradiusNeoGame.state[0] = 16 * (7 + (GradiusNeoGame.state[1055 + (var93 & 63)] % 6));
                   GradiusNeoGame.state[1] = 63;
                   if (GradiusNeoGame.state[0] <= 96) {
@@ -4541,7 +4559,7 @@ export class GradiusNeoGame extends GameSurface {
                   let var94: number =
                     GradiusNeoGame.state[StateSlot.PlayerX] +
                     GradiusNeoGame.state[StateSlot.PlayerY] +
-                    GradiusNeoGame.state[4]++;
+                    getAndIncrement(GradiusNeoGame.state, 4);
                   GradiusNeoGame.state[0] = (GradiusNeoGame.state[1055 + (var94 & 63)] & 15) % 5;
                   GradiusNeoGame.spawnEntity(
                     21,
@@ -4557,7 +4575,7 @@ export class GradiusNeoGame extends GameSurface {
                 let var95: number =
                   GradiusNeoGame.state[StateSlot.PlayerX] +
                   GradiusNeoGame.state[StateSlot.PlayerY] +
-                  GradiusNeoGame.state[4]++;
+                  getAndIncrement(GradiusNeoGame.state, 4);
                 GradiusNeoGame.state[0] = (GradiusNeoGame.state[1055 + (var95 & 63)] & 15) % 5;
                 GradiusNeoGame.spawnEntity(
                   23,
@@ -4572,34 +4590,34 @@ export class GradiusNeoGame extends GameSurface {
               }
 
               if (age % 128 == 0) {
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 GradiusNeoGame.state[5118 + entityId] = GradiusNeoGame.entityDirectionSign;
               }
             } else if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == -1) {
               GradiusNeoGame.state[4606 + entityId] =
                 GradiusNeoGame.state[4606 + entityId] + GradiusNeoGame.state[5118 + entityId] * 2;
               if (0 >= GradiusNeoGame.entityDirectionSign * GradiusNeoGame.state[4606 + entityId]) {
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]--;
+                getAndDecrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 let var92: number =
                   GradiusNeoGame.state[StateSlot.PlayerX] +
                   GradiusNeoGame.state[StateSlot.PlayerY] +
-                  GradiusNeoGame.state[4]++;
+                  getAndIncrement(GradiusNeoGame.state, 4);
                 GradiusNeoGame.state[EntityField.Parameter1 + entityId] =
                   (GradiusNeoGame.state[1055 + (var92 & 63)] & 15) % 3;
                 GradiusNeoGame.state[5] = (GradiusNeoGame.state[1055 + ((var92 + 1) & 63)] & 15) % 5;
                 GradiusNeoGame.state[6] = (GradiusNeoGame.state[1055 + ((var92 + 2) & 63)] & 1) * 2 - 1;
               } else if (16 <= GradiusNeoGame.entityDirectionSign * GradiusNeoGame.state[4606 + entityId]) {
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 GradiusNeoGame.state[EntityField.Parameter2 + entityId] = 1;
               }
             } else if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] < 0) {
               if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == -4) {
                 if (GradiusNeoGame.state[StateSlot.VisualStageScrollX] % 48 == 0) {
-                  GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                   entityX = 272;
                 }
               } else if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == -3 && entityX <= 176) {
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 GradiusNeoGame.state[StateSlot.StageScrollSpeed] = 0;
                 GradiusNeoGame.state[103] =
                   GradiusNeoGame.state[104] =
@@ -4666,7 +4684,7 @@ export class GradiusNeoGame extends GameSurface {
 
               if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] <= 0) {
                 GradiusNeoGame.state[EntityField.Parameter2 + entityId] = -1;
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]--;
+                getAndDecrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 GradiusNeoGame.state[5118 + entityId] = -GradiusNeoGame.entityDirectionSign;
               }
 
@@ -4694,7 +4712,7 @@ export class GradiusNeoGame extends GameSurface {
                 GradiusNeoGame.requestSoundEffect(9);
               }
 
-              if (GradiusNeoGame.state[EntityField.Parameter3 + entityId]++ >= 8) {
+              if (getAndIncrement(GradiusNeoGame.state, EntityField.Parameter3 + entityId) >= 8) {
                 GradiusNeoGame.removePrimaryEntity(entityId);
               }
             } else if (GradiusNeoGame.state[EntityField.Health + entityId] <= 0 || age >= 1500) {
@@ -4706,12 +4724,12 @@ export class GradiusNeoGame extends GameSurface {
               GradiusNeoGame.spawnEntity(20, entityX + 32, 48, 3170314);
               GradiusNeoGame.spawnEntity(20, entityX + 24, 104, 4218890);
               GradiusNeoGame.spawnEntity(20, entityX + 32, 160, 3170314);
-              GradiusNeoGame.state[85]++;
+              getAndIncrement(GradiusNeoGame.state, 85);
               this.stopAllAudio();
               GradiusNeoGame.requestSoundEffect(9);
               GradiusNeoGame.state[EntityField.Parameter0 + entityId] = -5;
-              GradiusNeoGame.state[EntityField.Parameter3 + entityId]++;
-              GradiusNeoGame.state[34]++;
+              getAndIncrement(GradiusNeoGame.state, EntityField.Parameter3 + entityId);
+              getAndIncrement(GradiusNeoGame.state, 34);
             }
 
             if (GradiusNeoGame.state[EntityField.Parameter3 + entityId] < 6) {
@@ -4773,7 +4791,7 @@ export class GradiusNeoGame extends GameSurface {
                   }
                 }
               } else if (age >= 200) {
-                GradiusNeoGame.state[EntityField.Parameter2 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId);
               } else {
                 let var91: number =
                   GradiusNeoGame.state[StateSlot.PlayerX] +
@@ -4788,7 +4806,7 @@ export class GradiusNeoGame extends GameSurface {
                     GradiusNeoGame.state[127 + GradiusNeoGame.state[1]],
                     GradiusNeoGame.state[2],
                   );
-                  GradiusNeoGame.state[EntityField.Parameter1 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, EntityField.Parameter1 + entityId);
                 }
               }
             } else {
@@ -4806,9 +4824,9 @@ export class GradiusNeoGame extends GameSurface {
                 }
               }
 
-              if (GradiusNeoGame.state[EntityField.Parameter2 + entityId]++ >= 8) {
+              if (getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId) >= 8) {
                 GradiusNeoGame.removePrimaryEntity(entityId);
-                GradiusNeoGame.state[95]++;
+                getAndIncrement(GradiusNeoGame.state, 95);
               }
             }
 
@@ -4853,7 +4871,7 @@ export class GradiusNeoGame extends GameSurface {
                     GradiusNeoGame.state[103 + var47] + (((var47 / 12) * 2 - 1) * 16) / 8;
                 }
               } else if (age >= 300) {
-                GradiusNeoGame.state[EntityField.Parameter2 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId);
               } else {
                 let var90: number =
                   GradiusNeoGame.state[StateSlot.PlayerX] +
@@ -4875,7 +4893,7 @@ export class GradiusNeoGame extends GameSurface {
                     16 + (GradiusNeoGame.state[1] % 12) * 16,
                     1288,
                   );
-                  GradiusNeoGame.state[EntityField.Parameter1 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, EntityField.Parameter1 + entityId);
                 }
               }
             } else {
@@ -4886,9 +4904,9 @@ export class GradiusNeoGame extends GameSurface {
                   GradiusNeoGame.state[103 + var46] - (((var46 / 12) * 2 - 1) * 16) / 8;
               }
 
-              if (GradiusNeoGame.state[EntityField.Parameter2 + entityId]++ >= 8) {
+              if (getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId) >= 8) {
                 GradiusNeoGame.removePrimaryEntity(entityId);
-                GradiusNeoGame.state[95]++;
+                getAndIncrement(GradiusNeoGame.state, 95);
               }
             }
 
@@ -4915,7 +4933,7 @@ export class GradiusNeoGame extends GameSurface {
                     16,
                   );
                 if (GradiusNeoGame.state[127 + var48] <= 0) {
-                  GradiusNeoGame.state[EntityField.Parameter3 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, EntityField.Parameter3 + entityId);
                   GradiusNeoGame.state[StateSlot.Score] = GradiusNeoGame.state[StateSlot.Score] + 500;
                   GradiusNeoGame.spawnEntity(
                     EntityType.ThreeFrameEffectA,
@@ -4934,7 +4952,7 @@ export class GradiusNeoGame extends GameSurface {
               GradiusNeoGame.spawnedEntityCount == 0
             ) {
               GradiusNeoGame.removePrimaryEntity(entityId);
-              GradiusNeoGame.state[95]++;
+              getAndIncrement(GradiusNeoGame.state, 95);
             }
           }
           break;
@@ -4951,7 +4969,7 @@ export class GradiusNeoGame extends GameSurface {
                 ((GradiusNeoGame.state[25] / 12) * 16) / 8 +
                 ((GradiusNeoGame.state[1055 + (var87 & 63)] & 3) * 16) / 8;
               GradiusNeoGame.state[127 + var41] = GradiusNeoGame.state[127 + var41] * ((var41 & 1) * 2 - 1);
-              GradiusNeoGame.state[EntityField.Parameter1 + entityId]++;
+              getAndIncrement(GradiusNeoGame.state, EntityField.Parameter1 + entityId);
             }
 
             GradiusNeoGame.state[EntityField.Parameter2 + entityId] = -1;
@@ -4965,9 +4983,9 @@ export class GradiusNeoGame extends GameSurface {
               );
               GradiusNeoGame.state[StateSlot.Score] = GradiusNeoGame.state[StateSlot.Score] + 2000;
               GradiusNeoGame.requestSoundEffect(3);
-              if (++GradiusNeoGame.state[EntityField.Parameter2 + entityId] >= 6) {
+              if (incrementAndGet(GradiusNeoGame.state, EntityField.Parameter2 + entityId) >= 6) {
                 GradiusNeoGame.removePrimaryEntity(entityId);
-                GradiusNeoGame.state[95]++;
+                getAndIncrement(GradiusNeoGame.state, 95);
               }
             } else if (age <= 16) {
               for (let var43: number = 0; var43 < 6; var43++) {
@@ -4975,7 +4993,7 @@ export class GradiusNeoGame extends GameSurface {
                   GradiusNeoGame.state[103 + var43] + (((var43 & 1) * 2 - 1) * 16) / 8;
               }
             } else if (age >= 200) {
-              GradiusNeoGame.state[EntityField.Parameter2 + entityId]++;
+              getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId);
             } else {
               for (let var42: number = 0; var42 < 6; var42++) {
                 GradiusNeoGame.state[103 + var42] =
@@ -4984,7 +5002,7 @@ export class GradiusNeoGame extends GameSurface {
                   let var89: number =
                     GradiusNeoGame.state[StateSlot.PlayerX] +
                     GradiusNeoGame.state[StateSlot.PlayerY] +
-                    GradiusNeoGame.state[EntityField.Parameter1 + entityId]++;
+                    getAndIncrement(GradiusNeoGame.state, EntityField.Parameter1 + entityId);
                   GradiusNeoGame.state[127 + var42] =
                     4 +
                     ((GradiusNeoGame.state[25] / 12) * 16) / 8 +
@@ -4993,7 +5011,7 @@ export class GradiusNeoGame extends GameSurface {
                   let var88: number =
                     GradiusNeoGame.state[StateSlot.PlayerX] +
                     GradiusNeoGame.state[StateSlot.PlayerY] +
-                    GradiusNeoGame.state[EntityField.Parameter1 + entityId]++;
+                    getAndIncrement(GradiusNeoGame.state, EntityField.Parameter1 + entityId);
                   GradiusNeoGame.state[127 + var42] =
                     4 +
                     ((GradiusNeoGame.state[25] / 12) * 16) / 8 +
@@ -5048,9 +5066,9 @@ export class GradiusNeoGame extends GameSurface {
                 }
               }
 
-              if (GradiusNeoGame.state[EntityField.Parameter2 + entityId]++ >= 8) {
+              if (getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId) >= 8) {
                 GradiusNeoGame.removePrimaryEntity(entityId);
-                GradiusNeoGame.state[95]++;
+                getAndIncrement(GradiusNeoGame.state, 95);
                 break;
               }
             } else if (age <= 16) {
@@ -5065,9 +5083,9 @@ export class GradiusNeoGame extends GameSurface {
                 }
               }
             } else if (age <= 18) {
-              GradiusNeoGame.state[EntityField.Parameter3 + entityId]++;
+              getAndIncrement(GradiusNeoGame.state, EntityField.Parameter3 + entityId);
             } else if (age >= 200) {
-              GradiusNeoGame.state[EntityField.Parameter2 + entityId]++;
+              getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId);
             } else {
               let var86: number =
                 GradiusNeoGame.state[StateSlot.LogicFrame] +
@@ -5088,7 +5106,7 @@ export class GradiusNeoGame extends GameSurface {
                     GradiusNeoGame.state[127 + GradiusNeoGame.state[1]] + 16,
                     8192 | GradiusNeoGame.state[2],
                   );
-                  GradiusNeoGame.state[EntityField.Parameter1 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, EntityField.Parameter1 + entityId);
                 }
               } else if (age % (6 - GradiusNeoGame.state[25] / 9) == 0) {
                 GradiusNeoGame.state[2] = 0;
@@ -5102,7 +5120,7 @@ export class GradiusNeoGame extends GameSurface {
                   GradiusNeoGame.state[127 + GradiusNeoGame.state[1]] + 16 * (GradiusNeoGame.state[1] / 3),
                   ((((GradiusNeoGame.state[1] / 3) * 64) / 2) << 8) | GradiusNeoGame.state[2],
                 );
-                GradiusNeoGame.state[EntityField.Parameter1 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter1 + entityId);
               }
             }
 
@@ -5166,7 +5184,7 @@ export class GradiusNeoGame extends GameSurface {
           }
 
           if (4 <= GradiusNeoGame.state[EntityField.Parameter0 + entityId]) {
-            GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+            getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
             GradiusNeoGame.state[EntityField.Parameter0 + entityId] =
               4 + (GradiusNeoGame.state[EntityField.Parameter0 + entityId] & 1);
             GradiusNeoGame.state[0] = GradiusNeoGame.state[EntityField.Parameter0 + entityId];
@@ -5174,7 +5192,7 @@ export class GradiusNeoGame extends GameSurface {
               GradiusNeoGame.state[0] = 4;
             }
           } else {
-            GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+            getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
             GradiusNeoGame.state[EntityField.Parameter0 + entityId] =
               GradiusNeoGame.state[EntityField.Parameter0 + entityId] & 3;
             GradiusNeoGame.state[0] = GradiusNeoGame.state[EntityField.Parameter0 + entityId];
@@ -5222,7 +5240,7 @@ export class GradiusNeoGame extends GameSurface {
               GradiusNeoGame.state[EntityField.Parameter1 + entityId];
             GradiusNeoGame.state[1] = (GradiusNeoGame.state[1055 + (var85 & 63)] & 0xff) % 12;
             if (GradiusNeoGame.state[151 + GradiusNeoGame.state[1] * 13 + 12] != 0) {
-              GradiusNeoGame.state[2]++;
+              getAndIncrement(GradiusNeoGame.state, 2);
 
               for (let var36: number = 1; var36 < 12; var36++) {
                 if (GradiusNeoGame.state[151 + ((GradiusNeoGame.state[1] + var36) % 12) * 13 + 12] == 0) {
@@ -5234,7 +5252,7 @@ export class GradiusNeoGame extends GameSurface {
             }
 
             if (GradiusNeoGame.state[2] == 0) {
-              GradiusNeoGame.state[EntityField.Parameter1 + entityId]++;
+              getAndIncrement(GradiusNeoGame.state, EntityField.Parameter1 + entityId);
               GradiusNeoGame.state[0] = GradiusNeoGame.state[EntityField.Parameter1 + entityId] & 3;
               if (
                 GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 1 &&
@@ -5254,7 +5272,7 @@ export class GradiusNeoGame extends GameSurface {
 
           if (GradiusNeoGame.state[EntityField.Parameter1 + entityId] >= 128) {
             GradiusNeoGame.removePrimaryEntity(entityId);
-            GradiusNeoGame.state[95]++;
+            getAndIncrement(GradiusNeoGame.state, 95);
           }
           break;
         case 106:
@@ -5266,14 +5284,14 @@ export class GradiusNeoGame extends GameSurface {
           }
 
           if (GradiusNeoGame.state[EntityField.Parameter2 + entityId] > 0) {
-            if (GradiusNeoGame.state[EntityField.Parameter2 + entityId]++ >= 16) {
+            if (getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId) >= 16) {
               GradiusNeoGame.spawnEntity(EntityType.DelayedBackgroundMusic, GAME_VIEW_WIDTH, 0, 38433);
               GradiusNeoGame.spawnAuxiliaryEntity(113, 16, GAME_VIEW_WIDTH, 0);
               GradiusNeoGame.removePrimaryEntity(entityId);
             }
           } else if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] <= 0) {
             if (GradiusNeoGame.state[EntityField.Parameter1 + entityId] <= GradiusNeoGame.state[9738]) {
-              GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+              getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
               GradiusNeoGame.state[EntityField.Parameter1 + entityId] = 2;
               GradiusNeoGame.state[9738] = 0;
               GradiusNeoGame.spawnEntity(107, 128, GAMEPLAY_HEIGHT, 16);
@@ -5283,7 +5301,7 @@ export class GradiusNeoGame extends GameSurface {
             GradiusNeoGame.state[EntityField.Parameter0 + entityId] <= 1 &&
             GradiusNeoGame.state[EntityField.Parameter1 + entityId] <= GradiusNeoGame.state[9738]
           ) {
-            GradiusNeoGame.state[EntityField.Parameter2 + entityId]++;
+            getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId);
           }
           break;
         case 107:
@@ -5295,7 +5313,7 @@ export class GradiusNeoGame extends GameSurface {
               GradiusNeoGame.state[EntityField.Health + entityId] = 32;
             }
           } else if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] > 0) {
-            if (--GradiusNeoGame.state[EntityField.Parameter0 + entityId] < 1) {
+            if (decrementAndGet(GradiusNeoGame.state, EntityField.Parameter0 + entityId) < 1) {
               age = 0;
             }
           } else {
@@ -5420,15 +5438,15 @@ export class GradiusNeoGame extends GameSurface {
                 GradiusNeoGame.state[StateSlot.Score] = GradiusNeoGame.state[StateSlot.Score] + 10000;
               }
 
-              GradiusNeoGame.state[EntityField.Parameter3 + entityId]--;
+              getAndDecrement(GradiusNeoGame.state, EntityField.Parameter3 + entityId);
             }
 
             if (GradiusNeoGame.state[EntityField.Parameter3 + entityId] <= 0) {
-              if (GradiusNeoGame.state[EntityField.Parameter3 + entityId]-- <= -16) {
+              if (getAndDecrement(GradiusNeoGame.state, EntityField.Parameter3 + entityId) <= -16) {
                 GradiusNeoGame.spawnEntity(EntityType.TwoFrameLargeExplosion, entityX + 24, entityY + 8, 0);
                 GradiusNeoGame.spawnEntity(20, entityX + 40, entityY + 24, 3153926);
                 GradiusNeoGame.requestSoundEffect(9);
-                GradiusNeoGame.state[9738]++;
+                getAndIncrement(GradiusNeoGame.state, 9738);
                 GradiusNeoGame.removePrimaryEntity(entityId);
               }
             } else if (age >= 400) {
@@ -5469,7 +5487,7 @@ export class GradiusNeoGame extends GameSurface {
               GradiusNeoGame.state[EntityField.XFixed + entityId] = entityX;
               if (entityX <= 144) {
                 GradiusNeoGame.state[StateSlot.StageScrollSpeed] = 0;
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 GradiusNeoGame.state[EntityField.Parameter1 + entityId] = 0;
                 GradiusNeoGame.state[EntityField.Parameter2 + entityId] = 1;
               }
@@ -5486,7 +5504,7 @@ export class GradiusNeoGame extends GameSurface {
                 let var13: number =
                   GradiusNeoGame.state[StateSlot.PlayerX] +
                   GradiusNeoGame.state[StateSlot.PlayerY] +
-                  GradiusNeoGame.state[4]++;
+                  getAndIncrement(GradiusNeoGame.state, 4);
                 GradiusNeoGame.state[EntityField.Parameter0 + entityId] = GradiusNeoGame.state[1055 + (var13 & 63)] & 3;
                 GradiusNeoGame.state[EntityField.Parameter1 + entityId] = 0;
                 GradiusNeoGame.state[EntityField.Parameter2 + entityId] = 1;
@@ -5545,7 +5563,7 @@ export class GradiusNeoGame extends GameSurface {
                   GradiusNeoGame.state[EntityField.Parameter1 + entityId] +
                   GradiusNeoGame.state[EntityField.Parameter2 + entityId];
                 if (12 <= GradiusNeoGame.state[EntityField.Parameter1 + entityId]) {
-                  GradiusNeoGame.state[EntityField.Parameter3 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, EntityField.Parameter3 + entityId);
                 } else if (GradiusNeoGame.state[EntityField.Parameter1 + entityId] <= 0) {
                   GradiusNeoGame.state[EntityField.Parameter0 + entityId] = 0;
                   GradiusNeoGame.state[EntityField.Parameter1 + entityId] = 0;
@@ -5558,7 +5576,7 @@ export class GradiusNeoGame extends GameSurface {
                 if (48 <= GradiusNeoGame.state[EntityField.Parameter1 + entityId]) {
                   GradiusNeoGame.state[EntityField.Parameter2 + entityId] = -1;
                 } else if (GradiusNeoGame.state[EntityField.Parameter1 + entityId] <= 12) {
-                  GradiusNeoGame.state[EntityField.Parameter3 + entityId]--;
+                  getAndDecrement(GradiusNeoGame.state, EntityField.Parameter3 + entityId);
                 }
               }
             }
@@ -5588,7 +5606,7 @@ export class GradiusNeoGame extends GameSurface {
                     entityY + GradiusNeoGame.state[127 + var33],
                     0,
                   );
-                  GradiusNeoGame.state[9738]++;
+                  getAndIncrement(GradiusNeoGame.state, 9738);
                 }
               }
 
@@ -5617,13 +5635,13 @@ export class GradiusNeoGame extends GameSurface {
                 GradiusNeoGame.spawnEntity(20, entityX + 64, entityY + 64, 4210698);
               }
             } else {
-              GradiusNeoGame.state[EntityField.Parameter0 + entityId]--;
+              getAndDecrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
               if (-30 <= GradiusNeoGame.state[EntityField.Parameter0 + entityId]) {
                 if ((GradiusNeoGame.state[EntityField.Parameter0 + entityId] & 1) == 0) {
                   GradiusNeoGame.requestSoundEffect(9);
                 }
               } else {
-                GradiusNeoGame.state[34]++;
+                getAndIncrement(GradiusNeoGame.state, 34);
               }
 
               GradiusNeoGame.enqueueRenderCommand(
@@ -5671,15 +5689,15 @@ export class GradiusNeoGame extends GameSurface {
               if (GradiusNeoGame.state[EntityField.Type + entityId] == 115) {
                 GradiusNeoGame.state[StateSlot.Score] = GradiusNeoGame.state[StateSlot.Score] + 1000;
                 GradiusNeoGame.state[StateSlot.SelectedFormation] =
-                  ++GradiusNeoGame.state[StateSlot.SelectedFormation] % 7;
+                  incrementAndGet(GradiusNeoGame.state, StateSlot.SelectedFormation) % 7;
                 if (GradiusNeoGame.state[StateSlot.SelectedFormation] == 0) {
-                  GradiusNeoGame.state[StateSlot.SelectedFormation]++;
+                  getAndIncrement(GradiusNeoGame.state, StateSlot.SelectedFormation);
                 }
               } else {
                 GradiusNeoGame.state[StateSlot.Score] = GradiusNeoGame.state[StateSlot.Score] + 100;
-                GradiusNeoGame.state[StateSlot.SelectedPowerUp] = ++GradiusNeoGame.state[StateSlot.SelectedPowerUp] % 7;
+                GradiusNeoGame.state[StateSlot.SelectedPowerUp] = incrementAndGet(GradiusNeoGame.state, StateSlot.SelectedPowerUp) % 7;
                 if (GradiusNeoGame.state[StateSlot.SelectedPowerUp] == 0) {
-                  GradiusNeoGame.state[StateSlot.SelectedPowerUp]++;
+                  getAndIncrement(GradiusNeoGame.state, StateSlot.SelectedPowerUp);
                 }
               }
 
@@ -5698,7 +5716,8 @@ export class GradiusNeoGame extends GameSurface {
         GradiusNeoGame.state[EntityField.X + entityId] =
           entityX + GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.entityDirectionSign;
         GradiusNeoGame.state[EntityField.Y + entityId] = entityY;
-        GradiusNeoGame.state[EntityField.Age + entityId] = ++age;
+        age += 1;
+        GradiusNeoGame.state[EntityField.Age + entityId] = age;
       }
 
       entityId = nextEntityId;
@@ -5730,7 +5749,7 @@ export class GradiusNeoGame extends GameSurface {
         );
       }
 
-      GradiusNeoGame.state[StateSlot.PlayerDamagePhase]++;
+      getAndIncrement(GradiusNeoGame.state, StateSlot.PlayerDamagePhase);
       if (GradiusNeoGame.state[StateSlot.PlayerDamagePhase] === -40) {
         GradiusNeoGame.state[StateSlot.PlayerX] = 32;
         GradiusNeoGame.state[StateSlot.PlayerY] = 104;
@@ -5768,7 +5787,7 @@ export class GradiusNeoGame extends GameSurface {
         }
 
         GradiusNeoGame.updateAdaptiveDifficulty();
-        if (--GradiusNeoGame.state[StateSlot.Lives] < 0) {
+        if (decrementAndGet(GradiusNeoGame.state, StateSlot.Lives) < 0) {
           GradiusNeoGame.screenState = ScreenState.PrepareGameOver;
           GradiusNeoGame.state[StateSlot.Lives] = 0;
           return;
@@ -5820,7 +5839,7 @@ export class GradiusNeoGame extends GameSurface {
           0,
         );
         GradiusNeoGame.renderQueue.endEntity();
-        GradiusNeoGame.state[StateSlot.PlayerDamagePhase]++;
+        getAndIncrement(GradiusNeoGame.state, StateSlot.PlayerDamagePhase);
         return;
       }
 
@@ -5887,7 +5906,7 @@ export class GradiusNeoGame extends GameSurface {
 
             case 5: {
               if (GradiusNeoGame.state[StateSlot.OptionCount] < 4) {
-                GradiusNeoGame.state[StateSlot.OptionCount]++;
+                getAndIncrement(GradiusNeoGame.state, StateSlot.OptionCount);
                 if (GradiusNeoGame.state[81] === 6) {
                   GradiusNeoGame.state[1160 + GradiusNeoGame.state[StateSlot.OptionCount]] =
                     GradiusNeoGame.state[StateSlot.PlayerX] - 16;
@@ -5899,7 +5918,7 @@ export class GradiusNeoGame extends GameSurface {
                 GradiusNeoGame.requestSoundEffect(7);
               } else {
                 if (GradiusNeoGame.state[71] === 1 && GradiusNeoGame.state[84] < 2) {
-                  GradiusNeoGame.state[84]++;
+                  getAndIncrement(GradiusNeoGame.state, 84);
                   GradiusNeoGame.state[StateSlot.SelectedPowerUp] = 0;
                   GradiusNeoGame.requestSoundEffect(7);
                 }
@@ -6032,7 +6051,7 @@ export class GradiusNeoGame extends GameSurface {
 
         let var1: number = 3;
         if (GradiusNeoGame.state[StateSlot.PlayerDamagePhase] !== 0) {
-          GradiusNeoGame.state[StateSlot.PlayerDamagePhase]++;
+          getAndIncrement(GradiusNeoGame.state, StateSlot.PlayerDamagePhase);
           if ((GradiusNeoGame.state[StateSlot.PlayerDamagePhase] & 3) >= 2) {
             var1 = 0;
           }
@@ -6049,7 +6068,7 @@ export class GradiusNeoGame extends GameSurface {
               )) <
               0
           ) {
-            GradiusNeoGame.state[StateSlot.ShieldEnergy]--;
+            getAndDecrement(GradiusNeoGame.state, StateSlot.ShieldEnergy);
           }
 
           if (
@@ -6103,11 +6122,9 @@ export class GradiusNeoGame extends GameSurface {
         );
         GradiusNeoGame.renderQueue.endEntity();
         if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 1046784) !== 0) {
-          let var14: number = 1;
-
-          let var33: number;
-          for (var33 = 0; var14 < 7; var14++) {
-            if (GradiusNeoGame.state[1119 + var14] === 1) {
+          let var33: number = 0;
+          for (let formationSlot = 1; formationSlot < 7; formationSlot++) {
+            if (GradiusNeoGame.state[1119 + formationSlot] === 1) {
               var33++;
             }
           }
@@ -6150,7 +6167,7 @@ export class GradiusNeoGame extends GameSurface {
 
             if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.Fire) !== 0) {
               do {
-                GradiusNeoGame.state[81]++;
+                getAndIncrement(GradiusNeoGame.state, 81);
                 GradiusNeoGame.state[81] = GradiusNeoGame.state[81] % 7;
               } while (GradiusNeoGame.state[1119 + GradiusNeoGame.state[81]] === 0);
             } else {
@@ -6253,7 +6270,7 @@ export class GradiusNeoGame extends GameSurface {
                   GradiusNeoGame.state[1160 + var17] = GradiusNeoGame.state[1160 + var17] + 16;
                   if (GAME_VIEW_WIDTH <= GradiusNeoGame.state[1160 + var17]) {
                     GradiusNeoGame.state[1160 + var17] = GAMEPLAY_HEIGHT;
-                    GradiusNeoGame.state[1180 + var17]++;
+                    getAndIncrement(GradiusNeoGame.state, 1180 + var17);
                   }
                 } else {
                   if (GradiusNeoGame.state[1180 + var17] === 1) {
@@ -6309,7 +6326,7 @@ export class GradiusNeoGame extends GameSurface {
                         GradiusNeoGame.state[1165 + var17] = GradiusNeoGame.state[StateSlot.PlayerY];
                       }
                     } else {
-                      GradiusNeoGame.state[1180 + var17]++;
+                      getAndIncrement(GradiusNeoGame.state, 1180 + var17);
                       GradiusNeoGame.state[1160 + var17] = GradiusNeoGame.state[StateSlot.PlayerX];
                       GradiusNeoGame.state[1165 + var17] = GradiusNeoGame.state[StateSlot.PlayerY];
                     }
@@ -6349,15 +6366,13 @@ export class GradiusNeoGame extends GameSurface {
               GradiusNeoGame.state[1165 + var23] = GradiusNeoGame.state[1175 + var23] >> 4;
             }
 
-            let var24: number = 1;
-
-            let var34: number;
-            for (var34 = 0; var24 <= GradiusNeoGame.state[StateSlot.OptionCount]; var24++) {
+            let var34: number = 0;
+            for (let optionIndex = 1; optionIndex <= GradiusNeoGame.state[StateSlot.OptionCount]; optionIndex++) {
               if (
-                ((GradiusNeoGame.state[StateSlot.PlayerX] - 16 - GradiusNeoGame.state[1160 + var24]) &
-                  (GradiusNeoGame.state[1160 + var24] - (GradiusNeoGame.state[StateSlot.PlayerX] + 16)) &
-                  (GradiusNeoGame.state[StateSlot.PlayerY] - 16 - GradiusNeoGame.state[1165 + var24]) &
-                  (GradiusNeoGame.state[1165 + var24] - (GradiusNeoGame.state[StateSlot.PlayerY] + 16))) <
+                ((GradiusNeoGame.state[StateSlot.PlayerX] - 16 - GradiusNeoGame.state[1160 + optionIndex]) &
+                  (GradiusNeoGame.state[1160 + optionIndex] - (GradiusNeoGame.state[StateSlot.PlayerX] + 16)) &
+                  (GradiusNeoGame.state[StateSlot.PlayerY] - 16 - GradiusNeoGame.state[1165 + optionIndex]) &
+                  (GradiusNeoGame.state[1165 + optionIndex] - (GradiusNeoGame.state[StateSlot.PlayerY] + 16))) <
                 0
               ) {
                 var34++;
@@ -6403,7 +6418,7 @@ export class GradiusNeoGame extends GameSurface {
                       4);
                 }
 
-                if (GradiusNeoGame.state[83]++ >= 3) {
+                if (getAndIncrement(GradiusNeoGame.state, 83) >= 3) {
                   GradiusNeoGame.state[82] = 0;
                 }
                 break;
@@ -6418,7 +6433,7 @@ export class GradiusNeoGame extends GameSurface {
                 GradiusNeoGame.state[1168] = GradiusNeoGame.state[StateSlot.PlayerY] + 16 * GradiusNeoGame.state[83];
                 GradiusNeoGame.state[1164] = GradiusNeoGame.state[StateSlot.PlayerX] + 16 * -GradiusNeoGame.state[83];
                 GradiusNeoGame.state[1169] = GradiusNeoGame.state[StateSlot.PlayerY] + 0;
-                if (GradiusNeoGame.state[83]++ >= 3) {
+                if (getAndIncrement(GradiusNeoGame.state, 83) >= 3) {
                   GradiusNeoGame.state[82] = 0;
                 }
                 break;
@@ -6433,7 +6448,7 @@ export class GradiusNeoGame extends GameSurface {
                 GradiusNeoGame.state[1168] = GradiusNeoGame.state[StateSlot.PlayerY] + -5 * GradiusNeoGame.state[83];
                 GradiusNeoGame.state[1164] = GradiusNeoGame.state[StateSlot.PlayerX] + 16 * GradiusNeoGame.state[83];
                 GradiusNeoGame.state[1169] = GradiusNeoGame.state[StateSlot.PlayerY] + 5 * GradiusNeoGame.state[83];
-                if (GradiusNeoGame.state[83]++ >= 3) {
+                if (getAndIncrement(GradiusNeoGame.state, 83) >= 3) {
                   GradiusNeoGame.state[82] = 0;
                 }
                 break;
@@ -6448,7 +6463,7 @@ export class GradiusNeoGame extends GameSurface {
                 GradiusNeoGame.state[1168] = GradiusNeoGame.state[StateSlot.PlayerY] + -13 * GradiusNeoGame.state[83];
                 GradiusNeoGame.state[1164] = GradiusNeoGame.state[StateSlot.PlayerX] + 0 * GradiusNeoGame.state[83];
                 GradiusNeoGame.state[1169] = GradiusNeoGame.state[StateSlot.PlayerY] + 13 * GradiusNeoGame.state[83];
-                if (GradiusNeoGame.state[83]++ >= 3) {
+                if (getAndIncrement(GradiusNeoGame.state, 83) >= 3) {
                   GradiusNeoGame.state[82] = 0;
                 }
                 break;
@@ -6467,7 +6482,7 @@ export class GradiusNeoGame extends GameSurface {
                 GradiusNeoGame.state[1164] = GradiusNeoGame.state[StateSlot.PlayerX] + 0;
                 GradiusNeoGame.state[1169] =
                   GradiusNeoGame.state[StateSlot.PlayerY] + (GradiusNeoGame.state[83] * 16 * 5) / 3;
-                if (GradiusNeoGame.state[83]++ >= 3) {
+                if (getAndIncrement(GradiusNeoGame.state, 83) >= 3) {
                   GradiusNeoGame.state[82] = 0;
                 }
                 break;
@@ -6569,7 +6584,8 @@ export class GradiusNeoGame extends GameSurface {
                       GradiusNeoGame.state[1245 + var35] = GradiusNeoGame.state[StateSlot.MainWeaponState];
                       GradiusNeoGame.state[1225 + var35] = -1;
                     } else {
-                      if (GradiusNeoGame.state[1245 + ++var35] < 0) {
+                      var35 += 1;
+                      if (GradiusNeoGame.state[1245 + var35] < 0) {
                         GradiusNeoGame.state[1185 + var35] = GradiusNeoGame.state[1160 + var27] - 32;
                         GradiusNeoGame.state[1205 + var35] = GradiusNeoGame.state[1165 + var27] - 16;
                         GradiusNeoGame.state[1245 + var35] = GradiusNeoGame.state[StateSlot.MainWeaponState];
@@ -6598,7 +6614,8 @@ export class GradiusNeoGame extends GameSurface {
                         GradiusNeoGame.state[StateSlot.MainWeaponState] === 0 ||
                         GradiusNeoGame.state[StateSlot.MainWeaponState] >= 16
                       ) {
-                        if (GradiusNeoGame.state[1245 + ++var35] < 0) {
+                        var35 += 1;
+                        if (GradiusNeoGame.state[1245 + var35] < 0) {
                           GradiusNeoGame.state[1185 + var35] = GradiusNeoGame.state[1160 + var27] - 16;
                           GradiusNeoGame.state[1205 + var35] = GradiusNeoGame.state[1165 + var27];
                           GradiusNeoGame.state[1245 + var35] = GradiusNeoGame.state[StateSlot.MainWeaponState];
@@ -6619,21 +6636,24 @@ export class GradiusNeoGame extends GameSurface {
                     }
 
                     if (GradiusNeoGame.state[StateSlot.MainWeaponState] === 1) {
-                      if (GradiusNeoGame.state[1245 + ++var35] < 0) {
+                      var35 += 1;
+                      if (GradiusNeoGame.state[1245 + var35] < 0) {
                         GradiusNeoGame.state[1185 + var35] = GradiusNeoGame.state[1160 + var27];
                         GradiusNeoGame.state[1205 + var35] = GradiusNeoGame.state[1165 + var27] + 8;
                         GradiusNeoGame.state[1245 + var35] = 2;
                       }
                     } else {
                       if (GradiusNeoGame.state[StateSlot.MainWeaponState] === 3) {
-                        if (GradiusNeoGame.state[1245 + ++var35] < 0) {
+                        var35 += 1;
+                        if (GradiusNeoGame.state[1245 + var35] < 0) {
                           GradiusNeoGame.state[1185 + var35] = GradiusNeoGame.state[1160 + var27] + 32;
                           GradiusNeoGame.state[1205 + var35] = GradiusNeoGame.state[1165 + var27];
                           GradiusNeoGame.state[1245 + var35] = 4;
                         }
                       } else {
                         if (GradiusNeoGame.state[StateSlot.MainWeaponState] === 5) {
-                          if (GradiusNeoGame.state[1245 + ++var35] < 0) {
+                          var35 += 1;
+                          if (GradiusNeoGame.state[1245 + var35] < 0) {
                             GradiusNeoGame.state[1185 + var35] = GradiusNeoGame.state[1160 + var27] + 8;
                             GradiusNeoGame.state[1205 + var35] = GradiusNeoGame.state[1165 + var27] + 24;
                             GradiusNeoGame.state[1245 + var35] = 6;
@@ -6661,7 +6681,8 @@ export class GradiusNeoGame extends GameSurface {
                 GradiusNeoGame.state[1245 + var35] = 21;
               }
 
-              if (GradiusNeoGame.state[1245 + ++var35] < 0) {
+              var35 += 1;
+              if (GradiusNeoGame.state[1245 + var35] < 0) {
                 GradiusNeoGame.state[1185 + var35] = GradiusNeoGame.state[1160 + var27] + 16;
                 GradiusNeoGame.state[1205 + var35] = GradiusNeoGame.state[1165 + var27];
                 GradiusNeoGame.state[1225 + var35] = 0;
@@ -6862,7 +6883,7 @@ export class GradiusNeoGame extends GameSurface {
     if (GradiusNeoGame.screenState !== ScreenState.PaintDisabled) {
       try {
         Clock.collectGarbage();
-        GradiusNeoGame.state[StateSlot.LogicFrame]++;
+        getAndIncrement(GradiusNeoGame.state, StateSlot.LogicFrame);
         GradiusNeoGame.state[StateSlot.HeldInputBits] = this.heldInputBits;
         this.heldInputBits = this.heldInputBits & ~this.releasedInputBits;
         this.releasedInputBits = 0;
@@ -6955,7 +6976,8 @@ export class GradiusNeoGame extends GameSurface {
             }
 
             for (let var93: number = 0; var93 < 792; var93++) {
-              GradiusNeoGame.state[327 + var93] = GradiusNeoGame.resourceBuffer[var109++];
+              GradiusNeoGame.state[327 + var93] = GradiusNeoGame.resourceBuffer[var109];
+              var109 += 1;
             }
 
             GradiusNeoGame.state[0] = 0;
@@ -7014,7 +7036,7 @@ export class GradiusNeoGame extends GameSurface {
               GradiusNeoGame.state[0] = GradiusNeoGame.state[0] + 6;
             } else {
               if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64) !== 0) {
-                GradiusNeoGame.state[0]++;
+                getAndIncrement(GradiusNeoGame.state, 0);
               }
             }
 
@@ -7084,7 +7106,7 @@ export class GradiusNeoGame extends GameSurface {
               this.drawSpriteRegion(gfx, 2, 349, 0, fromLegacyRenderPixels(16 + 4 * GradiusNeoGame.state[0]), 20);
             }
 
-            if (++GradiusNeoGame.state[0] >= 4) {
+            if (incrementAndGet(GradiusNeoGame.state, 0) >= 4) {
               GradiusNeoGame.screenState = ScreenState.PrepareMainMenu;
               if (GradiusNeoGame.state[1] === -1) {
                 this.setSoftKeyLabels(6, 3);
@@ -7128,7 +7150,7 @@ export class GradiusNeoGame extends GameSurface {
               GradiusNeoGame.state[0] = GradiusNeoGame.state[0] + var16 - 1 + 1;
             } else {
               if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64) !== 0) {
-                GradiusNeoGame.state[0]++;
+                getAndIncrement(GradiusNeoGame.state, 0);
               }
             }
 
@@ -7202,7 +7224,7 @@ export class GradiusNeoGame extends GameSurface {
               GradiusNeoGame.state[0] = GradiusNeoGame.state[0] + 5;
             } else {
               if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64) !== 0) {
-                GradiusNeoGame.state[0]++;
+                getAndIncrement(GradiusNeoGame.state, 0);
               }
             }
 
@@ -7228,7 +7250,7 @@ export class GradiusNeoGame extends GameSurface {
                   if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 4) !== 0) {
                     GradiusNeoGame.state[1] = GradiusNeoGame.state[1] + 3;
                   } else {
-                    GradiusNeoGame.state[1]++;
+                    getAndIncrement(GradiusNeoGame.state, 1);
                   }
 
                   GradiusNeoGame.state[1] = GradiusNeoGame.state[1] % 4;
@@ -7264,7 +7286,7 @@ export class GradiusNeoGame extends GameSurface {
               }
             } else {
               this.drawBitmapGlyphRun(gfx, 202, 5, 120, 192);
-              GradiusNeoGame.state[10]++;
+              getAndIncrement(GradiusNeoGame.state, 10);
             }
             break;
           }
@@ -7324,7 +7346,7 @@ export class GradiusNeoGame extends GameSurface {
               GradiusNeoGame.state[0] = GradiusNeoGame.state[0] + 4;
             } else {
               if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64) !== 0) {
-                GradiusNeoGame.state[0]++;
+                getAndIncrement(GradiusNeoGame.state, 0);
               }
             }
 
@@ -7348,7 +7370,7 @@ export class GradiusNeoGame extends GameSurface {
                   if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 4) !== 0) {
                     GradiusNeoGame.state[1] = GradiusNeoGame.state[1] + (GradiusNeoGame.state[66] - 1);
                   } else {
-                    GradiusNeoGame.state[1]++;
+                    getAndIncrement(GradiusNeoGame.state, 1);
                   }
 
                   GradiusNeoGame.state[1] = GradiusNeoGame.state[1] % GradiusNeoGame.state[66];
@@ -7357,7 +7379,7 @@ export class GradiusNeoGame extends GameSurface {
                     if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 4) !== 0) {
                       GradiusNeoGame.state[2] = GradiusNeoGame.state[2] + (GradiusNeoGame.state[67] - 1);
                     } else {
-                      GradiusNeoGame.state[2]++;
+                      getAndIncrement(GradiusNeoGame.state, 2);
                     }
 
                     GradiusNeoGame.state[2] = GradiusNeoGame.state[2] % GradiusNeoGame.state[67];
@@ -7366,7 +7388,7 @@ export class GradiusNeoGame extends GameSurface {
                       if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 4) !== 0) {
                         GradiusNeoGame.state[3] = GradiusNeoGame.state[3] + (GradiusNeoGame.state[68] - 1);
                       } else {
-                        GradiusNeoGame.state[3]++;
+                        getAndIncrement(GradiusNeoGame.state, 3);
                       }
 
                       GradiusNeoGame.state[3] = GradiusNeoGame.state[3] % GradiusNeoGame.state[68];
@@ -7396,7 +7418,7 @@ export class GradiusNeoGame extends GameSurface {
               }
             } else {
               this.drawBitmapGlyphRun(gfx, 202, 5, 120, 200);
-              GradiusNeoGame.state[10]++;
+              getAndIncrement(GradiusNeoGame.state, 10);
             }
             break;
           }
@@ -7404,18 +7426,22 @@ export class GradiusNeoGame extends GameSurface {
           case ScreenState.NewGameStageSelect: {
             this.drawBitmapGlyphRun(gfx, 25, 12, 36, 48);
 
-            let var91: number;
-            for (var91 = 0; var91 <= GradiusNeoGame.state[StateSlot.HighestUnlockedStage]; var91++) {
-              this.drawBitmapGlyphRun(gfx, 259 + var91 * 7, 7, 71, 96 + var91 * 16);
+            for (
+              let stageIndex = 0;
+              stageIndex <= GradiusNeoGame.state[StateSlot.HighestUnlockedStage];
+              stageIndex++
+            ) {
+              this.drawBitmapGlyphRun(gfx, 259 + stageIndex * 7, 7, 71, 96 + stageIndex * 16);
             }
 
-            this.drawBitmapGlyphRun(gfx, 294, 7, 71, 96 + var91 * 16);
+            const exitMenuRow = GradiusNeoGame.state[StateSlot.HighestUnlockedStage] + 1;
+            this.drawBitmapGlyphRun(gfx, 294, 7, 71, 96 + exitMenuRow * 16);
             if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2) !== 0) {
               GradiusNeoGame.state[0] =
                 GradiusNeoGame.state[0] + GradiusNeoGame.state[StateSlot.HighestUnlockedStage] + 1;
             } else {
               if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64) !== 0) {
-                GradiusNeoGame.state[0]++;
+                getAndIncrement(GradiusNeoGame.state, 0);
               }
             }
 
@@ -7460,7 +7486,7 @@ export class GradiusNeoGame extends GameSurface {
                   GradiusNeoGame.screenState = ScreenState.ReturnToTitle;
                 }
               } else {
-                GradiusNeoGame.state[0]++;
+                getAndIncrement(GradiusNeoGame.state, 0);
                 GradiusNeoGame.state[1] = 0;
               }
             } else {
@@ -7508,27 +7534,38 @@ export class GradiusNeoGame extends GameSurface {
                   gfx.fillRect(90, toRenderPixels(32 + (var89 * 16 * 9) / 4 - 2), 84, 13);
                 }
 
-                let var90: number;
-                for (var90 = 0; var90 <= GradiusNeoGame.state[StateSlot.HighestUnlockedStage]; var90++) {
-                  this.drawBitmapGlyphRun(gfx, 259 + var90 * 7, 7, 16, 32 + (var90 * 16 * 9) / 4);
-                  this.drawBitmapNumber(gfx, EXTRA_MODE_TARGET_SCORES[var90], 7, 128, 32 + (var90 * 16 * 9) / 4, 4);
+                for (
+                  let stageIndex = 0;
+                  stageIndex <= GradiusNeoGame.state[StateSlot.HighestUnlockedStage];
+                  stageIndex++
+                ) {
+                  this.drawBitmapGlyphRun(gfx, 259 + stageIndex * 7, 7, 16, 32 + (stageIndex * 16 * 9) / 4);
                   this.drawBitmapNumber(
                     gfx,
-                    GradiusNeoGame.extraModeBestScores[var90],
+                    EXTRA_MODE_TARGET_SCORES[stageIndex],
                     7,
                     128,
-                    48 + (var90 * 16 * 9) / 4,
+                    32 + (stageIndex * 16 * 9) / 4,
+                    4,
+                  );
+                  this.drawBitmapNumber(
+                    gfx,
+                    GradiusNeoGame.extraModeBestScores[stageIndex],
+                    7,
+                    128,
+                    48 + (stageIndex * 16 * 9) / 4,
                     4,
                   );
                 }
 
-                this.drawBitmapGlyphRun(gfx, 301, 7, 16, 32 + (var90 * 16 * 9) / 4);
+                const exitMenuRow = GradiusNeoGame.state[StateSlot.HighestUnlockedStage] + 1;
+                this.drawBitmapGlyphRun(gfx, 301, 7, 16, 32 + (exitMenuRow * 16 * 9) / 4);
                 if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2) !== 0) {
                   GradiusNeoGame.state[1] =
                     GradiusNeoGame.state[1] + GradiusNeoGame.state[StateSlot.HighestUnlockedStage] + 1;
                 } else {
                   if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64) !== 0) {
-                    GradiusNeoGame.state[1]++;
+                    getAndIncrement(GradiusNeoGame.state, 1);
                   }
                 }
 
@@ -7671,10 +7708,10 @@ export class GradiusNeoGame extends GameSurface {
               20,
             );
             if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2) !== 0) {
-              GradiusNeoGame.state[0]++;
+              getAndIncrement(GradiusNeoGame.state, 0);
             } else {
               if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64) !== 0) {
-                GradiusNeoGame.state[0]++;
+                getAndIncrement(GradiusNeoGame.state, 0);
               }
             }
 
@@ -7756,12 +7793,11 @@ export class GradiusNeoGame extends GameSurface {
             GradiusNeoGame.state[StateSlot.FreeEntityHead] = 0;
             GradiusNeoGame.state[StateSlot.PrimaryEntityHead] = -1;
             GradiusNeoGame.state[StateSlot.AuxiliaryEntityHead] = -1;
-            let var78: number = 0;
-            for (var78 = 0; var78 < 511; var78++) {
-              GradiusNeoGame.state[EntityField.Next + var78] = var78 + 1;
+            for (let entityId = 0; entityId < 511; entityId++) {
+              GradiusNeoGame.state[EntityField.Next + entityId] = entityId + 1;
             }
 
-            GradiusNeoGame.state[EntityField.Next + var78] = -1;
+            GradiusNeoGame.state[EntityField.Next + 511] = -1;
 
             for (let var79: number = 0; var79 < 18; var79++) {
               GradiusNeoGame.state[EntityField.RenderLayerHead + var79] = -1;
@@ -7821,14 +7857,22 @@ export class GradiusNeoGame extends GameSurface {
 
             this.loadResourceIntoBuffer('' + GradiusNeoGame.state[StateSlot.CurrentStage]);
             let var99: number = (GradiusNeoGame.resourceBuffer[0] << 8) | (GradiusNeoGame.resourceBuffer[1] & 255);
-            GradiusNeoGame.state[37] = (GradiusNeoGame.resourceBuffer[var99++] & 255) << 8;
-            GradiusNeoGame.state[37] = GradiusNeoGame.state[37] | (GradiusNeoGame.resourceBuffer[var99++] & 255);
-            GradiusNeoGame.state[38] = (GradiusNeoGame.resourceBuffer[var99++] & 255) << 8;
-            GradiusNeoGame.state[38] = GradiusNeoGame.state[38] | (GradiusNeoGame.resourceBuffer[var99++] & 255);
-            GradiusNeoGame.state[39] = GradiusNeoGame.resourceBuffer[var99++] & 255;
-            GradiusNeoGame.state[40] = GradiusNeoGame.resourceBuffer[var99++] & 255;
-            GradiusNeoGame.state[41] = GradiusNeoGame.resourceBuffer[var99++] & 255;
-            GradiusNeoGame.state[StateSlot.StageScrollSpeed] = GradiusNeoGame.resourceBuffer[var99++] & 255;
+            GradiusNeoGame.state[37] = (GradiusNeoGame.resourceBuffer[var99] & 255) << 8;
+            var99 += 1;
+            GradiusNeoGame.state[37] = GradiusNeoGame.state[37] | (GradiusNeoGame.resourceBuffer[var99] & 255);
+            var99 += 1;
+            GradiusNeoGame.state[38] = (GradiusNeoGame.resourceBuffer[var99] & 255) << 8;
+            var99 += 1;
+            GradiusNeoGame.state[38] = GradiusNeoGame.state[38] | (GradiusNeoGame.resourceBuffer[var99] & 255);
+            var99 += 1;
+            GradiusNeoGame.state[39] = GradiusNeoGame.resourceBuffer[var99] & 255;
+            var99 += 1;
+            GradiusNeoGame.state[40] = GradiusNeoGame.resourceBuffer[var99] & 255;
+            var99 += 1;
+            GradiusNeoGame.state[41] = GradiusNeoGame.resourceBuffer[var99] & 255;
+            var99 += 1;
+            GradiusNeoGame.state[StateSlot.StageScrollSpeed] = GradiusNeoGame.resourceBuffer[var99] & 255;
+            var99 += 1;
             GradiusNeoGame.state[StateSlot.StageWorldHeight] = GradiusNeoGame.state[37];
             GradiusNeoGame.state[45] = 1;
             GradiusNeoGame.state[StateSlot.PendingCameraDeltaY] = 0;
@@ -7850,23 +7894,26 @@ export class GradiusNeoGame extends GameSurface {
               }
             }
 
-            for (var78 = 0; GradiusNeoGame.resourceBuffer[var99] !== -1; var99 += 2) {
-              GradiusNeoGame.stageEventScript[3656 + var78++] = toShort(
+            let stageEventCount = 0;
+            while (GradiusNeoGame.resourceBuffer[var99] !== -1) {
+              GradiusNeoGame.stageEventScript[3656 + stageEventCount] = toShort(
                 (GradiusNeoGame.resourceBuffer[var99] << 8) + (GradiusNeoGame.resourceBuffer[var99 + 1] & 255),
               );
+              stageEventCount++;
+              var99 += 2;
             }
 
             var99++;
 
-            let var114: number;
-            for (
-              GradiusNeoGame.state[StateSlot.StageScriptPosition] = var78;
-              (var114 =
-                (GradiusNeoGame.resourceBuffer[var99] << 8) | (GradiusNeoGame.resourceBuffer[var99 + 1] & 255)) !==
-              32512;
-              var99 += 2
-            ) {
-              GradiusNeoGame.stageEventScript[3656 + var78++] = toShort(var114);
+            GradiusNeoGame.state[StateSlot.StageScriptPosition] = stageEventCount;
+            let stageEventWord =
+              (GradiusNeoGame.resourceBuffer[var99] << 8) | (GradiusNeoGame.resourceBuffer[var99 + 1] & 255);
+            while (stageEventWord !== 32512) {
+              GradiusNeoGame.stageEventScript[3656 + stageEventCount] = toShort(stageEventWord);
+              stageEventCount++;
+              var99 += 2;
+              stageEventWord =
+                (GradiusNeoGame.resourceBuffer[var99] << 8) | (GradiusNeoGame.resourceBuffer[var99 + 1] & 255);
             }
 
             if (GradiusNeoGame.state[StateSlot.CurrentStage] === 1) {
@@ -7971,7 +8018,7 @@ export class GradiusNeoGame extends GameSurface {
             if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.Fire) !== 0) {
               GradiusNeoGame.screenState = ScreenState.ReturnToTitle;
               if (GradiusNeoGame.state[StateSlot.Continues] > 0 && GradiusNeoGame.state[0] === 0) {
-                GradiusNeoGame.state[StateSlot.Continues]--;
+                getAndDecrement(GradiusNeoGame.state, StateSlot.Continues);
                 GradiusNeoGame.state[StateSlot.Score] = 0;
                 GradiusNeoGame.state[StateSlot.NextExtraLifeScore] = 70000;
                 GradiusNeoGame.state[StateSlot.Lives] = 2;
@@ -8242,7 +8289,7 @@ export class GradiusNeoGame extends GameSurface {
               GradiusNeoGame.state[0] = GradiusNeoGame.state[0] + 3;
             } else {
               if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64) !== 0) {
-                GradiusNeoGame.state[0]++;
+                getAndIncrement(GradiusNeoGame.state, 0);
               }
             }
 
@@ -8271,10 +8318,10 @@ export class GradiusNeoGame extends GameSurface {
             } else {
               if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 32) !== 0) {
                 if (GradiusNeoGame.state[0] === 0) {
-                  GradiusNeoGame.state[1]++;
+                  getAndIncrement(GradiusNeoGame.state, 1);
                 } else {
                   if (GradiusNeoGame.state[0] === 1) {
-                    GradiusNeoGame.state[2]++;
+                    getAndIncrement(GradiusNeoGame.state, 2);
                   }
                 }
               }
@@ -8480,7 +8527,7 @@ export class GradiusNeoGame extends GameSurface {
                         (GradiusNeoGame.stageEventScript[
                           3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition] + 1
                         ] &
-                          '\uff00') >>
+                          0xff00) >>
                           8,
                         GAME_VIEW_WIDTH,
                         (var4 & 255) * 4,
@@ -8500,7 +8547,7 @@ export class GradiusNeoGame extends GameSurface {
                             128) >>
                             7),
                       );
-                      GradiusNeoGame.state[StateSlot.StageScriptPosition]++;
+                      getAndIncrement(GradiusNeoGame.state, StateSlot.StageScriptPosition);
                       break;
                     }
 
@@ -8517,7 +8564,7 @@ export class GradiusNeoGame extends GameSurface {
                             ((GradiusNeoGame.stageEventScript[
                               3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition] + 1
                             ] &
-                              '\uf000') <<
+                              0xf000) <<
                               4) |
                             (GradiusNeoGame.stageEventScript[
                               3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition] + 1
@@ -8538,7 +8585,7 @@ export class GradiusNeoGame extends GameSurface {
                             ((GradiusNeoGame.stageEventScript[
                               3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition] + 1
                             ] &
-                              '\uf000') <<
+                              0xf000) <<
                               4) |
                             (GradiusNeoGame.stageEventScript[
                               3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition] + 1
@@ -8559,7 +8606,7 @@ export class GradiusNeoGame extends GameSurface {
                             3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition] + 1
                           ] &
                             15);
-                      GradiusNeoGame.state[StateSlot.StageScriptPosition]++;
+                      getAndIncrement(GradiusNeoGame.state, StateSlot.StageScriptPosition);
                       break;
                     }
 
@@ -8573,7 +8620,7 @@ export class GradiusNeoGame extends GameSurface {
                         ((GradiusNeoGame.stageEventScript[
                           3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition] + 1
                         ] &
-                          '\uf000') <<
+                          0xf000) <<
                           4) |
                           (GradiusNeoGame.stageEventScript[
                             3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition] + 1
@@ -8592,7 +8639,7 @@ export class GradiusNeoGame extends GameSurface {
                             3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition] + 1
                           ] &
                             15);
-                      GradiusNeoGame.state[StateSlot.StageScriptPosition]++;
+                      getAndIncrement(GradiusNeoGame.state, StateSlot.StageScriptPosition);
                       break;
                     }
 
@@ -8607,7 +8654,7 @@ export class GradiusNeoGame extends GameSurface {
                     }
 
                     case 126: {
-                      GradiusNeoGame.state[StateSlot.StageScriptPosition]--;
+                      getAndDecrement(GradiusNeoGame.state, StateSlot.StageScriptPosition);
                       break;
                     }
 
@@ -8621,8 +8668,8 @@ export class GradiusNeoGame extends GameSurface {
                     }
                   }
 
-                  GradiusNeoGame.state[StateSlot.StageScriptPosition]++;
-                } while ((var4 & '耀') !== 0);
+                  getAndIncrement(GradiusNeoGame.state, StateSlot.StageScriptPosition);
+                } while ((var4 & 0x8000) !== 0);
               }
 
               this.updatePlayerWeaponsAndCollisions();
@@ -8764,7 +8811,7 @@ export class GradiusNeoGame extends GameSurface {
                   }
 
                   case 7: {
-                    GradiusNeoGame.state[1225 + var38]++;
+                    getAndIncrement(GradiusNeoGame.state, 1225 + var38);
                     if (GradiusNeoGame.state[1225 + var38] >= 3) {
                       GradiusNeoGame.state[1225 + var38] = 3;
                     }
@@ -8813,27 +8860,25 @@ export class GradiusNeoGame extends GameSurface {
                     GradiusNeoGame.state[1205 + var38] = GradiusNeoGame.state[1160 + var38 / 4] + 16;
                     GradiusNeoGame.state[1185 + var38] = GradiusNeoGame.state[1185 + var38] + 48;
 
-                    for (
-                      let var96: number = GradiusNeoGame.state[1205 + var38];
-                      var96 < GradiusNeoGame.state[1185 + var38];
-                      var96 += 16
-                    ) {
+                    let terrainProbeX = GradiusNeoGame.state[1205 + var38];
+                    while (terrainProbeX < GradiusNeoGame.state[1185 + var38]) {
                       if (
                         GradiusNeoGame.sampleTerrainCollision(
-                          var96,
+                          terrainProbeX,
                           GradiusNeoGame.state[1165 + var38 / 4] - GradiusNeoGame.state[StateSlot.CameraOffsetY],
                         ) < 0
                       ) {
-                        GradiusNeoGame.state[1185 + var38] = var96;
+                        GradiusNeoGame.state[1185 + var38] = terrainProbeX;
                         GradiusNeoGame.spawnEntity(
                           13,
                           GradiusNeoGame.state[1185 + var38] - 8,
                           GradiusNeoGame.state[1165 + var38 / 4],
                           0,
                         );
-                        GradiusNeoGame.state[1245 + var38]++;
+                        getAndIncrement(GradiusNeoGame.state, 1245 + var38);
                         break;
                       }
+                      terrainProbeX += 16;
                     }
 
                     if (
@@ -8841,7 +8886,7 @@ export class GradiusNeoGame extends GameSurface {
                       GAME_VIEW_WIDTH - GradiusNeoGame.state[1185 + var38] < 0
                     ) {
                       GradiusNeoGame.state[1185 + var38] = GAME_VIEW_WIDTH;
-                      GradiusNeoGame.state[1245 + var38]++;
+                      getAndIncrement(GradiusNeoGame.state, 1245 + var38);
                     }
 
                     GradiusNeoGame.enqueueRenderCommand(0, var38, GradiusNeoGame.state[1165 + var38 / 4], 1, 0, 0);
@@ -8869,19 +8914,19 @@ export class GradiusNeoGame extends GameSurface {
                       case 0: {
                         GradiusNeoGame.state[1205 + var38] = 0;
                         GradiusNeoGame.state[1185 + var38] = 0;
-                        GradiusNeoGame.state[1225 + var38]++;
+                        getAndIncrement(GradiusNeoGame.state, 1225 + var38);
                         break;
                       }
 
                       case 1: {
-                        GradiusNeoGame.state[1205 + var38]++;
+                        getAndIncrement(GradiusNeoGame.state, 1205 + var38);
                         if (GradiusNeoGame.state[1205 + var38] === 2) {
                           GradiusNeoGame.requestSoundEffect(8);
                           GradiusNeoGame.state[1185 + var38] = GAME_VIEW_WIDTH;
                         }
 
                         if (GradiusNeoGame.state[1205 + var38] >= 5) {
-                          GradiusNeoGame.state[1225 + var38]++;
+                          getAndIncrement(GradiusNeoGame.state, 1225 + var38);
                         }
                         break;
                       }
@@ -8906,13 +8951,13 @@ export class GradiusNeoGame extends GameSurface {
                       case 19:
                       case 20:
                       default: {
-                        GradiusNeoGame.state[1225 + var38]++;
+                        getAndIncrement(GradiusNeoGame.state, 1225 + var38);
                         break;
                       }
 
                       case 21:
-                        if (--s[1205 + var38] < 0) {
-                          s[1225 + var38]++;
+                        if (decrementAndGet(s, 1205 + var38) < 0) {
+                          getAndIncrement(s, 1225 + var38);
                         }
                         break;
                       case 22:
@@ -8921,39 +8966,36 @@ export class GradiusNeoGame extends GameSurface {
                       case 25:
                       case 26:
                       case 27:
-                        if (++s[1225 + var38] >= 28) {
+                        if (incrementAndGet(s, 1225 + var38) >= 28) {
                           s[1245 + var38] = -1;
                         }
                     }
 
                     if (GradiusNeoGame.state[1205 + var38] >= 3) {
-                      for (
-                        let var95: number = GradiusNeoGame.state[StateSlot.PlayerX] + 40;
-                        var95 < GradiusNeoGame.state[1185 + var38];
-                        var95 += 16
-                      ) {
+                      let terrainProbeX = GradiusNeoGame.state[StateSlot.PlayerX] + 40;
+                      while (terrainProbeX < GradiusNeoGame.state[1185 + var38]) {
                         if (
                           (GradiusNeoGame.sampleTerrainCollision(
-                            var95,
+                            terrainProbeX,
                             GradiusNeoGame.state[StateSlot.PlayerY] -
                               16 -
                               GradiusNeoGame.state[StateSlot.CameraOffsetY],
                           ) |
                             GradiusNeoGame.sampleTerrainCollision(
-                              var95,
+                              terrainProbeX,
                               GradiusNeoGame.state[StateSlot.PlayerY] +
                                 0 -
                                 GradiusNeoGame.state[StateSlot.CameraOffsetY],
                             ) |
                             GradiusNeoGame.sampleTerrainCollision(
-                              var95,
+                              terrainProbeX,
                               GradiusNeoGame.state[StateSlot.PlayerY] +
                                 16 -
                                 GradiusNeoGame.state[StateSlot.CameraOffsetY],
                             )) <
                           0
                         ) {
-                          GradiusNeoGame.state[1185 + var38] = var95;
+                          GradiusNeoGame.state[1185 + var38] = terrainProbeX;
                           GradiusNeoGame.spawnEntity(
                             11,
                             GradiusNeoGame.state[1185 + var38] - 8,
@@ -8961,6 +9003,7 @@ export class GradiusNeoGame extends GameSurface {
                             0,
                           );
                         }
+                        terrainProbeX += 16;
                       }
                     }
 
@@ -8993,14 +9036,14 @@ export class GradiusNeoGame extends GameSurface {
                       if (GradiusNeoGame.state[1245 + var38] === 11) {
                         GradiusNeoGame.state[1245 + var38] = -1;
                       } else {
-                        GradiusNeoGame.state[1245 + var38]--;
+                        getAndDecrement(GradiusNeoGame.state, 1245 + var38);
                       }
                     }
 
-                    GradiusNeoGame.state[1225 + var38]++;
+                    getAndIncrement(GradiusNeoGame.state, 1225 + var38);
                     let var111: number = 0;
                     if (GradiusNeoGame.state[1225 + var38] < 4) {
-                      GradiusNeoGame.state[1245 + var38]++;
+                      getAndIncrement(GradiusNeoGame.state, 1245 + var38);
                     } else {
                       GradiusNeoGame.state[1185 + var38] = GradiusNeoGame.state[1185 + var38] + 16;
                       var111 = GradiusNeoGame.state[1225 + var38] - 4 + 1;
@@ -9107,15 +9150,15 @@ export class GradiusNeoGame extends GameSurface {
                     }
 
                     if (GradiusNeoGame.state[1225 + var38] < 5) {
-                      GradiusNeoGame.state[1225 + var38]++;
+                      getAndIncrement(GradiusNeoGame.state, 1225 + var38);
                     }
 
-                    let var110: number;
-                    for (var110 = 1; var110 < GradiusNeoGame.state[1225 + var38]; var110++) {
+                    let missileSegmentOffset = 1;
+                    while (missileSegmentOffset < GradiusNeoGame.state[1225 + var38]) {
                       GradiusNeoGame.enqueueRenderCommand(
                         1,
                         GradiusNeoGame.state[1185 + var38],
-                        GradiusNeoGame.state[1205 + var38] - 16 * var110,
+                        GradiusNeoGame.state[1205 + var38] - 16 * missileSegmentOffset,
                         15,
                         93,
                         0,
@@ -9123,17 +9166,18 @@ export class GradiusNeoGame extends GameSurface {
                       GradiusNeoGame.enqueueRenderCommand(
                         1,
                         GradiusNeoGame.state[1185 + var38],
-                        GradiusNeoGame.state[1205 + var38] + 16 * var110,
+                        GradiusNeoGame.state[1205 + var38] + 16 * missileSegmentOffset,
                         15,
                         93,
                         0,
                       );
+                      missileSegmentOffset++;
                     }
 
                     GradiusNeoGame.enqueueRenderCommand(
                       1,
                       GradiusNeoGame.state[1185 + var38],
-                      GradiusNeoGame.state[1205 + var38] - 16 * var110,
+                      GradiusNeoGame.state[1205 + var38] - 16 * missileSegmentOffset,
                       15,
                       92,
                       0,
@@ -9149,7 +9193,7 @@ export class GradiusNeoGame extends GameSurface {
                     GradiusNeoGame.enqueueRenderCommand(
                       1,
                       GradiusNeoGame.state[1185 + var38],
-                      GradiusNeoGame.state[1205 + var38] + 16 * var110,
+                      GradiusNeoGame.state[1205 + var38] + 16 * missileSegmentOffset,
                       15,
                       94,
                       0,
@@ -9206,7 +9250,7 @@ export class GradiusNeoGame extends GameSurface {
                   case 21:
                   case 22: {
                     GradiusNeoGame.state[1185 + var38] =
-                      GradiusNeoGame.state[1185 + var38] + (6 - ++GradiusNeoGame.state[1225 + var38] / 4);
+                      GradiusNeoGame.state[1185 + var38] + (6 - incrementAndGet(GradiusNeoGame.state, 1225 + var38) / 4);
                     let var2: number;
                     if ((var2 = (GradiusNeoGame.state[1225 + var38] / 4) * 1) > 3) {
                       var2 = 3;
@@ -10159,11 +10203,11 @@ export class GradiusNeoGame extends GameSurface {
 
               switch (GradiusNeoGame.state[86]) {
                 case 1: {
-                  if (++GradiusNeoGame.state[96] <= 4) {
-                    GradiusNeoGame.state[88]++;
+                  if (incrementAndGet(GradiusNeoGame.state, 96) <= 4) {
+                    getAndIncrement(GradiusNeoGame.state, 88);
                   } else {
                     GradiusNeoGame.state[88] = 4;
-                    GradiusNeoGame.state[86]++;
+                    getAndIncrement(GradiusNeoGame.state, 86);
                     GradiusNeoGame.spawnAuxiliaryEntity(112, GAMEPLAY_HEIGHT, 0, GradiusNeoGame.state[87]);
                   }
                 }
@@ -10174,8 +10218,8 @@ export class GradiusNeoGame extends GameSurface {
                 }
 
                 case 3:
-                  if (++s[89] >= 8) {
-                    s[86]++;
+                  if (incrementAndGet(s, 89) >= 8) {
+                    getAndIncrement(s, 86);
                     s[89] = s[96] = 0;
                     s[9751 + s[87]] = 1;
                     s[9747] = s[9748] = s[9750] = 0;
@@ -10217,8 +10261,8 @@ export class GradiusNeoGame extends GameSurface {
                   }
                   break;
                 case 4:
-                  if (s[96]++ >= 10) {
-                    s[86]++;
+                  if (getAndIncrement(s, 96) >= 10) {
+                    getAndIncrement(s, 86);
                   } else {
                     if (s[96] <= 4) {
                       s[88] = 4 - s[96];
@@ -10235,17 +10279,17 @@ export class GradiusNeoGame extends GameSurface {
                 case 5:
                   if (s[9748] == 1 && 88 <= s[1126] && s[1126] <= 112 && s[1143] <= 40) {
                     s[87] = s[87] - 5;
-                    s[86]++;
+                    getAndIncrement(s, 86);
                     s[91] = -1;
                     s[9746] = 24;
                   } else if (s[9749] == 1 && 80 <= s[1143] && s[1143] <= 128 && 168 <= s[1126]) {
-                    s[87]++;
-                    s[86]++;
+                    getAndIncrement(s, 87);
+                    getAndIncrement(s, 86);
                     s[90] = 1;
                     s[9743] = 24;
                   } else if (s[9750] == 1 && 88 <= s[1126] && s[1126] <= 112 && 168 <= s[1143]) {
                     s[87] = s[87] + 5;
-                    s[86]++;
+                    getAndIncrement(s, 86);
                     s[91] = 1;
                     s[9744] = 24;
                   }
@@ -10253,7 +10297,7 @@ export class GradiusNeoGame extends GameSurface {
                   s[96] = 0;
                   break;
                 case 6:
-                  if (s[96]++ < 6) {
+                  if (getAndIncrement(s, 96) < 6) {
                     if (s[91] != -1 && s[9748] != 0) {
                       s[9740] = s[9740] - 4;
                     }
@@ -10266,7 +10310,7 @@ export class GradiusNeoGame extends GameSurface {
                       s[9742] = s[9742] - 4;
                     }
                   } else {
-                    s[86]++;
+                    getAndIncrement(s, 86);
                     if (s[87] % 5 != 0 || s[90] != 1) {
                       break;
                     }
@@ -10284,7 +10328,7 @@ export class GradiusNeoGame extends GameSurface {
                   }
                   break;
                 case 7:
-                  s[86]++;
+                  getAndIncrement(s, 86);
                 case 8:
                   if (s[90] == 1) {
                     s[92] = s[92] - 16;
@@ -10295,7 +10339,7 @@ export class GradiusNeoGame extends GameSurface {
                     }
 
                     if (s[92] <= -GAME_VIEW_WIDTH) {
-                      s[86]++;
+                      getAndIncrement(s, 86);
                       s[96] = 0;
                     }
                   } else {
@@ -10307,13 +10351,13 @@ export class GradiusNeoGame extends GameSurface {
                     }
 
                     if (s[93] <= -GAMEPLAY_HEIGHT) {
-                      s[86]++;
+                      getAndIncrement(s, 86);
                       s[96] = 0;
                     }
                   }
                   break;
                 case 9:
-                  if (s[96]++ >= 6) {
+                  if (getAndIncrement(s, 96) >= 6) {
                     s[86] = 1;
                     s[92] = s[93] = s[90] = s[91] = 0;
                     s[9739] = s[9740] = s[9741] = s[9742] = s[9743] = s[9744] = s[9745] = s[9746] = 0;
@@ -10400,14 +10444,14 @@ export class GradiusNeoGame extends GameSurface {
               }
 
               if (GradiusNeoGame.state[StateSlot.Score] >= GradiusNeoGame.state[StateSlot.NextExtraLifeScore]) {
-                GradiusNeoGame.state[StateSlot.Lives]++;
+                getAndIncrement(GradiusNeoGame.state, StateSlot.Lives);
                 GradiusNeoGame.state[StateSlot.NextExtraLifeScore] =
                   GradiusNeoGame.state[StateSlot.NextExtraLifeScore] + 70000;
                 GradiusNeoGame.requestSoundEffect(7);
               }
               this.renderGameplayHud(gfx);
 
-              if (GradiusNeoGame.state[34] !== 0 && 20 < GradiusNeoGame.state[34]++) {
+              if (GradiusNeoGame.state[34] !== 0 && 20 < getAndIncrement(GradiusNeoGame.state, 34)) {
                 if (GradiusNeoGame.runtimeFlags[9]) {
                   GradiusNeoGame.runtimeFlags[9] = false;
                   GradiusNeoGame.screenState = ScreenState.ContinueOrResults;
@@ -10424,7 +10468,7 @@ export class GradiusNeoGame extends GameSurface {
                   ) {
                     switch (GradiusNeoGame.state[StateSlot.CurrentStage]) {
                       case 0: {
-                        if (++GradiusNeoGame.state[67] >= 4) {
+                        if (incrementAndGet(GradiusNeoGame.state, 67) >= 4) {
                           GradiusNeoGame.state[67] = 4;
                         }
 
@@ -10433,7 +10477,7 @@ export class GradiusNeoGame extends GameSurface {
                       }
 
                       case 1: {
-                        if (++GradiusNeoGame.state[67] >= 4) {
+                        if (incrementAndGet(GradiusNeoGame.state, 67) >= 4) {
                           GradiusNeoGame.state[67] = 4;
                         }
 
@@ -10448,7 +10492,7 @@ export class GradiusNeoGame extends GameSurface {
                       }
 
                       case 3: {
-                        if (++GradiusNeoGame.state[67] >= 4) {
+                        if (incrementAndGet(GradiusNeoGame.state, 67) >= 4) {
                           GradiusNeoGame.state[67] = 4;
                         }
 
@@ -10513,7 +10557,7 @@ export class GradiusNeoGame extends GameSurface {
                       }
                     }
 
-                    GradiusNeoGame.state[StateSlot.CurrentRound]++;
+                    getAndIncrement(GradiusNeoGame.state, StateSlot.CurrentRound);
                     if (GradiusNeoGame.state[33] < GradiusNeoGame.state[StateSlot.CurrentRound]) {
                       GradiusNeoGame.state[33] = GradiusNeoGame.state[StateSlot.CurrentRound];
                     }
