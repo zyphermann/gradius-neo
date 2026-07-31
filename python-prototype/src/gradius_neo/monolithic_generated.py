@@ -1,5 +1,5 @@
 """Generated mechanically from GradiusNeoGame.ts. Do not edit by hand."""
-SOURCE_SHA256 = "d4b0686e7ffc3a6e95f02451336bbaa8c1607d78e14628aa73ef46597719a19c"
+SOURCE_SHA256 = "8a97c866081ed5ebb24566e68464b60d0f03a077613a523226765713d4ebb80c"
 import math
 from enum import IntEnum
 from gradius_neo.generated_runtime import *
@@ -4975,6 +4975,7 @@ class GradiusNeoGame(GameSurface):
                                 self.backdropLogicFrame = GradiusNeoGame.state[StateSlot.LogicFrame]
                                 self.backdropScrollX = GradiusNeoGame.state[StateSlot.VisualStageScrollX]
                                 GradiusNeoGame.state[78] = (-1)
+                                GradiusNeoGame.renderQueue.beginMotionSource((-20), GradiusNeoGame.state[41])
                                 try:
                                     match GradiusNeoGame.state[41]:
                                         case 1:
@@ -5140,6 +5141,7 @@ class GradiusNeoGame(GameSurface):
                                             pass
                                 except _SwitchBreak:
                                     pass
+                                GradiusNeoGame.renderQueue.endEntity()
                                 try:
                                     match GradiusNeoGame.state[86]:
                                         case 1:
@@ -5701,6 +5703,7 @@ class GradiusNeoGame(GameSurface):
                                 self.backdropLogicFrame = GradiusNeoGame.state[StateSlot.LogicFrame]
                                 self.backdropScrollX = GradiusNeoGame.state[StateSlot.VisualStageScrollX]
                                 GradiusNeoGame.state[78] = (-1)
+                                GradiusNeoGame.renderQueue.beginMotionSource((-20), GradiusNeoGame.state[41])
                                 try:
                                     match GradiusNeoGame.state[41]:
                                         case 1:
@@ -5866,6 +5869,7 @@ class GradiusNeoGame(GameSurface):
                                             pass
                                 except _SwitchBreak:
                                     pass
+                                GradiusNeoGame.renderQueue.endEntity()
                                 try:
                                     match GradiusNeoGame.state[86]:
                                         case 1:
@@ -6277,4 +6281,4 @@ GradiusNeoGame.soundMode = 0
 GradiusNeoGame.appSuspended = False
 
 
-GENERATOR_STATS = {"source":"browser-prototype-ts/src/game/direct/GradiusNeoGame.ts","sourceSha256":"d4b0686e7ffc3a6e95f02451336bbaa8c1607d78e14628aa73ef46597719a19c","outputLines":6278,"loweredSwitchFallthroughs":11,"unsupported":{}}
+GENERATOR_STATS = {"source":"browser-prototype-ts/src/game/direct/GradiusNeoGame.ts","sourceSha256":"8a97c866081ed5ebb24566e68464b60d0f03a077613a523226765713d4ebb80c","outputLines":6282,"loweredSwitchFallthroughs":11,"unsupported":{}}

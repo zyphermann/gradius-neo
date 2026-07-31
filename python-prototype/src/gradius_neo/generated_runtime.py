@@ -266,6 +266,90 @@ class Font:
     def getFont(face: int, style: int, size: int) -> Font:
         return Font(face, style, size)
 
+    def stringWidth(self, text: str) -> int:
+        # The J2ME small system font used by these screens is approximately
+        # six pixels wide per glyph. Exact rendering is supplied by the
+        # platform backend; wrapping only needs the matching logical metric.
+        return len(str(text)) * 6
+
+
+class GameSupport:
+    message = "ok\n"
+    message_priority = 0
+
+    @classmethod
+    def a(cls, *args: Any) -> list[str] | None:
+        if isinstance(args[0], int):
+            width, value, font = args
+            return cls.wrap_text(width, value, font)
+        if isinstance(args[0], str) or args[0] is None:
+            message = args[0] or ""
+            if len(args) == 1:
+                cls.message += message
+            elif args[1] >= cls.message_priority:
+                cls.message_priority = args[1]
+                cls.message = message
+            return None
+
+        graphics, x, y, progress, width, fill_offset, total = args
+        if progress < total:
+            graphics.drawRect(x, y, width, progress - 1)
+            graphics.fillRect(x, y + (fill_offset * progress) // total, width, (progress * progress) // total)
+        return None
+
+    @staticmethod
+    def wrap_text(width: int, text: str, font: Any) -> list[str]:
+        tokens = GameSupport._tokenize(text)
+        lines: list[str] = []
+        line = ""
+        token_count = 0
+        index = 0
+        while index < len(tokens):
+            token = tokens[index]
+            if font.stringWidth(line + token) <= width:
+                line += token
+                token_count += 1
+                if token.endswith("\n"):
+                    lines.append(line[:-1].strip())
+                    line = ""
+                    token_count = 0
+            elif token_count:
+                lines.append(line.strip())
+                line = ""
+                token_count = 0
+                index -= 1
+            else:
+                fragments = GameSupport._split_long_token(width, line + token, font)
+                lines.extend(fragment.strip() for fragment in fragments[:-1])
+                line = fragments[-1]
+                token_count = 1
+            index += 1
+        lines.append(line.strip())
+        return lines
+
+    @staticmethod
+    def _tokenize(text: str) -> list[str]:
+        value = text.strip()
+        tokens: list[str] = []
+        start = 0
+        for index, character in enumerate(value):
+            if character in " \n@":
+                tokens.append(value[start : index + 1])
+                start = index + 1
+        tokens.append(value[start:])
+        return tokens
+
+    @staticmethod
+    def _split_long_token(width: int, text: str, font: Any) -> list[str]:
+        fragments: list[str] = []
+        start = 0
+        for index in range(len(text)):
+            if font.stringWidth(text[start:index]) > width:
+                fragments.append(text[start : index - 1])
+                start = index - 1
+        fragments.append(text[start:])
+        return fragments
+
 
 class GameState:
     def __init__(self, raw: list[int]) -> None:
@@ -455,14 +539,29 @@ class RenderQueue:
     def interpolationOffset(self, command: RenderCommand, alpha: float) -> MotionOffset | None:
         if command.sourceEntityId is None:
             return None
-        previous = next((candidate for candidate in self.previous_layers[command.layer] if
+        candidates = [candidate for candidate in self.previous_layers[command.layer] if
             candidate.sourceEntityId == command.sourceEntityId and
             candidate.sourceGeneration == command.sourceGeneration and
-            candidate.sourceCommandIndex == command.sourceCommandIndex and
-            candidate.type == command.type), None)
+            candidate.type == command.type and
+            candidate.spriteRegion == command.spriteRegion]
+        # Repeating tunnel pieces rotate command indices at the screen edge.
+        # Pair equal sprites by their nearest position, never by that index.
+        previous = min(candidates, key=lambda candidate: abs(candidate.x - command.x) + abs(candidate.y - command.y)) if candidates else None
         if previous is None:
             return None
-        return MotionOffset((previous.x - command.x) * (1 - alpha), (previous.y - command.y) * (1 - alpha))
+        delta_x = previous.x - command.x
+        delta_y = previous.y - command.y
+        # A large jump is a stage wrap or teleport, not continuous movement.
+        # Interpolating it would pull the object backwards across the screen.
+        if abs(delta_x) > 96 or abs(delta_y) > 96:
+            nearby = [candidate for candidate in candidates if
+                abs(candidate.x - command.x) <= 96 and abs(candidate.y - command.y) <= 96]
+            if not nearby:
+                return None
+            previous = min(nearby, key=lambda candidate: abs(candidate.x - command.x) + abs(candidate.y - command.y))
+            delta_x = previous.x - command.x
+            delta_y = previous.y - command.y
+        return MotionOffset(delta_x * (1 - alpha), delta_y * (1 - alpha))
 
 
 class TransientEffectSystem:

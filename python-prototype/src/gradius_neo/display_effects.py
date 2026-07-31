@@ -6,8 +6,9 @@ from typing import Any
 class LcdDisplayEffect:
     """Nearest-neighbour scaling with an RGB LCD subpixel matrix."""
 
-    def __init__(self, scale: int) -> None:
+    def __init__(self, scale: int, mask_cell_scale: int = 1) -> None:
         self.scale = scale
+        self.mask_cell_scale = mask_cell_scale
         self._mask: Any = None
         self._mask_size: tuple[int, int] | None = None
 
@@ -26,20 +27,21 @@ class LcdDisplayEffect:
 
         mask = pygame.Surface(size)
         mask.fill((255, 255, 255))
-        subpixel_width = max(1, self.scale // 3)
+        # Let one visible LCD cell span multiple game pixels. This makes the
+        # RGB matrix recognizable even when the game is viewed at a distance.
+        subpixel_width = max(1, (self.scale * self.mask_cell_scale) // 3)
         cell_width = subpixel_width * 3
 
         for x in range(size[0]):
             component = (x % cell_width) // subpixel_width
-            color = ((255, 205, 205), (205, 255, 205), (205, 205, 255))[component]
+            color = ((255, 175, 175), (175, 255, 175), (175, 175, 255))[component]
             pygame.draw.line(mask, color, (x, 0), (x, size[1] - 1))
 
         # LCD cells have a faint horizontal boundary, but no CRT scanline gap.
-        cell_height = max(1, self.scale)
+        cell_height = max(1, self.scale * self.mask_cell_scale)
         for y in range(cell_height - 1, size[1], cell_height):
-            pygame.draw.line(mask, (232, 232, 232), (0, y), (size[0] - 1, y))
+            pygame.draw.line(mask, (210, 210, 210), (0, y), (size[0] - 1, y))
 
         self._mask = mask
         self._mask_size = size
         return mask
-

@@ -9310,6 +9310,10 @@ export class GradiusNeoGame extends GameSurface {
               this.backdropLogicFrame = GradiusNeoGame.state[StateSlot.LogicFrame];
               this.backdropScrollX = GradiusNeoGame.state[StateSlot.VisualStageScrollX];
               GradiusNeoGame.state[78] = -1;
+              // The tunnel is assembled from repeating render commands rather
+              // than regular entities. Give the complete backdrop a stable
+              // motion identity so its blue bands interpolate continuously.
+              GradiusNeoGame.renderQueue.beginMotionSource(-20, GradiusNeoGame.state[41]);
               switch (GradiusNeoGame.state[41]) {
                 case 1: {
                   if (GradiusNeoGame.state[22] === 0) {
@@ -10200,6 +10204,7 @@ export class GradiusNeoGame extends GameSurface {
 
                 default:
               }
+              GradiusNeoGame.renderQueue.endEntity();
 
               switch (GradiusNeoGame.state[86]) {
                 case 1: {

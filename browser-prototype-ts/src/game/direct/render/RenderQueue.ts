@@ -14,6 +14,8 @@ export interface RenderCommand {
   sourceCommandIndex: number;
 }
 
+const MAX_INTERPOLATED_DISPLACEMENT = 96;
+
 export class RenderQueue {
   private readonly layers: RenderCommand[][] = Array.from({ length: 18 }, () => []);
   private readonly previousLayers: RenderCommand[][] = Array.from({ length: 18 }, () => []);
@@ -89,18 +91,54 @@ export class RenderQueue {
 
   interpolationOffset(command: RenderCommand, alpha: number): { x: number; y: number } | undefined {
     if (command.sourceEntityId === null) return undefined;
-    const previous = this.previousLayers[command.layer]?.find(
+    const candidates = this.previousLayers[command.layer]?.filter(
       (candidate) =>
         candidate.sourceEntityId === command.sourceEntityId &&
         candidate.sourceGeneration === command.sourceGeneration &&
-        candidate.sourceCommandIndex === command.sourceCommandIndex &&
-        candidate.type === command.type,
+        candidate.type === command.type &&
+        candidate.spriteRegion === command.spriteRegion,
     );
+    // Repeating tunnel pieces rotate their command indices whenever the
+    // leftmost piece is recycled at the right edge. The index is therefore
+    // not an identity. Always pair equal sprites spatially instead.
+    const previous = candidates?.reduce<RenderCommand | undefined>((nearest, candidate) => {
+      if (!nearest) return candidate;
+      const distance = Math.abs(candidate.x - command.x) + Math.abs(candidate.y - command.y);
+      const nearestDistance = Math.abs(nearest.x - command.x) + Math.abs(nearest.y - command.y);
+      return distance < nearestDistance ? candidate : nearest;
+    }, undefined);
     if (!previous) return undefined;
 
+    const deltaX = previous.x - command.x;
+    const deltaY = previous.y - command.y;
+    // Stage objects such as the final tunnel ring reuse the same render source
+    // after wrapping from the left edge back to the right. Interpolating that
+    // reset would visibly drag the object backwards across the whole screen.
+    if (Math.abs(deltaX) > MAX_INTERPOLATED_DISPLACEMENT || Math.abs(deltaY) > MAX_INTERPOLATED_DISPLACEMENT) {
+      const nearest = candidates?.reduce<RenderCommand | undefined>((best, candidate) => {
+        const candidateDeltaX = candidate.x - command.x;
+        const candidateDeltaY = candidate.y - command.y;
+        if (
+          Math.abs(candidateDeltaX) > MAX_INTERPOLATED_DISPLACEMENT ||
+          Math.abs(candidateDeltaY) > MAX_INTERPOLATED_DISPLACEMENT
+        ) {
+          return best;
+        }
+        if (!best) return candidate;
+        const distance = Math.abs(candidateDeltaX) + Math.abs(candidateDeltaY);
+        const bestDistance = Math.abs(best.x - command.x) + Math.abs(best.y - command.y);
+        return distance < bestDistance ? candidate : best;
+      }, undefined);
+      if (!nearest) return undefined;
+      return {
+        x: (nearest.x - command.x) * (1 - alpha),
+        y: (nearest.y - command.y) * (1 - alpha),
+      };
+    }
+
     return {
-      x: (previous.x - command.x) * (1 - alpha),
-      y: (previous.y - command.y) * (1 - alpha),
+      x: deltaX * (1 - alpha),
+      y: deltaY * (1 - alpha),
     };
   }
 }

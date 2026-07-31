@@ -131,6 +131,11 @@ class PygameGraphics:
     def setFont(self, _font: Any) -> None:
         return None
 
+    def getFont(self) -> Any:
+        from gradius_neo.generated_runtime import Font
+
+        return Font.getFont(0, 0, 8)
+
     def translate(self, x: int, y: int) -> None:
         self.translate_x += int(x)
         self.translate_y += int(y)
@@ -177,8 +182,18 @@ class PygameGraphics:
             1,
         )
 
-    def drawString(self, text: str, x: int, y: int, _anchor: int) -> None:
+    def drawString(self, text: str, x: int, y: int, anchor: int) -> None:
         import pygame
 
         rendered = pygame.font.Font(None, 12).render(str(text), False, self._rgb())
-        self.surface.blit(rendered, (int(x + self.translate_x), int(y + self.translate_y)))
+        draw_x = int(x + self.translate_x)
+        draw_y = int(y + self.translate_y)
+        if anchor & 1:  # Graphics.HCENTER
+            draw_x -= rendered.get_width() // 2
+        elif anchor & 8:  # Graphics.RIGHT
+            draw_x -= rendered.get_width()
+        if anchor & 2:  # Graphics.VCENTER
+            draw_y -= rendered.get_height() // 2
+        elif anchor & 32 or anchor & 64:  # Graphics.BOTTOM or BASELINE
+            draw_y -= rendered.get_height()
+        self.surface.blit(rendered, (draw_x, draw_y))

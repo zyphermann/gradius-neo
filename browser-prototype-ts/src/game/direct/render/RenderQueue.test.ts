@@ -34,4 +34,50 @@ describe('RenderQueue', () => {
 
     expect([...queue.commands(13)][0]).toMatchObject({ x: 10, y: 20, spriteRegion: 183 });
   });
+
+  it('does not interpolate wrapped objects backwards across the screen', () => {
+    const state = new GameState(new Int32Array(9790));
+    const queue = new RenderQueue(new EntityPool(state));
+
+    queue.beginEntity(7);
+    queue.enqueue(0, -80, 20, 4, 100, 0);
+    queue.beginFrame();
+    queue.beginEntity(7);
+    queue.enqueue(0, 240, 20, 4, 100, 0);
+
+    const command = [...queue.commands(4)][0]!;
+    expect(queue.interpolationOffset(command, 0.5)).toBeUndefined();
+  });
+
+  it('pairs a repeated sprite with its nearest segment after indices rotate', () => {
+    const state = new GameState(new Int32Array(9790));
+    const queue = new RenderQueue(new EntityPool(state));
+
+    queue.beginEntity(7);
+    queue.enqueue(0, -80, 20, 4, 345, 0);
+    queue.enqueue(0, 76, 20, 4, 345, 0);
+    queue.beginFrame();
+    queue.beginEntity(7);
+    queue.enqueue(0, 72, 20, 4, 345, 0);
+    queue.enqueue(0, 228, 20, 4, 345, 0);
+
+    const firstSegment = [...queue.commands(4)].find((command) => command.x === 72)!;
+    expect(queue.interpolationOffset(firstSegment, 0.5)).toEqual({ x: 2, y: 0 });
+  });
+
+  it('keeps moving left when an index rotates by less than the teleport threshold', () => {
+    const state = new GameState(new Int32Array(9790));
+    const queue = new RenderQueue(new EntityPool(state));
+
+    queue.beginEntity(7);
+    queue.enqueue(0, -20, 20, 4, 345, 0);
+    queue.enqueue(0, 80, 20, 4, 345, 0);
+    queue.beginFrame();
+    queue.beginEntity(7);
+    queue.enqueue(0, 70, 20, 4, 345, 0);
+    queue.enqueue(0, 170, 20, 4, 345, 0);
+
+    const recycledSegment = [...queue.commands(4)].find((command) => command.x === 70)!;
+    expect(queue.interpolationOffset(recycledSegment, 0.5)).toEqual({ x: 5, y: 0 });
+  });
 });

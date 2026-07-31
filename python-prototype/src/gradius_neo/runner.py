@@ -5,7 +5,7 @@ from pathlib import Path
 from .display_effects import LcdDisplayEffect
 from .generated_runtime import configure_generated_runtime
 from .monolithic_generated import GradiusNeoGame, ScreenState
-from .platform import ResourceLoader, SaveStorage
+from .platform import ApplicationHost, ResourceLoader, SaveStorage
 
 LOGIC_HZ = 10
 LOGIC_STEP_SECONDS = 1.0 / LOGIC_HZ
@@ -45,7 +45,7 @@ def main() -> None:
     saves = SaveStorage(root / "python-prototype" / ".saves")
     images = PygameImageLoader()
     configure_generated_runtime(resources, images, saves)
-    game = GradiusNeoGame(object())
+    game = GradiusNeoGame(ApplicationHost())
     key_codes = {
         pygame.K_UP: -1,
         pygame.K_DOWN: -2,
