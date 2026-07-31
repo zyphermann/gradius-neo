@@ -1,6 +1,4 @@
-import { Graphics } from '../../j2me/lcdui/Graphics';
-import { Image } from '../../j2me/lcdui/Image';
-import { GameCanvas } from '../../j2me/lcdui/game/GameCanvas';
+import { GameSurface, Graphics, Image } from '../../platform';
 import type { ResourceManager } from '../../runtime/resources';
 
 /**
@@ -12,7 +10,7 @@ import type { ResourceManager } from '../../runtime/resources';
  * - Überladene Methoden erhalten den Suffix ihrer Parametertypen.
  * - Keine neue Gameplay-Logik wird erfunden.
  */
-export class BDirect extends GameCanvas {
+export class BDirect extends GameSurface {
   private static readonly s = new Int32Array(9790);
   static readonly a = new Array<boolean>(10).fill(false);
   static readonly t = new Int16Array(3836);
@@ -132,29 +130,50 @@ export class BDirect extends GameCanvas {
   /** Wörtlicher Port von b.g(int). */
   private g_int(keyCode: number): number {
     switch (keyCode) {
-      case -8: return 33554432;
-      case -7: return 8388608;
-      case -6: return 4194304;
-      case 35: return 2097152;
-      case 42: return 1048576;
-      case 48: return 1024;
-      case 49: return 2048;
-      case 50: return 4096;
-      case 51: return 8192;
-      case 52: return 16384;
-      case 53: return 32768;
-      case 54: return 65536;
-      case 55: return 131072;
-      case 56: return 262144;
-      case 57: return 524288;
+      case -8:
+        return 33554432;
+      case -7:
+        return 8388608;
+      case -6:
+        return 4194304;
+      case 35:
+        return 2097152;
+      case 42:
+        return 1048576;
+      case 48:
+        return 1024;
+      case 49:
+        return 2048;
+      case 50:
+        return 4096;
+      case 51:
+        return 8192;
+      case 52:
+        return 16384;
+      case 53:
+        return 32768;
+      case 54:
+        return 65536;
+      case 55:
+        return 131072;
+      case 56:
+        return 262144;
+      case 57:
+        return 524288;
       default:
         switch (this.getGameAction(keyCode)) {
-          case GameCanvas.UP: return 2;
-          case GameCanvas.LEFT: return 4;
-          case GameCanvas.RIGHT: return 32;
-          case GameCanvas.DOWN: return 64;
-          case GameCanvas.FIRE: return 256;
-          default: return 0;
+          case GameSurface.UP:
+            return 2;
+          case GameSurface.LEFT:
+            return 4;
+          case GameSurface.RIGHT:
+            return 32;
+          case GameSurface.DOWN:
+            return 64;
+          case GameSurface.FIRE:
+            return 256;
+          default:
+            return 0;
         }
     }
   }
@@ -214,8 +233,8 @@ export class BDirect extends GameCanvas {
     s[6142 + entity] = y << 4;
     s[3070 + entity] = type;
     s[7166 + entity] = packed & 0xff;
-    s[7678 + entity] = packed >> 8 & 0xff;
-    s[8190 + entity] = packed >> 16 & 0xff;
+    s[7678 + entity] = (packed >> 8) & 0xff;
+    s[8190 + entity] = (packed >> 16) & 0xff;
     s[8702 + entity] = packed >> 24;
     s[6654 + entity] = 0;
     s[9214 + entity] = 1;

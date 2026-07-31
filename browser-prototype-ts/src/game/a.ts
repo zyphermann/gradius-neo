@@ -1,5 +1,4 @@
-import type { Font } from '../j2me/lcdui/Font';
-import type { Graphics } from '../j2me/lcdui/Graphics';
+import type { Font, Graphics } from '../platform';
 
 /** Verhaltensgetreue TypeScript-Portierung der dekompilierten Klasse a.java. */
 export class GameSupport {
@@ -12,7 +11,7 @@ export class GameSupport {
       if (args.length === 1) return this.appendMessage(args[0] as string | null);
       return this.setMessage(args[0] as string | null, args[1] as number);
     }
-    this.drawProgress(...args as [Graphics, number, number, number, number, number, number]);
+    this.drawProgress(...(args as [Graphics, number, number, number, number, number, number]));
   }
 
   static drawProgress(
@@ -26,8 +25,8 @@ export class GameSupport {
   ): void {
     if (progress >= total) return;
     graphics.drawRect(x, y, width, progress - 1);
-    const fillHeight = Math.trunc(progress * progress / total);
-    const fillY = Math.trunc(fillOffset * progress / total);
+    const fillHeight = Math.trunc((progress * progress) / total);
+    const fillY = Math.trunc((fillOffset * progress) / total);
     graphics.fillRect(x, y + fillY, width, fillHeight);
   }
 

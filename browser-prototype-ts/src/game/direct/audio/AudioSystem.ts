@@ -1,14 +1,12 @@
 import { GameSupport } from '../../a';
-import { Manager } from '../../../j2me/media/Manager';
-import { Player, type PlayerListener } from '../../../j2me/media/Player';
-import { java } from '../JavaRuntime';
+import { AudioManager, AudioPlayer, type AudioPlayerListener } from '../../../platform';
 
-export class AudioSystem implements PlayerListener {
+export class AudioSystem implements AudioPlayerListener {
   private queuedPath: string | null = null;
   private queuedLoopCount = 0;
   private playerState = 3;
-  private activePlayer: Player | null = null;
-  private readonly playerCache = new Map<string, Player>();
+  private activePlayer: AudioPlayer | null = null;
+  private readonly playerCache = new Map<string, AudioPlayer>();
 
   constructor(private readonly openResource: (path: string) => any) {}
 
@@ -41,16 +39,16 @@ export class AudioSystem implements PlayerListener {
             player.start();
             this.activePlayer = player;
           } else {
-            player = Manager.createPlayer(this.openResource(this.queuedPath), 'audio/midi');
+            player = AudioManager.createPlayer(this.openResource(this.queuedPath), 'audio/midi');
             player.addPlayerListener(this);
             this.playerCache.set(this.queuedPath, player);
           }
           return;
         } catch (error) {
-          if (error instanceof java.lang.Throwable) {
+          if (error instanceof Error) {
             this.playerState = 0;
             GameSupport.a(' pse:' + error);
-            if ((error as any).getMessage() === 'device error') this.playerState = 2;
+            if ((error as Error).message === 'device error') this.playerState = 2;
             return;
           }
           throw error;
@@ -72,5 +70,5 @@ export class AudioSystem implements PlayerListener {
     }
   }
 
-  playerUpdate(_player: Player, _event: string, _eventData: any): void {}
+  playerUpdate(_player: AudioPlayer, _event: string, _eventData: any): void {}
 }

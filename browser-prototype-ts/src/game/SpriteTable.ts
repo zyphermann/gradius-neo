@@ -1,5 +1,4 @@
-import { Graphics } from '../j2me/lcdui/Graphics';
-import type { Image } from '../j2me/lcdui/Image';
+import { Graphics, type Image } from '../platform';
 
 export interface SpriteRegion {
   x: number;
@@ -14,17 +13,17 @@ export class SpriteTable {
 
   constructor(bytes: Uint8Array) {
     if (bytes.length < 4) throw new Error('Sprite table header is truncated');
-    const firstIndex = bytes[0]! << 8 | bytes[1]!;
-    const count = bytes[2]! << 8 | bytes[3]!;
+    const firstIndex = (bytes[0]! << 8) | bytes[1]!;
+    const count = (bytes[2]! << 8) | bytes[3]!;
     if (bytes.length < 4 + count * 4) throw new Error('Sprite table entries are truncated');
 
     for (let offset = 0; offset < count; offset++) {
       const cursor = 4 + offset * 4;
       this.regions.set(firstIndex + offset, {
-        x: Math.trunc(bytes[cursor]! * 3 / 4),
-        y: Math.trunc(bytes[cursor + 1]! * 3 / 4),
-        width: Math.trunc(bytes[cursor + 2]! * 3 / 4),
-        height: Math.trunc(bytes[cursor + 3]! * 3 / 4),
+        x: Math.trunc((bytes[cursor]! * 3) / 4),
+        y: Math.trunc((bytes[cursor + 1]! * 3) / 4),
+        width: Math.trunc((bytes[cursor + 2]! * 3) / 4),
+        height: Math.trunc((bytes[cursor + 3]! * 3) / 4),
       });
     }
   }

@@ -2,7 +2,7 @@
 // @ts-nocheck -- progressively removed as raw state-array accesses become typed.
 
 import { type int, type short } from '../JavaRuntime';
-import { Graphics } from '../../../j2me/lcdui/Graphics';
+import { Graphics } from '../../../platform';
 import { RENDER_SCALE } from '../../../runtime/render-config';
 import { EntityField, StateSlot } from '../state/GameState';
 import { EntityPool } from './EntityPool';

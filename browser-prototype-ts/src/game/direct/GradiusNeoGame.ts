@@ -1,13 +1,17 @@
 /** Direct TypeScript port of the original Gradius Neo game class. */
 // @ts-nocheck
 
-import { java, type int, type long, type char, type byte, type short } from './JavaRuntime';
-import { Command } from '../../j2me/lcdui/Command';
-import { Font } from '../../j2me/lcdui/Font';
-import { Graphics } from '../../j2me/lcdui/Graphics';
-import { Image } from '../../j2me/lcdui/Image';
-import { GameCanvas } from '../../j2me/lcdui/game/GameCanvas';
-import { RecordStore } from '../../j2me/rms/RecordStore';
+import { type int, type long, type char, type byte, type short } from './JavaRuntime';
+import {
+  Clock,
+  Font,
+  GameSurface,
+  Graphics,
+  Image,
+  MenuCommand,
+  type ResourceStream,
+  SaveStorage,
+} from '../../platform';
 import { GameSupport } from '../a';
 import { BrowserApplicationHost } from './BrowserApplicationHost';
 import { RENDER_SCALE, SPRITE_SHEET_SCALE } from '../../runtime/render-config';
@@ -111,7 +115,7 @@ const enum SaveDataSection {
   UnlocksAndStageRecords = 52,
 }
 
-export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
+export class GradiusNeoGame extends GameSurface {
   private static state: Int32Array = new Int32Array(9790);
   private static extraModeBestScores = new Int32Array(5);
   private static readonly sharedState = new GameState(GradiusNeoGame.state);
@@ -139,11 +143,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
   private static timestamps: BigInt64Array = new BigInt64Array(5);
   public static screenState: int;
   public static requestedBgmId: int;
-  private static resourceInputStream: java.io.InputStream;
+  private static resourceInputStream: ResourceStream;
   private host: BrowserApplicationHost;
-  private static recordStore: RecordStore;
+  private static saveStorage: SaveStorage;
   private static resourceBuffer: Int8Array = new Int8Array(25112);
-  protected bgmTrackTitles: java.lang.String[][] = [
+  protected bgmTrackTitles: string[][] = [
     ['    Shooting Again '],
     [' A Stone Graveyard '],
     [' The Tension Is    ', '       Building Up '],
@@ -163,31 +167,31 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
   private static terrainTileSourceY: int;
   protected loopIterationCount: long = 0n;
   protected lastFrameDurationMillis: long = 0n;
-  private static softKeyCommands: Command[] = [
-    new Command('M on', 1, 1),
-    new Command('Moff', 1, 1),
-    new Command('EXIT', 1, 1),
-    new Command('BACK', 1, 1),
-    new Command('POW1', 1, 1),
-    new Command('POW2', 1, 1),
-    new Command(' ', 1, 1),
+  private static softKeyCommands: MenuCommand[] = [
+    new MenuCommand('M on', 1, 1),
+    new MenuCommand('Moff', 1, 1),
+    new MenuCommand('EXIT', 1, 1),
+    new MenuCommand('BACK', 1, 1),
+    new MenuCommand('POW1', 1, 1),
+    new MenuCommand('POW2', 1, 1),
+    new MenuCommand(' ', 1, 1),
   ];
-  private leftSoftKeyLabel: java.lang.String = ' ';
-  private rightSoftKeyLabel: java.lang.String = ' ';
+  private leftSoftKeyLabel: string = ' ';
+  private rightSoftKeyLabel: string = ' ';
   private static saveData: Int8Array = new Int8Array(SAVE_DATA_LENGTH);
   private static smoothRenderingEnabled = true;
   protected heldInputBits: int = 0;
   protected releasedInputBits: int = 0;
   private static entityDirectionSign: int;
   private static spawnedEntityCount: int;
-  private instructionsText: java.lang.String =
+  private instructionsText: string =
     'GAME SYSTEM\nChoosing Game Start, will begin a new game, or start from previously completed stages. By Choosing Continue, the game will start where the previous saved game ended.  The degree of Difficulty, Auto-fire option, or Screen Set-up can be changed in GAME SETTING. \nPressing # key or back/CLR key during game play will display the PAUSE MENU.  Pressing RESUME from PAUSE MENU will continue the game.\n\nCONTROLS\nShip movement is controlled by the D-pad.  If Auto-fire is set to OFF press the 0 key to fire. \n\nPOWER UP\nDestroying red enemies or enemy formations will result in the appearance of red capsules.  Obtaining these red capsules will highlight one of the power-ups on the lower left gauge.  At this time, pressing the left soft key will activate the highlighted power-up from the lower left gauge.\nObtaining a green capsule will highlight one of the formations in the lower right gauge.  At this time, pressing the right soft key will activate the highlighted formation from the lower right gauge.\n\nFORMATION\nKeys 1 to 6 will enable the different formations. Keys 7 to 9 reset the formation to normal.  When 4 option power-ups and the Laser power up are activated, special striking performance will be enabled.\n\nEXTRA MODE\nEXTRA MODE is a score attack mode.  Each stage has a minimum score.  Clearing the minimum score and the stage will unlock new weapons in OPTIONS - SELECT WEAPON section.\n\nPower-ups:\nS: Speed\nM: Missle\nD: Double shot\nL: Lasers\nO: Option\n?: Shield\n\nFormations:\nR: Rotate\nC: Center\nF: Forward\nW: Wing\nI: In-line\nA: Advance';
-  private instructionsLines: java.lang.String[] = null;
+  private instructionsLines: string[] | null = null;
   protected infoReturnScreen: int = 0;
   protected textScrollOffset: int = 0;
-  private aboutLines: java.lang.String[] = null;
+  private aboutLines: string[] | null = null;
   public running: boolean = true;
-  protected endingCreditsPages: java.lang.String[][] = [
+  protected endingCreditsPages: string[][] = [
     ['- GRADIUS NEO -', 'Final Stage Cleared!', 'Try next round!!'],
     ['', '', '', '', '', ''],
     ['STAFF'],
@@ -226,7 +230,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
       GradiusNeoGame.state[StateSlot.ViewportOffsetY] = (this.canvasHeight - RENDERED_GAME_VIEW_WIDTH) / 2;
       GradiusNeoGame.screenState = ScreenState.Boot;
     } catch (var3) {
-      if (var3 instanceof java.lang.Throwable) {
+      if (var3 instanceof Error) {
       } else {
         throw var3;
       }
@@ -238,12 +242,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
       this.spriteSheets[var1] = null;
     }
 
-    java.lang.System.gc();
+    Clock.collectGarbage();
   }
 
-  private loadSpriteSheet(sheetIndex: int, resourceName: java.lang.String): void {
+  private loadSpriteSheet(sheetIndex: int, resourceName: string): void {
     this.spriteSheets[sheetIndex] = null;
-    java.lang.System.gc();
+    Clock.collectGarbage();
 
     try {
       this.spriteSheets[sheetIndex] = Image.createImage('/img_' + resourceName);
@@ -251,7 +255,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         this.spriteSheets[sheetIndex].downloadAsPng(`img_${resourceName}.png`);
       }
     } catch (var4) {
-      if (var4 instanceof java.lang.Throwable) {
+      if (var4 instanceof Error) {
         return;
       } else {
         throw var4;
@@ -302,7 +306,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     );
   }
 
-  private renderForegroundQueue(gfx: Graphics, interpolationAlpha = 0): void {
+  private renderForegroundQueue(gfx: Graphics, interpolationAlpha = 0, advanceVisualState = true): void {
     for (let layer: int = 4; layer < 18; layer++) {
       for (const command of GradiusNeoGame.renderQueue.commands(layer)) {
         const motionOffset =
@@ -531,9 +535,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
             let var7: int = 80;
             if (GradiusNeoGame.state[63] < 0) {
-              GradiusNeoGame.state[63]++;
-              if (GradiusNeoGame.state[63] < -7) {
-                GradiusNeoGame.state[63] = -7;
+              if (advanceVisualState) {
+                GradiusNeoGame.state[63]++;
+                if (GradiusNeoGame.state[63] < -7) {
+                  GradiusNeoGame.state[63] = -7;
+                }
               }
 
               var7--;
@@ -542,9 +548,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               }
             } else {
               if (GradiusNeoGame.state[63] > 0) {
-                GradiusNeoGame.state[63]--;
-                if (GradiusNeoGame.state[63] > 7) {
-                  GradiusNeoGame.state[63] = 7;
+                if (advanceVisualState) {
+                  GradiusNeoGame.state[63]--;
+                  if (GradiusNeoGame.state[63] > 7) {
+                    GradiusNeoGame.state[63] = 7;
+                  }
                 }
 
                 var7++;
@@ -816,7 +824,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     try {
       while (this.running) {
         this.loopIterationCount++;
-        GradiusNeoGame.timestamps[0] = java.lang.System.currentTimeMillis();
+        GradiusNeoGame.timestamps[0] = Clock.currentTimeMillis();
         this.repaint();
         this.serviceRepaints();
         this.processPendingBackgroundMusic();
@@ -827,12 +835,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           GradiusNeoGame.screenState !== ScreenState.LoadStage &&
           GradiusNeoGame.screenState !== ScreenState.InitializeNewGame
         ) {
-          this.lastFrameDurationMillis = java.lang.System.currentTimeMillis() - GradiusNeoGame.timestamps[0];
+          this.lastFrameDurationMillis = Clock.currentTimeMillis() - GradiusNeoGame.timestamps[0];
           if (this.lastFrameDurationMillis < 100n && this.lastFrameDurationMillis > 0n) {
             try {
-              java.lang.Thread.sleep(100n - this.lastFrameDurationMillis);
+              Clock.sleep(100n - this.lastFrameDurationMillis);
             } catch (var2) {
-              if (var2 instanceof java.lang.Throwable) {
+              if (var2 instanceof Error) {
               } else {
                 throw var2;
               }
@@ -844,7 +852,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
       this.host.destroyApp(false);
       this.host.notifyDestroyed();
     } catch (var3) {
-      if (var3 instanceof java.lang.Throwable) {
+      if (var3 instanceof Error) {
         GameSupport.a('main loop error ' + var3, 1);
       } else {
         throw var3;
@@ -888,7 +896,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     } else {
       gfx.restoreFrame(this.gameplayBackgroundFrame);
     }
-    this.renderForegroundQueue(gfx, _alpha);
+    this.renderForegroundQueue(gfx, _alpha, false);
     this.renderGameplayHud(gfx);
     this.renderSoftKeyBar(gfx);
   }
@@ -1027,7 +1035,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     }
   }
 
-  private drawBitmapText(gfx: Graphics, text: java.lang.String, x: int, y: int): void {
+  private drawBitmapText(gfx: Graphics, text: string, x: int, y: int): void {
     let glyphIndex: int = 0;
     let characterIndex: int = 0;
 
@@ -1182,19 +1190,19 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     }
   }
 
-  private loadResourceIntoBuffer(resourcePath: java.lang.String): void {
+  private loadResourceIntoBuffer(resourcePath: string): void {
     try {
       GradiusNeoGame.resourceInputStream = this.getClass().getResourceAsStream('/' + resourcePath);
       GradiusNeoGame.resourceInputStream.read(GradiusNeoGame.resourceBuffer);
       GradiusNeoGame.resourceInputStream.close();
     } catch (var3) {
-      if (var3 instanceof java.lang.Throwable) {
+      if (var3 instanceof Error) {
       } else {
         throw var3;
       }
     }
 
-    java.lang.System.gc();
+    Clock.collectGarbage();
   }
 
   public stopAllAudio(): void {
@@ -1646,11 +1654,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         default:
       }
 
-      GradiusNeoGame.recordStore = RecordStore.openRecordStore('R', true);
-      GradiusNeoGame.recordStore.setRecord(1, GradiusNeoGame.saveData, 0, SAVE_DATA_LENGTH);
-      GradiusNeoGame.recordStore.closeRecordStore();
+      GradiusNeoGame.saveStorage = SaveStorage.open('R', true);
+      GradiusNeoGame.saveStorage.setRecord(1, GradiusNeoGame.saveData, 0, SAVE_DATA_LENGTH);
+      GradiusNeoGame.saveStorage.close();
     } catch (var2) {
-      if (var2 instanceof java.lang.Throwable) {
+      if (var2 instanceof Error) {
       } else {
         throw var2;
       }
@@ -1790,7 +1798,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
   private renderAboutScreen(gfx: Graphics): void {
     if (this.aboutLines === null) {
-      let var2: java.lang.String = this.host.getAppProperty('MIDlet-Version');
+      let var2: string = this.host.getAppProperty('MIDlet-Version');
       this.aboutLines = GameSupport.a(
         172,
         'Gradius Neo\n\n© 2004 2006 KONAMI\nAll Rights Reserved.\n\nPublished by Konami Digital Entertainment\n\nv' +
@@ -1926,7 +1934,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
   private updatePauseMenu(gfx: Graphics): void {
     this.drawBitmapGlyphRun(gfx, 219, 5, 85, 80);
     this.drawBitmapText(gfx, 'RESUME', 43, 96);
-    let var10: java.lang.String[] = ['NONE', 'BGM', 'SFX'];
+    let var10: string[] = ['NONE', 'BGM', 'SFX'];
     this.drawBitmapText(gfx, 'SOUND - ' + var10[GradiusNeoGame.soundMode], 43, 112);
     this.drawBitmapText(gfx, 'HELP', 43, 128);
     this.drawBitmapText(gfx, 'EXIT', 43, 144);
@@ -6707,7 +6715,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               );
             }
           } catch (error) {
-            if (error instanceof java.lang.Throwable) {
+            if (error instanceof Error) {
             } else {
               throw error;
             }
@@ -6842,7 +6850,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
   public paint(gfx: Graphics): void {
     if (GradiusNeoGame.screenState !== ScreenState.PaintDisabled) {
       try {
-        java.lang.System.gc();
+        Clock.collectGarbage();
         GradiusNeoGame.state[StateSlot.LogicFrame]++;
         GradiusNeoGame.state[StateSlot.HeldInputBits] = this.heldInputBits;
         this.heldInputBits = this.heldInputBits & ~this.releasedInputBits;
@@ -6871,8 +6879,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         switch (GradiusNeoGame.screenState) {
           case ScreenState.LoadSaveData: {
             try {
-              GradiusNeoGame.recordStore = RecordStore.openRecordStore('R', true);
-              if (GradiusNeoGame.recordStore.getNumRecords() === 0) {
+              GradiusNeoGame.saveStorage = SaveStorage.open('R', true);
+              if (GradiusNeoGame.saveStorage.getNumRecords() === 0) {
                 initializeDefaultSaveData(GradiusNeoGame.saveData, {
                   screenSetup: GradiusNeoGame.state[22],
                   highestUnlockedStage: Math.max(
@@ -6881,14 +6889,14 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   ),
                   highestRound: GradiusNeoGame.state[33],
                 });
-                GradiusNeoGame.recordStore.addRecord(GradiusNeoGame.saveData, 0, SAVE_DATA_LENGTH);
+                GradiusNeoGame.saveStorage.addRecord(GradiusNeoGame.saveData, 0, SAVE_DATA_LENGTH);
               } else {
-                GradiusNeoGame.recordStore.getRecord(1, GradiusNeoGame.saveData, 0);
+                GradiusNeoGame.saveStorage.getRecord(1, GradiusNeoGame.saveData, 0);
               }
 
-              GradiusNeoGame.recordStore.closeRecordStore();
+              GradiusNeoGame.saveStorage.close();
             } catch (var28) {
-              if (var28 instanceof java.lang.Throwable) {
+              if (var28 instanceof Error) {
               } else {
                 throw var28;
               }
@@ -6917,7 +6925,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             try {
               this.spriteSheets[5] = Image.createImage('/img_sub');
             } catch (var27) {
-              if (var27 instanceof java.lang.Throwable) {
+              if (var27 instanceof Error) {
               } else {
                 throw var27;
               }
@@ -6950,7 +6958,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
           case ScreenState.ReturnToTitle: {
             this.stopAllAudio();
-            java.lang.System.gc();
+            Clock.collectGarbage();
             this.loadSpriteSheet(2, 'title');
           }
 
@@ -7090,7 +7098,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             let var136: boolean = false;
             this.drawBitmapGlyphRun(gfx, 82, 13, 42, 160);
             this.drawBitmapGlyphRun(gfx, 95, 10, 42, 176);
-            let var144: java.lang.String[] = ['NONE', 'BGM', 'SFX'];
+            let var144: string[] = ['NONE', 'BGM', 'SFX'];
             this.drawBitmapText(gfx, 'SOUND - ' + var144[GradiusNeoGame.soundMode], 42, 192);
             let var15: byte;
             let var16: byte;
@@ -7616,11 +7624,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
           case ScreenState.LoadSavedGame: {
             try {
-              GradiusNeoGame.recordStore = RecordStore.openRecordStore('R', true);
-              GradiusNeoGame.recordStore.getRecord(1, GradiusNeoGame.saveData, 0);
-              GradiusNeoGame.recordStore.closeRecordStore();
+              GradiusNeoGame.saveStorage = SaveStorage.open('R', true);
+              GradiusNeoGame.saveStorage.getRecord(1, GradiusNeoGame.saveData, 0);
+              GradiusNeoGame.saveStorage.close();
             } catch (var26) {
-              if (var26 instanceof java.lang.Throwable) {
+              if (var26 instanceof Error) {
               } else {
                 throw var26;
               }
@@ -7853,7 +7861,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               try {
                 this.spriteSheets[4] = Image.createImage('/img_st2c');
               } catch (var25) {
-                if (var25 instanceof java.lang.Throwable) {
+                if (var25 instanceof Error) {
                 } else {
                   throw var25;
                 }
@@ -8293,7 +8301,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           case ScreenState.StageReady: {
             this.drawBitmapGlyphRun(gfx, 7, 10, 50, 113);
             this.drawDifficultyLabel(gfx, GradiusNeoGame.state[StateSlot.Difficulty], 141);
-            if (3000n < java.lang.System.currentTimeMillis() - GradiusNeoGame.timestamps[2]) {
+            if (3000n < Clock.currentTimeMillis() - GradiusNeoGame.timestamps[2]) {
               GradiusNeoGame.screenState = ScreenState.Gameplay;
               GradiusNeoGame.requestBackgroundMusic(15 + GradiusNeoGame.state[StateSlot.CurrentStage] * 3);
               this.setSoftKeyLabels(4, 5);
@@ -10519,7 +10527,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           }
 
           case ScreenState.Boot: {
-            this.introPhaseDeadlineMillis = java.lang.System.currentTimeMillis() + 2000n;
+            this.introPhaseDeadlineMillis = Clock.currentTimeMillis() + 2000n;
             this.konamiLogoImage = Image.createImage('/konami.png');
             this.loadSpriteSheet(0, 'c1');
             gfx.drawImage(this.konamiLogoImage, fromLegacyRenderPixels(90), fromLegacyRenderPixels(90), 3);
@@ -10531,10 +10539,10 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           case ScreenState.KonamiLogo: {
             gfx.drawImage(this.konamiLogoImage, fromLegacyRenderPixels(90), fromLegacyRenderPixels(90), 3);
             if (
-              java.lang.System.currentTimeMillis() > this.introPhaseDeadlineMillis ||
+              Clock.currentTimeMillis() > this.introPhaseDeadlineMillis ||
               GradiusNeoGame.state[StateSlot.PressedInputBits] !== 0
             ) {
-              this.introPhaseDeadlineMillis = java.lang.System.currentTimeMillis() + 2000n;
+              this.introPhaseDeadlineMillis = Clock.currentTimeMillis() + 2000n;
               GradiusNeoGame.screenState = ScreenState.TitleIntro;
               this.konamiLogoImage = null;
             }
@@ -10544,7 +10552,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           case ScreenState.TitleIntro: {
             let nowMillis: long;
             if (
-              (nowMillis = java.lang.System.currentTimeMillis()) > this.introPhaseDeadlineMillis ||
+              (nowMillis = Clock.currentTimeMillis()) > this.introPhaseDeadlineMillis ||
               GradiusNeoGame.state[StateSlot.PressedInputBits] !== 0
             ) {
               GradiusNeoGame.screenState = ScreenState.PrepareMainMenu;
@@ -10601,7 +10609,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
         this.renderSoftKeyBar(gfx);
       } catch (var29) {
-        if (var29 instanceof java.lang.Throwable) {
+        if (var29 instanceof Error) {
           throw new Error(`GradiusNeoGame.paint state ${GradiusNeoGame.screenState}: ${var29.message}`, {
             cause: var29,
           });
@@ -10643,7 +10651,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         return;
       }
 
-      let var1: java.lang.String[] = [
+      let var1: string[] = [
         '0_skyenemydie',
         '1_corehit',
         '2_enemydie1',
@@ -10662,9 +10670,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
   }
 
   private processPendingBackgroundMusic(): void {
-    if (java.lang.System.currentTimeMillis() < this.audioResumeDeadlineMillis && this.audioResumePending) {
+    if (Clock.currentTimeMillis() < this.audioResumeDeadlineMillis && this.audioResumePending) {
       GradiusNeoGame.requestBackgroundMusic(GradiusNeoGame.requestedBgmId);
-      java.lang.Thread.yield();
+      Clock.yield();
     } else {
       this.audioResumeDeadlineMillis = 0n;
       if (GradiusNeoGame.runtimeFlags[2]) {
@@ -10674,7 +10682,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         }
 
         let var3: int = GradiusNeoGame.requestedBgmId / 3 - 4;
-        let var4: java.lang.String[] = ['boss1', 'st1', 'st2', 'st3', 'st4', 'st5', 'boss2', 'lastboss', 'ending1'];
+        let var4: string[] = ['boss1', 'st1', 'st2', 'st3', 'st4', 'st5', 'boss2', 'lastboss', 'ending1'];
         this.queueAudioPlayback('/' + var4[var3] + '.mid', -1);
         if (this.audioResumePending) {
           this.audioResumePending = false;
@@ -10688,7 +10696,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     this.audioSystem.update();
   }
 
-  private queueAudioPlayback(resourcePath: java.lang.String, loopCount: int): void {
+  private queueAudioPlayback(resourcePath: string, loopCount: int): void {
     this.audioSystem.queue(resourcePath, loopCount);
   }
 
@@ -10706,7 +10714,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
   public resumeAfterAppShow(): void {
     if (GradiusNeoGame.appSuspended) {
-      this.audioResumeDeadlineMillis = java.lang.System.currentTimeMillis() + 1000n;
+      this.audioResumeDeadlineMillis = Clock.currentTimeMillis() + 1000n;
       this.audioResumePending = true;
       GradiusNeoGame.appSuspended = false;
       if (GradiusNeoGame.screenState === ScreenState.Gameplay) {
