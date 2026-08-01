@@ -1,5 +1,5 @@
 """Generated mechanically from GradiusNeoGame.ts. Do not edit by hand."""
-SOURCE_SHA256 = "2ba6e32698402065623f67c915f258a6734a8fd18d544bb51b8236734a9da723"
+SOURCE_SHA256 = "0d7b595ad0dafacf94b3f72185562cc0cfe4f0ecb55070c2f33500b54a8a683d"
 import math
 from enum import IntEnum
 from gradius_neo.generated_runtime import *
@@ -68,6 +68,14 @@ GAMEPLAY_HEIGHT = 224
 DEVELOPMENT_SELECTED_STAGE = 1
 
 DEVELOPMENT_HIGHEST_UNLOCKED_STAGE = 4
+
+DEVELOPMENT_MISSILE_VARIANT_COUNT = 2
+
+DEVELOPMENT_MAIN_WEAPON_VARIANT_COUNT = 4
+
+DEVELOPMENT_FORMATION_VARIANT_COUNT = 2
+
+STAGE_FIVE_ROOM_SOURCE_ID = (-23)
 
 RENDERED_GAME_VIEW_WIDTH = toRenderPixels(GAME_VIEW_WIDTH)
 
@@ -3711,6 +3719,7 @@ class GradiusNeoGame(GameSurface):
     def paint(self, gfx):
         if (GradiusNeoGame.screenState != ScreenState.PaintDisabled):
             try:
+                s = GradiusNeoGame.state
                 Clock.collectGarbage()
                 getAndIncrement(GradiusNeoGame.state, StateSlot.LogicFrame)
                 GradiusNeoGame.state[StateSlot.HeldInputBits] = self.heldInputBits
@@ -3746,9 +3755,12 @@ class GradiusNeoGame(GameSurface):
                             GradiusNeoGame.loadSaveDataSection(SaveDataSection.GameProgress)
                             GradiusNeoGame.loadSaveDataSection(SaveDataSection.UnlocksAndStageRecords)
                             GradiusNeoGame.state[StateSlot.HighestUnlockedStage] = max(GradiusNeoGame.state[StateSlot.HighestUnlockedStage], DEVELOPMENT_HIGHEST_UNLOCKED_STAGE)
-                            GradiusNeoGame.state[66] = GradiusNeoGame.saveData[52]
-                            GradiusNeoGame.state[67] = GradiusNeoGame.saveData[53]
-                            GradiusNeoGame.state[68] = GradiusNeoGame.saveData[54]
+                            GradiusNeoGame.state[66] = max(GradiusNeoGame.saveData[SaveOffset.MissileVariantCount], DEVELOPMENT_MISSILE_VARIANT_COUNT)
+                            GradiusNeoGame.state[67] = max(GradiusNeoGame.saveData[SaveOffset.MainWeaponVariantCount], DEVELOPMENT_MAIN_WEAPON_VARIANT_COUNT)
+                            GradiusNeoGame.state[68] = max(GradiusNeoGame.saveData[SaveOffset.FormationVariantCount], DEVELOPMENT_FORMATION_VARIANT_COUNT)
+                            GradiusNeoGame.saveData[SaveOffset.MissileVariantCount] = to_byte(GradiusNeoGame.state[66])
+                            GradiusNeoGame.saveData[SaveOffset.MainWeaponVariantCount] = to_byte(GradiusNeoGame.state[67])
+                            GradiusNeoGame.saveData[SaveOffset.FormationVariantCount] = to_byte(GradiusNeoGame.state[68])
                             GradiusNeoGame.state[StateSlot.MissileVariant] = GradiusNeoGame.saveData[55]
                             GradiusNeoGame.state[70] = GradiusNeoGame.saveData[56]
                             GradiusNeoGame.state[71] = GradiusNeoGame.saveData[57]
@@ -5102,6 +5114,7 @@ class GradiusNeoGame(GameSurface):
                                                     self.drawSpriteRegion(gfx, 4, 294, toRenderPixels(((0 - ((GradiusNeoGame.state[StateSlot.VisualStageScrollX] % 48))) + ((var41 * 16) * 3))), 108, 20)
                                             raise _SwitchBreak()
                                         case 7:
+                                            GradiusNeoGame.renderQueue.beginMotionSource(STAGE_FIVE_ROOM_SOURCE_ID, GradiusNeoGame.state[87])
                                             if (GradiusNeoGame.state[22] == 0):
                                                 for var39 in range(0, (6 * GradiusNeoGame.state[88])):
                                                     self.drawSpriteRegion(gfx, 4, (301 + int_div(var39, 6)), toRenderPixels(((((var39 % 6)) * 16) * 3)), toRenderPixels((16 + ((int_div(var39, 6)) * 16))), 20)
@@ -5186,9 +5199,10 @@ class GradiusNeoGame(GameSurface):
                                                 GradiusNeoGame.state[88] = 4
                                                 getAndIncrement(GradiusNeoGame.state, 86)
                                                 GradiusNeoGame.spawnAuxiliaryEntity(112, GAMEPLAY_HEIGHT, 0, GradiusNeoGame.state[87])
-                                            # TypeScript switch fallthrough into source clause 2
                                             raise _SwitchBreak()
-                                        case 2 | 3:
+                                        case 2:
+                                            raise _SwitchBreak()
+                                        case 3:
                                             if (incrementAndGet(s, 89) >= 8):
                                                 getAndIncrement(s, 86)
                                                 s[89] = _set_item(s, 96, 0)
@@ -5270,7 +5284,7 @@ class GradiusNeoGame(GameSurface):
                                             raise _SwitchBreak()
                                         case 7:
                                             getAndIncrement(s, 86)
-                                            # TypeScript switch fallthrough into source clause 8
+                                            # TypeScript switch fallthrough into source clause 7
                                             if (s[90] == 1):
                                                 s[92] = (s[92] - 16)
                                                 s[1126] = (s[1126] - 10)
@@ -5326,6 +5340,7 @@ class GradiusNeoGame(GameSurface):
                                                         s[9744] = (s[9744] - 4)
                                                     if (s[9743] > 0):
                                                         s[9743] = (s[9743] - 4)
+                                            raise _SwitchBreak()
                                         case _:
                                             raise _SwitchBreak()
                                 except _SwitchBreak:
@@ -5830,6 +5845,7 @@ class GradiusNeoGame(GameSurface):
                                                     self.drawSpriteRegion(gfx, 4, 294, toRenderPixels(((0 - ((GradiusNeoGame.state[StateSlot.VisualStageScrollX] % 48))) + ((var41 * 16) * 3))), 108, 20)
                                             raise _SwitchBreak()
                                         case 7:
+                                            GradiusNeoGame.renderQueue.beginMotionSource(STAGE_FIVE_ROOM_SOURCE_ID, GradiusNeoGame.state[87])
                                             if (GradiusNeoGame.state[22] == 0):
                                                 for var39 in range(0, (6 * GradiusNeoGame.state[88])):
                                                     self.drawSpriteRegion(gfx, 4, (301 + int_div(var39, 6)), toRenderPixels(((((var39 % 6)) * 16) * 3)), toRenderPixels((16 + ((int_div(var39, 6)) * 16))), 20)
@@ -5914,9 +5930,10 @@ class GradiusNeoGame(GameSurface):
                                                 GradiusNeoGame.state[88] = 4
                                                 getAndIncrement(GradiusNeoGame.state, 86)
                                                 GradiusNeoGame.spawnAuxiliaryEntity(112, GAMEPLAY_HEIGHT, 0, GradiusNeoGame.state[87])
-                                            # TypeScript switch fallthrough into source clause 2
                                             raise _SwitchBreak()
-                                        case 2 | 3:
+                                        case 2:
+                                            raise _SwitchBreak()
+                                        case 3:
                                             if (incrementAndGet(s, 89) >= 8):
                                                 getAndIncrement(s, 86)
                                                 s[89] = _set_item(s, 96, 0)
@@ -5998,7 +6015,7 @@ class GradiusNeoGame(GameSurface):
                                             raise _SwitchBreak()
                                         case 7:
                                             getAndIncrement(s, 86)
-                                            # TypeScript switch fallthrough into source clause 8
+                                            # TypeScript switch fallthrough into source clause 7
                                             if (s[90] == 1):
                                                 s[92] = (s[92] - 16)
                                                 s[1126] = (s[1126] - 10)
@@ -6054,6 +6071,7 @@ class GradiusNeoGame(GameSurface):
                                                         s[9744] = (s[9744] - 4)
                                                     if (s[9743] > 0):
                                                         s[9743] = (s[9743] - 4)
+                                            raise _SwitchBreak()
                                         case _:
                                             raise _SwitchBreak()
                                 except _SwitchBreak:
@@ -6316,4 +6334,4 @@ GradiusNeoGame.soundMode = 0
 GradiusNeoGame.appSuspended = False
 
 
-GENERATOR_STATS = {"source":"browser-prototype-ts/src/game/direct/GradiusNeoGame.ts","sourceSha256":"2ba6e32698402065623f67c915f258a6734a8fd18d544bb51b8236734a9da723","outputLines":6317,"loweredSwitchFallthroughs":11,"unsupported":{}}
+GENERATOR_STATS = {"source":"browser-prototype-ts/src/game/direct/GradiusNeoGame.ts","sourceSha256":"0d7b595ad0dafacf94b3f72185562cc0cfe4f0ecb55070c2f33500b54a8a683d","outputLines":6335,"loweredSwitchFallthroughs":9,"unsupported":{}}

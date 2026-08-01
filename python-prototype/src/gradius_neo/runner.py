@@ -35,7 +35,7 @@ def main() -> None:
     graphics = PygameGraphics(logical_surface)
     display_effect = LcdDisplayEffect(scale)
     root = repository_root()
-    background = pygame.image.load(str(root / "assets" / "gradius-neo-1080-v2.png")).convert()
+    background = pygame.image.load(str(root / "assets" / "gradius-neo-1080-v3.png")).convert()
     background = pygame.transform.smoothscale(background, window.get_size())
     game_position = (
         (WINDOW_WIDTH - game_surface.get_width()) // 2,

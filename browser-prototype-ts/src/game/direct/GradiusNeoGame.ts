@@ -74,6 +74,10 @@ const GAME_VIEW_WIDTH = 240;
 const GAMEPLAY_HEIGHT = 224;
 const DEVELOPMENT_SELECTED_STAGE = 1;
 const DEVELOPMENT_HIGHEST_UNLOCKED_STAGE = 4;
+const DEVELOPMENT_MISSILE_VARIANT_COUNT = 2;
+const DEVELOPMENT_MAIN_WEAPON_VARIANT_COUNT = 4;
+const DEVELOPMENT_FORMATION_VARIANT_COUNT = 2;
+const STAGE_FIVE_ROOM_SOURCE_ID = -23;
 
 const RENDERED_GAME_VIEW_WIDTH = toRenderPixels(GAME_VIEW_WIDTH);
 const RENDERED_GAMEPLAY_HEIGHT = toRenderPixels(GAMEPLAY_HEIGHT);
@@ -6936,6 +6940,9 @@ export class GradiusNeoGame extends GameSurface {
   public paint(gfx: Graphics): void {
     if (GradiusNeoGame.screenState !== ScreenState.PaintDisabled) {
       try {
+        // Some late-stage branches in the decompiled game still use the
+        // original short alias for the shared state buffer.
+        const s = GradiusNeoGame.state;
         Clock.collectGarbage();
         getAndIncrement(GradiusNeoGame.state, StateSlot.LogicFrame);
         GradiusNeoGame.state[StateSlot.HeldInputBits] = this.heldInputBits;
@@ -6995,9 +7002,21 @@ export class GradiusNeoGame extends GameSurface {
               GradiusNeoGame.state[StateSlot.HighestUnlockedStage],
               DEVELOPMENT_HIGHEST_UNLOCKED_STAGE,
             );
-            GradiusNeoGame.state[66] = GradiusNeoGame.saveData[52];
-            GradiusNeoGame.state[67] = GradiusNeoGame.saveData[53];
-            GradiusNeoGame.state[68] = GradiusNeoGame.saveData[54];
+            GradiusNeoGame.state[66] = Math.max(
+              GradiusNeoGame.saveData[SaveOffset.MissileVariantCount],
+              DEVELOPMENT_MISSILE_VARIANT_COUNT,
+            );
+            GradiusNeoGame.state[67] = Math.max(
+              GradiusNeoGame.saveData[SaveOffset.MainWeaponVariantCount],
+              DEVELOPMENT_MAIN_WEAPON_VARIANT_COUNT,
+            );
+            GradiusNeoGame.state[68] = Math.max(
+              GradiusNeoGame.saveData[SaveOffset.FormationVariantCount],
+              DEVELOPMENT_FORMATION_VARIANT_COUNT,
+            );
+            GradiusNeoGame.saveData[SaveOffset.MissileVariantCount] = toByte(GradiusNeoGame.state[66]);
+            GradiusNeoGame.saveData[SaveOffset.MainWeaponVariantCount] = toByte(GradiusNeoGame.state[67]);
+            GradiusNeoGame.saveData[SaveOffset.FormationVariantCount] = toByte(GradiusNeoGame.state[68]);
             GradiusNeoGame.state[StateSlot.MissileVariant] = GradiusNeoGame.saveData[55];
             GradiusNeoGame.state[70] = GradiusNeoGame.saveData[56];
             GradiusNeoGame.state[71] = GradiusNeoGame.saveData[57];
@@ -9681,6 +9700,14 @@ export class GradiusNeoGame extends GameSurface {
                 }
 
                 case 7: {
+                  // The room shell and all four doors share the same offset
+                  // while stage 5 scrolls to an adjacent chamber. Treat them
+                  // as one stable render source so the 60 Hz renderer follows
+                  // the 10 Hz room transition instead of stepping each door.
+                  GradiusNeoGame.renderQueue.beginMotionSource(
+                    STAGE_FIVE_ROOM_SOURCE_ID,
+                    GradiusNeoGame.state[87],
+                  );
                   if (GradiusNeoGame.state[22] === 0) {
                     for (let var39: number = 0; var39 < 6 * GradiusNeoGame.state[88]; var39++) {
                       this.drawSpriteRegion(
@@ -10269,10 +10296,10 @@ export class GradiusNeoGame extends GameSurface {
                     getAndIncrement(GradiusNeoGame.state, 86);
                     GradiusNeoGame.spawnAuxiliaryEntity(112, GAMEPLAY_HEIGHT, 0, GradiusNeoGame.state[87]);
                   }
+                  break;
                 }
 
-                case 2:
-                default: {
+                case 2: {
                   break;
                 }
 
@@ -10444,6 +10471,10 @@ export class GradiusNeoGame extends GameSurface {
                       s[9743] = s[9743] - 4;
                     }
                   }
+                  break;
+
+                default:
+                  break;
               }
 
               this.updatePrimaryEntities();
