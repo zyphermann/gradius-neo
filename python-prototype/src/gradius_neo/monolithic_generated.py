@@ -1,5 +1,5 @@
 """Generated mechanically from GradiusNeoGame.ts. Do not edit by hand."""
-SOURCE_SHA256 = "8a97c866081ed5ebb24566e68464b60d0f03a077613a523226765713d4ebb80c"
+SOURCE_SHA256 = "2ba6e32698402065623f67c915f258a6734a8fd18d544bb51b8236734a9da723"
 import math
 from enum import IntEnum
 from gradius_neo.generated_runtime import *
@@ -170,7 +170,7 @@ class GradiusNeoGame(GameSurface):
                 pass
             else:
                 raise var3
-    
+
     def unloadStageSpriteSheets(self):
         for var1 in range(2, 6):
             self.spriteSheets[var1] = None
@@ -349,9 +349,28 @@ class GradiusNeoGame(GameSurface):
     
     def renderInterpolatedStarBackdrop(self, gfx, alpha):
         backdropMode = GradiusNeoGame.state[41]
-        if ((backdropMode < 1) or (backdropMode > 3)):
+        if ((backdropMode < 1) or (backdropMode > 4)):
             return False
         visualLogicFrame = (self.backdropLogicFrame + alpha)
+        if (backdropMode == 4):
+            streakPhase = GradiusNeoGame.state[46]
+            lengthBits = (streakPhase if (streakPhase < 8) else (streakPhase - 1))
+            lengthMask = ((to_int(to_int(1) << (to_int(lengthBits) & 31))) - 1)
+            brightness = (92 - (8 * streakPhase))
+            for group in range(0, 2):
+                for starIndex in range(0, 20):
+                    sourceColor = GradiusNeoGame.state[(307 + starIndex)]
+                    red = int(int_div((((to_int(to_int(((to_int(sourceColor) >> (to_int(16) & 31)))) & to_int(255))) * brightness)), 100))
+                    green = int(int_div((((to_int(to_int(((to_int(sourceColor) >> (to_int(8) & 31)))) & to_int(255))) * brightness)), 100))
+                    blue = int(int_div((((to_int(to_int(sourceColor) & to_int(255))) * brightness)), 100))
+                    gfx.setColor(to_int(to_int(to_int(to_int((to_int(to_int(red) << (to_int(16) & 31)))) | to_int((to_int(to_int(green) << (to_int(8) & 31)))))) | to_int(blue)))
+                    speed = ((((int_div(starIndex, 2) + 1)) * GradiusNeoGame.state[45]) if (streakPhase < 8) else ((((int_div(starIndex, 2)) * GradiusNeoGame.state[45]) + (((streakPhase - 1)) * 4)) + 1))
+                    rawX = ((GradiusNeoGame.state[(1055 + starIndex)] - (visualLogicFrame * speed)) + ((0 if (group == 0) else 160)))
+                    endX = (((((rawX % 256)) + 256)) % 256)
+                    y = to_int(to_int(((GradiusNeoGame.state[(1075 + starIndex)] + ((0 if (group == 0) else 80))))) & to_int(255))
+                    streakLength = to_int(to_int(GradiusNeoGame.state[(1055 + starIndex)]) & to_int(lengthMask))
+                    gfx.drawLine(toRenderPixels((endX - streakLength)), toRenderPixels(y), toRenderPixels(endX), toRenderPixels(y))
+            return True
         if ((backdropMode == 1) and (GradiusNeoGame.state[22] == 0)):
             if (GradiusNeoGame.state[StateSlot.CurrentStage] == 0):
                 self.drawSpriteRegion(gfx, 3, 283, toRenderPixels(((128 - int_div(self.backdropScrollX, 16)) - 16)), 24, 20)
@@ -370,6 +389,14 @@ class GradiusNeoGame(GameSurface):
                 gfx.drawLine(toRenderPixels(secondX), toRenderPixels(secondY), toRenderPixels(secondX), toRenderPixels(secondY))
         return True
     
+    def renderInterpolatedTunnelBands(self, gfx, alpha):
+        visualScroll = (self.backdropScrollX + (GradiusNeoGame.state[StateSlot.StageScrollSpeed] * alpha))
+        wrappedScroll = (visualScroll % 48)
+        for segmentIndex in range(0, 6):
+            segmentX = toRenderPixels(((-wrappedScroll) + (segmentIndex * 48)))
+            self.drawSpriteRegion(gfx, 4, 293, segmentX, 12, 20)
+            self.drawSpriteRegion(gfx, 4, 294, segmentX, 108, 20)
+
     def run(self):
         try:
             while self.running:
@@ -410,7 +437,7 @@ class GradiusNeoGame(GameSurface):
         gfx.resetFrame(self.getWidth(), self.getHeight())
         gfx.setFont(GradiusNeoGame.bitmapFont)
         gfx.translate(GradiusNeoGame.state[StateSlot.ViewportOffsetX], GradiusNeoGame.state[StateSlot.ViewportOffsetY])
-        if (((self.gameplayPreBackdropFrame != None) and (GradiusNeoGame.state[41] >= 1)) and (GradiusNeoGame.state[41] <= 3)):
+        if (((self.gameplayPreBackdropFrame != None) and (GradiusNeoGame.state[41] >= 1)) and (GradiusNeoGame.state[41] <= 4)):
             gfx.restoreFrame(self.gameplayPreBackdropFrame)
             self.renderInterpolatedStarBackdrop(gfx, _alpha)
             self.renderBackgroundQueue(gfx)
@@ -420,7 +447,12 @@ class GradiusNeoGame(GameSurface):
                 self.renderStageTerrain(gfx)
                 GradiusNeoGame.state[StateSlot.VisualStageScrollX] = currentScroll
         else:
-            gfx.restoreFrame(self.gameplayBackgroundFrame)
+            if ((self.gameplayPreBackdropFrame != None) and (GradiusNeoGame.state[41] == 6)):
+                gfx.restoreFrame(self.gameplayPreBackdropFrame)
+                self.renderInterpolatedTunnelBands(gfx, _alpha)
+                self.renderBackgroundQueue(gfx)
+            else:
+                gfx.restoreFrame(self.gameplayBackgroundFrame)
         self.renderForegroundQueue(gfx, _alpha, False)
         self.renderGameplayHud(gfx)
         self.renderSoftKeyBar(gfx)
@@ -1123,7 +1155,10 @@ class GradiusNeoGame(GameSurface):
                     GradiusNeoGame.removePrimaryEntity(entityId)
                     entityId = nextEntityId
                     continue
-            GradiusNeoGame.renderQueue.beginEntity(entityId)
+            if (GradiusNeoGame.state[(EntityField.Type + entityId)] == 7):
+                GradiusNeoGame.renderQueue.beginMotionSource((-22), GradiusNeoGame.entityPool.generation(entityId))
+            else:
+                GradiusNeoGame.renderQueue.beginEntity(entityId)
             try:
                 match GradiusNeoGame.state[(EntityField.Type + entityId)]:
                     case EntityType.DelayedBackgroundMusic:
@@ -6281,4 +6316,4 @@ GradiusNeoGame.soundMode = 0
 GradiusNeoGame.appSuspended = False
 
 
-GENERATOR_STATS = {"source":"browser-prototype-ts/src/game/direct/GradiusNeoGame.ts","sourceSha256":"8a97c866081ed5ebb24566e68464b60d0f03a077613a523226765713d4ebb80c","outputLines":6282,"loweredSwitchFallthroughs":11,"unsupported":{}}
+GENERATOR_STATS = {"source":"browser-prototype-ts/src/game/direct/GradiusNeoGame.ts","sourceSha256":"2ba6e32698402065623f67c915f258a6734a8fd18d544bb51b8236734a9da723","outputLines":6317,"loweredSwitchFallthroughs":11,"unsupported":{}}

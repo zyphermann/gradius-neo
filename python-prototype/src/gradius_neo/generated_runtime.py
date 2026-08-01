@@ -539,14 +539,40 @@ class RenderQueue:
     def interpolationOffset(self, command: RenderCommand, alpha: float) -> MotionOffset | None:
         if command.sourceEntityId is None:
             return None
-        candidates = [candidate for candidate in self.previous_layers[command.layer] if
+        source_candidates = [candidate for candidate in self.previous_layers[command.layer] if
             candidate.sourceEntityId == command.sourceEntityId and
-            candidate.sourceGeneration == command.sourceGeneration and
-            candidate.type == command.type and
-            candidate.spriteRegion == command.spriteRegion]
-        # Repeating tunnel pieces rotate command indices at the screen edge.
-        # Pair equal sprites by their nearest position, never by that index.
-        previous = min(candidates, key=lambda candidate: abs(candidate.x - command.x) + abs(candidate.y - command.y)) if candidates else None
+            candidate.sourceGeneration == command.sourceGeneration]
+        if command.sourceEntityId in (-20, -21, -22):
+            candidates = [candidate for candidate in source_candidates if
+                candidate.type == command.type and candidate.spriteRegion == command.spriteRegion]
+            if not candidates:
+                return None
+            nearest_row_distance = min(abs(candidate.y - command.y) for candidate in candidates)
+            row_candidates = [candidate for candidate in candidates if
+                abs(candidate.y - command.y) == nearest_row_distance]
+            unique_x = sorted({candidate.x for candidate in row_candidates})
+            periods = [right - left for left, right in zip(unique_x, unique_x[1:]) if right > left]
+            repeat_period = min(periods) if periods else 0
+            virtual_candidates = []
+            for candidate in row_candidates:
+                offsets = (-2, -1, 0, 1, 2) if repeat_period else (0,)
+                virtual_candidates.extend((candidate, candidate.x + offset * repeat_period) for offset in offsets)
+            continuous = [(candidate, virtual_x) for candidate, virtual_x in virtual_candidates if
+                0 <= virtual_x - command.x <= 96 and abs(candidate.y - command.y) <= 96]
+            if not continuous:
+                return None
+            previous, previous_x = min(
+                continuous,
+                key=lambda item: item[1] - command.x + abs(item[0].y - command.y),
+            )
+            return MotionOffset(
+                (previous_x - command.x) * (1 - alpha),
+                (previous.y - command.y) * (1 - alpha),
+            )
+        else:
+            candidates = source_candidates
+            previous = next((candidate for candidate in candidates if
+                candidate.sourceCommandIndex == command.sourceCommandIndex), None)
         if previous is None:
             return None
         delta_x = previous.x - command.x
@@ -554,13 +580,7 @@ class RenderQueue:
         # A large jump is a stage wrap or teleport, not continuous movement.
         # Interpolating it would pull the object backwards across the screen.
         if abs(delta_x) > 96 or abs(delta_y) > 96:
-            nearby = [candidate for candidate in candidates if
-                abs(candidate.x - command.x) <= 96 and abs(candidate.y - command.y) <= 96]
-            if not nearby:
-                return None
-            previous = min(nearby, key=lambda candidate: abs(candidate.x - command.x) + abs(candidate.y - command.y))
-            delta_x = previous.x - command.x
-            delta_y = previous.y - command.y
+            return None
         return MotionOffset(delta_x * (1 - alpha), delta_y * (1 - alpha))
 
 

@@ -1,5 +1,5 @@
 """Generated mechanically from GradiusNeoGame.ts. Do not edit by hand."""
-SOURCE_SHA256 = "28f05ff8724d134133ab8abf0732a11cb7d485194d99fb167483f7c4427c457e"
+SOURCE_SHA256 = "49d4e9759d13d7f02f0bc0a64f161632af6f48fda343944ddcafd0dbd431a2de"
 import math
 from enum import IntEnum
 from gradius_neo.generated_runtime import *
@@ -66,7 +66,10 @@ class AuxiliaryEntitySystem:
             self.entityDirectionSign = (-1)
             directionSideIndex = int_div(((self.entityDirectionSign + 1)), 2)
             self.changedEntityCount = 0
-            self.renderQueue.beginEntity(entityId)
+            if (self.state[(EntityField.Type + entityId)] == 111):
+                self.renderQueue.beginMotionSource((-21), self.entities.generation(entityId))
+            else:
+                self.renderQueue.beginEntity(entityId)
             try:
                 match self.state[(EntityField.Type + entityId)]:
                     case 33 | 34 | 35 | 36:
@@ -562,4 +565,4 @@ class AuxiliaryEntitySystem:
             entityId = nextEntityId
     
 
-GENERATOR_STATS = {"source":"browser-prototype-ts/src/game/direct/entities/AuxiliaryEntitySystem.ts","sourceSha256":"28f05ff8724d134133ab8abf0732a11cb7d485194d99fb167483f7c4427c457e","outputLines":563,"loweredSwitchFallthroughs":0,"unsupported":{}}
+GENERATOR_STATS = {"source":"browser-prototype-ts/src/game/direct/entities/AuxiliaryEntitySystem.ts","sourceSha256":"49d4e9759d13d7f02f0bc0a64f161632af6f48fda343944ddcafd0dbd431a2de","outputLines":566,"loweredSwitchFallthroughs":0,"unsupported":{}}

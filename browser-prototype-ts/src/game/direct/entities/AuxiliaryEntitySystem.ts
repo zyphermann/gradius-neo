@@ -47,7 +47,13 @@ export class AuxiliaryEntitySystem {
       this.entityDirectionSign = -1;
       let directionSideIndex: number = (this.entityDirectionSign + 1) / 2;
       this.changedEntityCount = 0;
-      this.renderQueue.beginEntity(entityId);
+      if (this.state[EntityField.Type + entityId] === 111) {
+        // This tunnel object consists of repeating blue segments whose command
+        // indices rotate as segments cross the edge of the screen.
+        this.renderQueue.beginMotionSource(-21, this.entities.generation(entityId));
+      } else {
+        this.renderQueue.beginEntity(entityId);
+      }
       switch (this.state[EntityField.Type + entityId]) {
         case 33:
         case 34:

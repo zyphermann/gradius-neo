@@ -807,9 +807,41 @@ export class GradiusNeoGame extends GameSurface {
 
   private renderInterpolatedStarBackdrop(gfx: Graphics, alpha: number): boolean {
     const backdropMode = GradiusNeoGame.state[41];
-    if (backdropMode < 1 || backdropMode > 3) return false;
+    if (backdropMode < 1 || backdropMode > 4) return false;
 
     const visualLogicFrame = this.backdropLogicFrame + alpha;
+    if (backdropMode === 4) {
+      const streakPhase = GradiusNeoGame.state[46];
+      const lengthBits = streakPhase < 8 ? streakPhase : streakPhase - 1;
+      const lengthMask = (1 << lengthBits) - 1;
+      const brightness = 92 - 8 * streakPhase;
+      for (let group = 0; group < 2; group++) {
+        for (let starIndex = 0; starIndex < 20; starIndex++) {
+          const sourceColor = GradiusNeoGame.state[307 + starIndex];
+          const red = Math.trunc((((sourceColor >> 16) & 0xff) * brightness) / 100);
+          const green = Math.trunc((((sourceColor >> 8) & 0xff) * brightness) / 100);
+          const blue = Math.trunc(((sourceColor & 0xff) * brightness) / 100);
+          gfx.setColor((red << 16) | (green << 8) | blue);
+          const speed =
+            streakPhase < 8
+              ? (starIndex / 2 + 1) * GradiusNeoGame.state[45]
+              : (starIndex / 2) * GradiusNeoGame.state[45] + (streakPhase - 1) * 4 + 1;
+          const rawX =
+            GradiusNeoGame.state[1055 + starIndex] - visualLogicFrame * speed + (group === 0 ? 0 : 160);
+          const endX = ((rawX % 256) + 256) % 256;
+          const y = (GradiusNeoGame.state[1075 + starIndex] + (group === 0 ? 0 : 80)) & 0xff;
+          const streakLength = GradiusNeoGame.state[1055 + starIndex] & lengthMask;
+          gfx.drawLine(
+            toRenderPixels(endX - streakLength),
+            toRenderPixels(y),
+            toRenderPixels(endX),
+            toRenderPixels(y),
+          );
+        }
+      }
+      return true;
+    }
+
     if (backdropMode === 1 && GradiusNeoGame.state[22] === 0) {
       if (GradiusNeoGame.state[StateSlot.CurrentStage] === 0) {
         this.drawSpriteRegion(gfx, 3, 283, toRenderPixels(128 - this.backdropScrollX / 16 - 16), 24, 20);
@@ -840,6 +872,17 @@ export class GradiusNeoGame extends GameSurface {
       }
     }
     return true;
+  }
+
+  private renderInterpolatedTunnelBands(gfx: Graphics, alpha: number): void {
+    const visualScroll =
+      this.backdropScrollX + GradiusNeoGame.state[StateSlot.StageScrollSpeed] * alpha;
+    const wrappedScroll = visualScroll % 48;
+    for (let segmentIndex = 0; segmentIndex < 6; segmentIndex++) {
+      const segmentX = toRenderPixels(-wrappedScroll + segmentIndex * 48);
+      this.drawSpriteRegion(gfx, 4, 293, segmentX, 12, 20);
+      this.drawSpriteRegion(gfx, 4, 294, segmentX, 108, 20);
+    }
   }
 
   public run(): void {
@@ -903,7 +946,7 @@ export class GradiusNeoGame extends GameSurface {
     gfx.resetFrame(this.getWidth(), this.getHeight());
     gfx.setFont(GradiusNeoGame.bitmapFont);
     gfx.translate(GradiusNeoGame.state[StateSlot.ViewportOffsetX], GradiusNeoGame.state[StateSlot.ViewportOffsetY]);
-    if (this.gameplayPreBackdropFrame !== null && GradiusNeoGame.state[41] >= 1 && GradiusNeoGame.state[41] <= 3) {
+    if (this.gameplayPreBackdropFrame !== null && GradiusNeoGame.state[41] >= 1 && GradiusNeoGame.state[41] <= 4) {
       gfx.restoreFrame(this.gameplayPreBackdropFrame!);
       this.renderInterpolatedStarBackdrop(gfx, _alpha);
       this.renderBackgroundQueue(gfx);
@@ -915,6 +958,10 @@ export class GradiusNeoGame extends GameSurface {
         this.renderStageTerrain(gfx);
         GradiusNeoGame.state[StateSlot.VisualStageScrollX] = currentScroll;
       }
+    } else if (this.gameplayPreBackdropFrame !== null && GradiusNeoGame.state[41] === 6) {
+      gfx.restoreFrame(this.gameplayPreBackdropFrame);
+      this.renderInterpolatedTunnelBands(gfx, _alpha);
+      this.renderBackgroundQueue(gfx);
     } else {
       gfx.restoreFrame(this.gameplayBackgroundFrame);
     }
@@ -2075,7 +2122,14 @@ export class GradiusNeoGame extends GameSurface {
         }
       }
 
-      GradiusNeoGame.renderQueue.beginEntity(entityId);
+      if (GradiusNeoGame.state[EntityField.Type + entityId] === 7) {
+        // Stage 4 recycles its dark/light trapezoid bands at different
+        // periods. Their command indices stay fixed while their positions
+        // wrap, so they require spatial rather than index-based matching.
+        GradiusNeoGame.renderQueue.beginMotionSource(-22, GradiusNeoGame.entityPool.generation(entityId));
+      } else {
+        GradiusNeoGame.renderQueue.beginEntity(entityId);
+      }
       switch (GradiusNeoGame.state[EntityField.Type + entityId]) {
         case EntityType.DelayedBackgroundMusic: {
           age = this.updateDelayedBackgroundMusicEntity(entityId, age);
