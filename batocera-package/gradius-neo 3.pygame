@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+import os
+import sys
+from pathlib import Path
+
+PACKAGE_ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(PACKAGE_ROOT))
+os.environ.setdefault("GRADIUS_NEO_FULLSCREEN", "1")
+os.environ.setdefault("GRADIUS_NEO_SAVE_DIR", "/userdata/saves/pygame/gradius-neo")
+
+from gradius_neo.runner import main
+
+main()

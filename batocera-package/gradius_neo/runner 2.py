@@ -60,28 +60,25 @@ def main() -> None:
         fullscreen_desktop=fullscreen,
     )
     renderer = Renderer(window, accelerated=True, vsync=True)
-    output_width, output_height = window.size
-    layout_scale = min(output_width / WINDOW_WIDTH, output_height / WINDOW_HEIGHT)
-    output_pixel_scale = max(1, round(scale * layout_scale))
+    renderer.logical_size = (WINDOW_WIDTH, WINDOW_HEIGHT)
     logical_surface = pygame.Surface((RENDER_WIDTH, RENDER_HEIGHT))
-    game_surface = pygame.Surface((RENDER_WIDTH * output_pixel_scale, RENDER_HEIGHT * output_pixel_scale))
+    game_surface = pygame.Surface((RENDER_WIDTH * scale, RENDER_HEIGHT * scale))
     graphics = PygameGraphics(logical_surface)
     display_effects = [
         ("OHNE", NearestDisplayEffect()),
-        ("LCD", LcdDisplayEffect(output_pixel_scale)),
-        ("CRT", CrtDisplayEffect(output_pixel_scale)),
-        ("CRT STARK", CrtDisplayEffect(output_pixel_scale, strong=True)),
+        ("LCD", LcdDisplayEffect(scale)),
+        ("CRT", CrtDisplayEffect(scale)),
+        ("CRT STARK", CrtDisplayEffect(scale, strong=True)),
     ]
     display_effect_index = 1
     background_path, resource_path, save_path = runtime_paths()
     background = pygame.image.load(str(background_path))
-    if background.get_size() != (output_width, output_height):
-        background = pygame.transform.smoothscale(background, (output_width, output_height))
+    background = pygame.transform.smoothscale(background, (WINDOW_WIDTH, WINDOW_HEIGHT))
     background_texture = Texture.from_surface(renderer, background)
     game_texture = Texture.from_surface(renderer, game_surface)
     game_position = (
-        (output_width - game_surface.get_width()) // 2,
-        (output_height - game_surface.get_height()) // 2 + round(39 * layout_scale),
+        (WINDOW_WIDTH - game_surface.get_width()) // 2,
+        (WINDOW_HEIGHT - game_surface.get_height()) // 2 + 39,
     )
     resources = ResourceLoader(resource_path)
     saves = SaveStorage(save_path)
@@ -137,7 +134,7 @@ def main() -> None:
         display_effects[display_effect_index][1].present(logical_surface, game_surface)
         game_texture.update(game_surface)
         renderer.clear()
-        renderer.blit(background_texture, pygame.Rect(0, 0, output_width, output_height))
+        renderer.blit(background_texture, pygame.Rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT))
         renderer.blit(game_texture, pygame.Rect(game_position, game_surface.get_size()))
         renderer.present()
 
