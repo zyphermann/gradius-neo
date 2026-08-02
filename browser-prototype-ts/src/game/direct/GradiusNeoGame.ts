@@ -2008,7 +2008,7 @@ export class GradiusNeoGame extends GameSurface {
   private updatePauseMenu(gfx: Graphics): void {
     this.drawBitmapGlyphRun(gfx, 219, 5, 85, 80);
     this.drawBitmapText(gfx, 'RESUME', 43, 96);
-    let var10: string[] = ['NONE', 'BGM', 'SFX'];
+    let var10: string[] = ['NONE', 'BGM', 'SFX', 'MIXED'];
     this.drawBitmapText(gfx, 'SOUND - ' + var10[GradiusNeoGame.soundMode], 43, 112);
     this.drawBitmapText(gfx, 'HELP', 43, 128);
     this.drawBitmapText(gfx, 'EXIT', 43, 144);
@@ -7177,7 +7177,7 @@ export class GradiusNeoGame extends GameSurface {
             let var136: boolean = false;
             this.drawBitmapGlyphRun(gfx, 82, 13, 42, 160);
             this.drawBitmapGlyphRun(gfx, 95, 10, 42, 176);
-            let var144: string[] = ['NONE', 'BGM', 'SFX'];
+            let var144: string[] = ['NONE', 'BGM', 'SFX', 'MIXED'];
             this.drawBitmapText(gfx, 'SOUND - ' + var144[GradiusNeoGame.soundMode], 42, 192);
             let var15: number;
             let var16: number;
@@ -10739,7 +10739,7 @@ export class GradiusNeoGame extends GameSurface {
 
   private cycleSoundMode(): void {
     GradiusNeoGame.soundMode++;
-    GradiusNeoGame.soundMode %= 3;
+    GradiusNeoGame.soundMode %= 4;
     switch (GradiusNeoGame.soundMode) {
       case 0: {
         this.stopAllAudio();
@@ -10752,6 +10752,13 @@ export class GradiusNeoGame extends GameSurface {
       }
 
       case 2: {
+        this.stopActiveAudioPlayer();
+        GradiusNeoGame.requestSoundEffect(7);
+        break;
+      }
+
+      case 3: {
+        GradiusNeoGame.requestBackgroundMusic(GradiusNeoGame.requestedBgmId);
         GradiusNeoGame.requestSoundEffect(7);
       }
 
@@ -10764,7 +10771,7 @@ export class GradiusNeoGame extends GameSurface {
   private processPendingSoundEffect(): void {
     if (GradiusNeoGame.runtimeFlags[3]) {
       GradiusNeoGame.runtimeFlags[3] = false;
-      if (GradiusNeoGame.soundMode !== 2 && !this.soundTestActive) {
+      if (GradiusNeoGame.soundMode !== 2 && GradiusNeoGame.soundMode !== 3 && !this.soundTestActive) {
         return;
       }
 
@@ -10794,7 +10801,7 @@ export class GradiusNeoGame extends GameSurface {
       this.audioResumeDeadlineMillis = 0n;
       if (GradiusNeoGame.runtimeFlags[2]) {
         GradiusNeoGame.runtimeFlags[2] = false;
-        if (GradiusNeoGame.soundMode !== 1 && !this.soundTestActive) {
+        if (GradiusNeoGame.soundMode !== 1 && GradiusNeoGame.soundMode !== 3 && !this.soundTestActive) {
           return;
         }
 

@@ -3,6 +3,7 @@ export interface AudioPlayerListener {
 }
 
 interface MidiPlayerBackend extends EventTarget {
+  volume: number;
   setSequence(buffer: ArrayBuffer): Promise<void>;
   play(): void;
   loop(times: number): void;
@@ -56,6 +57,7 @@ class MidiEngine {
   async play(owner: AudioPlayer, sequence: Uint8Array, loopCount: number): Promise<void> {
     this.owner = owner;
     if (this.context.state === 'suspended') await this.context.resume();
+    this.backend.volume = 0.35;
     const buffer = sequence.buffer.slice(sequence.byteOffset, sequence.byteOffset + sequence.byteLength) as ArrayBuffer;
     await this.backend.setSequence(buffer);
     this.backend.loop(loopCount);

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import hashlib
 import os
 from pathlib import Path
 
-from .display_effects import CrtDisplayEffect, LcdDisplayEffect, NearestDisplayEffect
+from .display_effects import CrtDisplayEffect, LcdBezelDisplayEffect, LcdDisplayEffect, NearestDisplayEffect
 from .generated_runtime import configure_generated_runtime
 from .monolithic_generated import GradiusNeoGame, ScreenState
 from .platform import ApplicationHost, ResourceLoader, SaveStorage
@@ -14,10 +15,40 @@ RENDER_WIDTH = 180
 RENDER_HEIGHT = 220
 WINDOW_WIDTH = 1_280
 WINDOW_HEIGHT = 720
+ORIGINAL_JAR_NAME = "gradius_neo_176x220-71722.jar"
+ORIGINAL_JAR_SHA256 = "714701042f16190916e5ea977408f8f4c9b3b0d5928cba301ad52aef0f17c12d"
+EMULATOR_TITLE = "J2ME Emulator – Gradius Neo"
 
 
 def repository_root() -> Path:
     return Path(__file__).resolve().parents[3]
+
+
+def require_original_jar() -> Path:
+    """Require the user's original, unmodified J2ME game archive."""
+    package_root = Path(__file__).resolve().parent.parent
+    configured_path = os.environ.get("GRADIUS_NEO_JAR")
+    candidates = [
+        Path(configured_path).expanduser() if configured_path else None,
+        package_root / "roms" / ORIGINAL_JAR_NAME,
+        Path.cwd() / "roms" / ORIGINAL_JAR_NAME,
+        repository_root() / ORIGINAL_JAR_NAME,
+    ]
+    jar_path = next((path for path in candidates if path is not None and path.is_file()), None)
+    if jar_path is None:
+        raise SystemExit(
+            "J2ME ROM image not found.\n"
+            f"Place the original JAR at roms/{ORIGINAL_JAR_NAME} "
+            "or set GRADIUS_NEO_JAR.",
+        )
+
+    digest = hashlib.sha256(jar_path.read_bytes()).hexdigest()
+    if digest != ORIGINAL_JAR_SHA256:
+        raise SystemExit(
+            f"Invalid J2ME ROM image: {jar_path}\n"
+            "The emulator requires the unmodified original Gradius Neo JAR.",
+        )
+    return jar_path
 
 
 def runtime_paths() -> tuple[Path, Path, Path]:
@@ -42,6 +73,8 @@ def runtime_paths() -> tuple[Path, Path, Path]:
 
 
 def main() -> None:
+    original_jar = require_original_jar()
+    print(f"J2ME ROM verified: {original_jar.name}")
     try:
         import pygame
     except ImportError as error:
@@ -52,10 +85,12 @@ def main() -> None:
     from .platform.pygame_backend import PygameGraphics, PygameImageLoader
 
     pygame.init()
+    if pygame.mixer.get_init() is not None:
+        pygame.mixer.set_num_channels(8)
     scale = 2
     fullscreen = os.environ.get("GRADIUS_NEO_FULLSCREEN") == "1"
     window = Window(
-        "Gradius Neo",
+        EMULATOR_TITLE,
         size=(WINDOW_WIDTH, WINDOW_HEIGHT),
         fullscreen_desktop=fullscreen,
     )
@@ -66,9 +101,11 @@ def main() -> None:
     logical_surface = pygame.Surface((RENDER_WIDTH, RENDER_HEIGHT))
     game_surface = pygame.Surface((RENDER_WIDTH * output_pixel_scale, RENDER_HEIGHT * output_pixel_scale))
     graphics = PygameGraphics(logical_surface)
+    bezel_width = max(1, round(10 * layout_scale))
     display_effects = [
         ("OHNE", NearestDisplayEffect()),
         ("LCD", LcdDisplayEffect(output_pixel_scale)),
+        ("LCD BEZEL", LcdBezelDisplayEffect(output_pixel_scale, bezel_width)),
         ("CRT", CrtDisplayEffect(output_pixel_scale)),
         ("CRT STARK", CrtDisplayEffect(output_pixel_scale, strong=True)),
     ]
@@ -79,6 +116,11 @@ def main() -> None:
         background = pygame.transform.smoothscale(background, (output_width, output_height))
     background_texture = Texture.from_surface(renderer, background)
     game_texture = Texture.from_surface(renderer, game_surface)
+    bezel_surface = pygame.Surface(
+        (game_surface.get_width() + bezel_width * 2, game_surface.get_height() + bezel_width * 2),
+        pygame.SRCALPHA,
+    )
+    bezel_texture = Texture.from_surface(renderer, bezel_surface)
     game_position = (
         (output_width - game_surface.get_width()) // 2,
         (output_height - game_surface.get_height()) // 2 + round(39 * layout_scale),
@@ -111,7 +153,7 @@ def main() -> None:
                 game.running = False
             elif event.type == pygame.KEYDOWN and event.key in (pygame.K_F1, pygame.K_f):
                 display_effect_index = (display_effect_index + 1) % len(display_effects)
-                window.title = f"Gradius Neo – Filter: {display_effects[display_effect_index][0]}"
+                window.title = f"{EMULATOR_TITLE} – Filter: {display_effects[display_effect_index][0]}"
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_p:
                 if GradiusNeoGame.screenState == ScreenState.Gameplay:
                     game.keyPressed(-7 if GradiusNeoGame.runtimeFlags[4] else -8)
@@ -134,10 +176,23 @@ def main() -> None:
 
         interpolation_alpha = accumulator / LOGIC_STEP_SECONDS
         game.renderInterpolatedFrame(graphics, interpolation_alpha)
-        display_effects[display_effect_index][1].present(logical_surface, game_surface)
+        active_display_effect = display_effects[display_effect_index][1]
+        active_display_effect.present(logical_surface, game_surface)
         game_texture.update(game_surface)
         renderer.clear()
         renderer.blit(background_texture, pygame.Rect(0, 0, output_width, output_height))
+        if isinstance(active_display_effect, LcdBezelDisplayEffect):
+            active_display_effect.render_bezel(game_surface, bezel_surface)
+            bezel_texture.update(bezel_surface)
+            renderer.blit(
+                bezel_texture,
+                pygame.Rect(
+                    game_position[0] - bezel_width,
+                    game_position[1] - bezel_width,
+                    bezel_surface.get_width(),
+                    bezel_surface.get_height(),
+                ),
+            )
         renderer.blit(game_texture, pygame.Rect(game_position, game_surface.get_size()))
         renderer.present()
 

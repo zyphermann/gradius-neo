@@ -1,5 +1,5 @@
 """Generated mechanically from GradiusNeoGame.ts. Do not edit by hand."""
-SOURCE_SHA256 = "02df671d8b30fe7cef0b0fa1d3aabf7deb512ff104b04e33c4a9bb739810f240"
+SOURCE_SHA256 = "9f23101fb5723f842b42eae3fd1a889f057d049271833b4eb5aad33a6c3953dd"
 import math
 from enum import IntEnum
 from gradius_neo.generated_runtime import *
@@ -1079,7 +1079,7 @@ class GradiusNeoGame(GameSurface):
     def updatePauseMenu(self, gfx):
         self.drawBitmapGlyphRun(gfx, 219, 5, 85, 80)
         self.drawBitmapText(gfx, "RESUME", 43, 96)
-        var10 = ["NONE", "BGM", "SFX"]
+        var10 = ["NONE", "BGM", "SFX", "MIXED"]
         self.drawBitmapText(gfx, (str("SOUND - ") + str(var10[GradiusNeoGame.soundMode])), 43, 112)
         self.drawBitmapText(gfx, "HELP", 43, 128)
         self.drawBitmapText(gfx, "EXIT", 43, 144)
@@ -3892,7 +3892,7 @@ class GradiusNeoGame(GameSurface):
                             var136 = False
                             self.drawBitmapGlyphRun(gfx, 82, 13, 42, 160)
                             self.drawBitmapGlyphRun(gfx, 95, 10, 42, 176)
-                            var144 = ["NONE", "BGM", "SFX"]
+                            var144 = ["NONE", "BGM", "SFX", "MIXED"]
                             self.drawBitmapText(gfx, (str("SOUND - ") + str(var144[GradiusNeoGame.soundMode])), 42, 192)
                             var15 = None
                             var16 = None
@@ -6216,7 +6216,7 @@ class GradiusNeoGame(GameSurface):
 
     def cycleSoundMode(self):
         GradiusNeoGame.soundMode += 1
-        GradiusNeoGame.soundMode %= 3
+        GradiusNeoGame.soundMode %= 4
         try:
             match GradiusNeoGame.soundMode:
                 case 0:
@@ -6226,6 +6226,11 @@ class GradiusNeoGame(GameSurface):
                     GradiusNeoGame.requestBackgroundMusic(GradiusNeoGame.requestedBgmId)
                     raise _SwitchBreak()
                 case 2:
+                    self.stopActiveAudioPlayer()
+                    GradiusNeoGame.requestSoundEffect(7)
+                    raise _SwitchBreak()
+                case 3:
+                    GradiusNeoGame.requestBackgroundMusic(GradiusNeoGame.requestedBgmId)
                     GradiusNeoGame.requestSoundEffect(7)
                 case _:
                     pass
@@ -6236,7 +6241,7 @@ class GradiusNeoGame(GameSurface):
     def processPendingSoundEffect(self):
         if GradiusNeoGame.runtimeFlags[3]:
             GradiusNeoGame.runtimeFlags[3] = False
-            if ((GradiusNeoGame.soundMode != 2) and (not self.soundTestActive)):
+            if (((GradiusNeoGame.soundMode != 2) and (GradiusNeoGame.soundMode != 3)) and (not self.soundTestActive)):
                 return
             var1 = ["0_skyenemydie", "1_corehit", "2_enemydie1", "3_enemydie2", "4_longlaser", "5_powerget", "6_optionselect", "7_powerup", "8_biglaser", "9_bossdie", "10_viperdie", "11_coin"]
             self.queueAudioPlayback((str((str("/") + str(var1[GradiusNeoGame.state[28]]))) + str(".mid")), 1)
@@ -6249,7 +6254,7 @@ class GradiusNeoGame(GameSurface):
             self.audioResumeDeadlineMillis = 0
             if GradiusNeoGame.runtimeFlags[2]:
                 GradiusNeoGame.runtimeFlags[2] = False
-                if ((GradiusNeoGame.soundMode != 1) and (not self.soundTestActive)):
+                if (((GradiusNeoGame.soundMode != 1) and (GradiusNeoGame.soundMode != 3)) and (not self.soundTestActive)):
                     return
                 var3 = (int_div(GradiusNeoGame.requestedBgmId, 3) - 4)
                 var4 = ["boss1", "st1", "st2", "st3", "st4", "st5", "boss2", "lastboss", "ending1"]
@@ -6317,4 +6322,4 @@ GradiusNeoGame.soundMode = 0
 GradiusNeoGame.appSuspended = False
 
 
-GENERATOR_STATS = {"source":"browser-prototype-ts/src/game/direct/GradiusNeoGame.ts","sourceSha256":"02df671d8b30fe7cef0b0fa1d3aabf7deb512ff104b04e33c4a9bb739810f240","outputLines":6318,"loweredSwitchFallthroughs":9,"unsupported":{}}
+GENERATOR_STATS = {"source":"browser-prototype-ts/src/game/direct/GradiusNeoGame.ts","sourceSha256":"9f23101fb5723f842b42eae3fd1a889f057d049271833b4eb5aad33a6c3953dd","outputLines":6323,"loweredSwitchFallthroughs":9,"unsupported":{}}

@@ -664,8 +664,13 @@ class AudioSystem:
         self.queued_loop_count = 0
         self.player_state = 3
         self.last_error: str | None = None
+        self.queued_sound_effects: list[str] = []
+        self.sound_effect_cache: dict[str, Any] = {}
 
     def queue(self, resource_path: str, loop_count: int) -> None:
+        if loop_count >= 0:
+            self.queued_sound_effects.append(resource_path.removesuffix(".mid") + ".wav")
+            return
         self.queued_path = resource_path
         self.queued_loop_count = loop_count
         self.player_state = 0
@@ -676,10 +681,12 @@ class AudioSystem:
 
     def update(self) -> None:
         if self.player_state == 0:
-            self.stop()
+            self._stop_music()
             self.player_state = 1
+            self._play_queued_sound_effects()
             return
         if self.player_state != 1 or self.queued_path is None:
+            self._play_queued_sound_effects()
             return
         try:
             import pygame
@@ -687,6 +694,7 @@ class AudioSystem:
             resource = self.open_resource(self.queued_path)
             source = str(resource.path) if resource.path is not None else resource.data
             pygame.mixer.music.load(source)
+            pygame.mixer.music.set_volume(0.35)
             loops = -1 if self.queued_loop_count < 0 else max(0, self.queued_loop_count - 1)
             pygame.mixer.music.play(loops=loops)
             self.player_state = 2
@@ -695,8 +703,38 @@ class AudioSystem:
             # Audio availability must never stop the game loop.
             self.player_state = 2
             self.last_error = str(error)
+        self._play_queued_sound_effects()
+
+    def _play_queued_sound_effects(self) -> None:
+        while self.queued_sound_effects:
+            resource_path = self.queued_sound_effects.pop(0)
+            try:
+                import pygame
+
+                sound = self.sound_effect_cache.get(resource_path)
+                if sound is None:
+                    resource = self.open_resource(resource_path)
+                    source = str(resource.path) if resource.path is not None else resource.data
+                    sound = pygame.mixer.Sound(source)
+                    self.sound_effect_cache[resource_path] = sound
+                sound.play()
+                self.last_error = None
+            except Exception as error:
+                # Missing audio support must never stop the game loop.
+                self.last_error = str(error)
 
     def stop(self) -> None:
+        self._stop_music()
+        try:
+            import pygame
+
+            if pygame.mixer.get_init() is not None:
+                pygame.mixer.stop()
+            self.queued_sound_effects.clear()
+        except Exception as error:
+            self.last_error = str(error)
+
+    def _stop_music(self) -> None:
         try:
             import pygame
 
