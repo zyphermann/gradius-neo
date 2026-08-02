@@ -72,11 +72,6 @@ function getAndDecrement(values: Int32Array, index: number): number {
 // be enabled by changing this value from 3 / 4 to 1.
 const GAME_VIEW_WIDTH = 240;
 const GAMEPLAY_HEIGHT = 224;
-const DEVELOPMENT_SELECTED_STAGE = 1;
-const DEVELOPMENT_HIGHEST_UNLOCKED_STAGE = 4;
-const DEVELOPMENT_MISSILE_VARIANT_COUNT = 2;
-const DEVELOPMENT_MAIN_WEAPON_VARIANT_COUNT = 4;
-const DEVELOPMENT_FORMATION_VARIANT_COUNT = 2;
 const STAGE_FIVE_ROOM_SOURCE_ID = -23;
 
 const RENDERED_GAME_VIEW_WIDTH = toRenderPixels(GAME_VIEW_WIDTH);
@@ -6976,10 +6971,7 @@ export class GradiusNeoGame extends GameSurface {
               if (GradiusNeoGame.saveStorage.getNumRecords() === 0) {
                 initializeDefaultSaveData(GradiusNeoGame.saveData, {
                   screenSetup: GradiusNeoGame.state[22],
-                  highestUnlockedStage: Math.max(
-                    GradiusNeoGame.state[StateSlot.HighestUnlockedStage],
-                    DEVELOPMENT_HIGHEST_UNLOCKED_STAGE,
-                  ),
+                  highestUnlockedStage: GradiusNeoGame.state[StateSlot.HighestUnlockedStage],
                   highestRound: GradiusNeoGame.state[33],
                 });
                 GradiusNeoGame.saveStorage.addRecord(GradiusNeoGame.saveData, 0, SAVE_DATA_LENGTH);
@@ -6998,25 +6990,6 @@ export class GradiusNeoGame extends GameSurface {
             GradiusNeoGame.loadSaveDataSection(SaveDataSection.SettingsAndHighScores);
             GradiusNeoGame.loadSaveDataSection(SaveDataSection.GameProgress);
             GradiusNeoGame.loadSaveDataSection(SaveDataSection.UnlocksAndStageRecords);
-            GradiusNeoGame.state[StateSlot.HighestUnlockedStage] = Math.max(
-              GradiusNeoGame.state[StateSlot.HighestUnlockedStage],
-              DEVELOPMENT_HIGHEST_UNLOCKED_STAGE,
-            );
-            GradiusNeoGame.state[66] = Math.max(
-              GradiusNeoGame.saveData[SaveOffset.MissileVariantCount],
-              DEVELOPMENT_MISSILE_VARIANT_COUNT,
-            );
-            GradiusNeoGame.state[67] = Math.max(
-              GradiusNeoGame.saveData[SaveOffset.MainWeaponVariantCount],
-              DEVELOPMENT_MAIN_WEAPON_VARIANT_COUNT,
-            );
-            GradiusNeoGame.state[68] = Math.max(
-              GradiusNeoGame.saveData[SaveOffset.FormationVariantCount],
-              DEVELOPMENT_FORMATION_VARIANT_COUNT,
-            );
-            GradiusNeoGame.saveData[SaveOffset.MissileVariantCount] = toByte(GradiusNeoGame.state[66]);
-            GradiusNeoGame.saveData[SaveOffset.MainWeaponVariantCount] = toByte(GradiusNeoGame.state[67]);
-            GradiusNeoGame.saveData[SaveOffset.FormationVariantCount] = toByte(GradiusNeoGame.state[68]);
             GradiusNeoGame.state[StateSlot.MissileVariant] = GradiusNeoGame.saveData[55];
             GradiusNeoGame.state[70] = GradiusNeoGame.saveData[56];
             GradiusNeoGame.state[71] = GradiusNeoGame.saveData[57];
@@ -7131,7 +7104,7 @@ export class GradiusNeoGame extends GameSurface {
               this.setSoftKeyLabels(6, 6);
               if (GradiusNeoGame.state[0] === 0) {
                 this.setSoftKeyLabels(6, 3);
-                GradiusNeoGame.state[0] = DEVELOPMENT_SELECTED_STAGE;
+                GradiusNeoGame.state[0] = 0;
                 GradiusNeoGame.screenState = ScreenState.NewGameStageSelect;
               } else {
                 if (GradiusNeoGame.state[0] === 1) {

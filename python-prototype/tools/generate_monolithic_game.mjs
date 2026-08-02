@@ -20,7 +20,7 @@ const breakContexts = [];
 let loweredSwitchFallthroughs = 0;
 
 function line(text = '') {
-  output.push(`${'    '.repeat(indent)}${text}`);
+  output.push(text === '' ? '' : `${'    '.repeat(indent)}${text}`);
 }
 
 function withIndent(callback) {
