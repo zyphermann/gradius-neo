@@ -15,6 +15,7 @@ Controller:
   B or L1             Left power-up (Q)
   X or R1             Right power-up (W)
   L2                  Video filter
+  R2                  Screen size: 2x / 3x / full height
   Start               Pause
   Select              Back
   Hotkey + Start      Exit to Batocera

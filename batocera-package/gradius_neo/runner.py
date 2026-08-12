@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import sys
 from pathlib import Path
 
 from .display_effects import CrtDisplayEffect, LcdBezelDisplayEffect, LcdDisplayEffect, NearestDisplayEffect
@@ -24,13 +25,26 @@ def repository_root() -> Path:
     return Path(__file__).resolve().parents[3]
 
 
+def application_root() -> Path:
+    """Writable directory beside the launcher or frozen executable."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent.parent
+
+
+def bundled_root() -> Path:
+    """Read-only root containing bundled assets and resources."""
+    frozen_bundle = getattr(sys, "_MEIPASS", None)
+    return Path(frozen_bundle) if frozen_bundle else application_root()
+
+
 def require_original_jar() -> Path:
     """Require the user's original, unmodified J2ME game archive."""
-    package_root = Path(__file__).resolve().parent.parent
     configured_path = os.environ.get("GRADIUS_NEO_JAR")
     candidates = [
         Path(configured_path).expanduser() if configured_path else None,
-        package_root / "roms" / ORIGINAL_JAR_NAME,
+        application_root() / "roms" / ORIGINAL_JAR_NAME,
+        bundled_root() / "roms" / ORIGINAL_JAR_NAME,
         Path.cwd() / "roms" / ORIGINAL_JAR_NAME,
         repository_root() / ORIGINAL_JAR_NAME,
     ]
@@ -53,13 +67,15 @@ def require_original_jar() -> Path:
 
 def runtime_paths() -> tuple[Path, Path, Path]:
     """Return background, game-resource and save paths for repo or portable builds."""
-    package_root = Path(__file__).resolve().parent.parent
+    package_root = bundled_root()
     portable_resources = package_root / "resources"
     if portable_resources.is_dir():
         save_root = Path(
             os.environ.get(
                 "GRADIUS_NEO_SAVE_DIR",
-                "/userdata/saves/pygame/gradius-neo" if Path("/userdata").is_dir() else package_root / "saves",
+                "/userdata/saves/pygame/gradius-neo"
+                if Path("/userdata").is_dir()
+                else application_root() / "saves",
             ),
         )
         return package_root / "assets" / "gradius-neo-1080-v4.png", portable_resources, save_root
@@ -87,7 +103,6 @@ def main() -> None:
     pygame.init()
     if pygame.mixer.get_init() is not None:
         pygame.mixer.set_num_channels(8)
-    scale = 2
     fullscreen = os.environ.get("GRADIUS_NEO_FULLSCREEN") == "1"
     window = Window(
         EMULATOR_TITLE,
@@ -97,34 +112,94 @@ def main() -> None:
     renderer = Renderer(window, accelerated=True, vsync=True)
     output_width, output_height = window.size
     layout_scale = min(output_width / WINDOW_WIDTH, output_height / WINDOW_HEIGHT)
-    output_pixel_scale = max(1, round(scale * layout_scale))
     logical_surface = pygame.Surface((RENDER_WIDTH, RENDER_HEIGHT))
-    game_surface = pygame.Surface((RENDER_WIDTH * output_pixel_scale, RENDER_HEIGHT * output_pixel_scale))
     graphics = PygameGraphics(logical_surface)
     bezel_width = max(1, round(10 * layout_scale))
-    display_effects = [
-        ("OHNE", NearestDisplayEffect()),
-        ("LCD", LcdDisplayEffect(output_pixel_scale)),
-        ("LCD BEZEL", LcdBezelDisplayEffect(output_pixel_scale, bezel_width)),
-        ("CRT", CrtDisplayEffect(output_pixel_scale)),
-        ("CRT STARK", CrtDisplayEffect(output_pixel_scale, strong=True)),
-    ]
+    scale_modes = ("2X", "3X", "VOLLE HÖHE")
+    scale_mode_index = 0
     display_effect_index = 1
     background_path, resource_path, save_path = runtime_paths()
     background = pygame.image.load(str(background_path))
     if background.get_size() != (output_width, output_height):
         background = pygame.transform.smoothscale(background, (output_width, output_height))
-    background_texture = Texture.from_surface(renderer, background)
-    game_texture = Texture.from_surface(renderer, game_surface)
-    bezel_surface = pygame.Surface(
-        (game_surface.get_width() + bezel_width * 2, game_surface.get_height() + bezel_width * 2),
-        pygame.SRCALPHA,
+
+    def game_position_for_size(game_size: tuple[int, int]) -> tuple[int, int]:
+        centered_y = (output_height - game_size[1]) // 2 + round(39 * layout_scale)
+        return (
+            (output_width - game_size[0]) // 2,
+            min(max(0, centered_y), max(0, output_height - game_size[1])),
+        )
+
+    base_presentation_scale = 2 * layout_scale
+    base_game_size = (
+        round(RENDER_WIDTH * base_presentation_scale),
+        round(RENDER_HEIGHT * base_presentation_scale),
     )
-    bezel_texture = Texture.from_surface(renderer, bezel_surface)
-    game_position = (
-        (output_width - game_surface.get_width()) // 2,
-        (output_height - game_surface.get_height()) // 2 + round(39 * layout_scale),
+    base_game_position = game_position_for_size(base_game_size)
+    background_pivot = (
+        base_game_position[0] + base_game_size[0] / 2,
+        base_game_position[1] + base_game_size[1] / 2,
     )
+
+    def create_presentation(scale_mode: int):
+        if scale_mode < 2:
+            presentation_scale = (2 + scale_mode) * layout_scale
+        else:
+            presentation_scale = output_height / RENDER_HEIGHT
+        game_size = (
+            round(RENDER_WIDTH * presentation_scale),
+            round(RENDER_HEIGHT * presentation_scale),
+        )
+        matrix_scale = max(1, round(presentation_scale))
+        surface = pygame.Surface(game_size)
+        effects = [
+            ("OHNE", NearestDisplayEffect()),
+            ("LCD", LcdDisplayEffect(matrix_scale)),
+            ("LCD BEZEL", LcdBezelDisplayEffect(matrix_scale, bezel_width)),
+            ("CRT", CrtDisplayEffect(matrix_scale)),
+            ("CRT STARK", CrtDisplayEffect(matrix_scale, strong=True)),
+        ]
+        bezel = pygame.Surface(
+            (surface.get_width() + bezel_width * 2, surface.get_height() + bezel_width * 2),
+            pygame.SRCALPHA,
+        )
+        position = game_position_for_size(game_size)
+        presentation_pivot = (
+            position[0] + game_size[0] / 2,
+            position[1] + game_size[1] / 2,
+        )
+        background_zoom = presentation_scale / base_presentation_scale
+        scaled_background = pygame.transform.smoothscale(
+            background,
+            (round(output_width * background_zoom), round(output_height * background_zoom)),
+        )
+        background_position = (
+            round(presentation_pivot[0] - background_pivot[0] * background_zoom),
+            round(presentation_pivot[1] - background_pivot[1] * background_zoom),
+        )
+        return (
+            surface,
+            Texture.from_surface(renderer, surface),
+            bezel,
+            Texture.from_surface(renderer, bezel),
+            effects,
+            position,
+            Texture.from_surface(renderer, scaled_background),
+            background_position,
+            scaled_background.get_size(),
+        )
+
+    (
+        game_surface,
+        game_texture,
+        bezel_surface,
+        bezel_texture,
+        display_effects,
+        game_position,
+        background_texture,
+        background_position,
+        background_size,
+    ) = create_presentation(scale_mode_index)
     resources = ResourceLoader(resource_path)
     saves = SaveStorage(save_path)
     images = PygameImageLoader()
@@ -153,7 +228,27 @@ def main() -> None:
                 game.running = False
             elif event.type == pygame.KEYDOWN and event.key in (pygame.K_F1, pygame.K_f):
                 display_effect_index = (display_effect_index + 1) % len(display_effects)
-                window.title = f"{EMULATOR_TITLE} – Filter: {display_effects[display_effect_index][0]}"
+                window.title = (
+                    f"{EMULATOR_TITLE} – {scale_modes[scale_mode_index]} – "
+                    f"Filter: {display_effects[display_effect_index][0]}"
+                )
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_F2:
+                scale_mode_index = (scale_mode_index + 1) % len(scale_modes)
+                (
+                    game_surface,
+                    game_texture,
+                    bezel_surface,
+                    bezel_texture,
+                    display_effects,
+                    game_position,
+                    background_texture,
+                    background_position,
+                    background_size,
+                ) = create_presentation(scale_mode_index)
+                window.title = (
+                    f"{EMULATOR_TITLE} – {scale_modes[scale_mode_index]} – "
+                    f"Filter: {display_effects[display_effect_index][0]}"
+                )
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_p:
                 if GradiusNeoGame.screenState == ScreenState.Gameplay:
                     game.keyPressed(-7 if GradiusNeoGame.runtimeFlags[4] else -8)
@@ -180,7 +275,7 @@ def main() -> None:
         active_display_effect.present(logical_surface, game_surface)
         game_texture.update(game_surface)
         renderer.clear()
-        renderer.blit(background_texture, pygame.Rect(0, 0, output_width, output_height))
+        renderer.blit(background_texture, pygame.Rect(background_position, background_size))
         if isinstance(active_display_effect, LcdBezelDisplayEffect):
             active_display_effect.render_bezel(game_surface, bezel_surface)
             bezel_texture.update(bezel_surface)

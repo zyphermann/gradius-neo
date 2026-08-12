@@ -99,6 +99,13 @@
       ]
     },
     {
+      "trigger": "r2",
+      "type": "key",
+      "target": [
+        "KEY_F2"
+      ]
+    },
+    {
       "trigger": "start",
       "type": "key",
       "target": [
