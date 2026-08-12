@@ -6,7 +6,6 @@ import sys
 from pathlib import Path
 
 from .display_effects import CrtDisplayEffect, LcdBezelDisplayEffect, LcdDisplayEffect, NearestDisplayEffect
-from .edition import enforce_edition_limits
 from .generated_runtime import configure_generated_runtime
 from .monolithic_generated import GradiusNeoGame, ScreenState
 from .platform import ApplicationHost, ResourceLoader, SaveStorage
@@ -99,7 +98,6 @@ def main() -> None:
 
     from pygame._sdl2 import Renderer, Texture, Window
 
-    from .gamepad import GamepadManager
     from .platform.pygame_backend import PygameGraphics, PygameImageLoader
 
     pygame.init()
@@ -207,7 +205,6 @@ def main() -> None:
     images = PygameImageLoader()
     configure_generated_runtime(resources, images, saves)
     game = GradiusNeoGame(ApplicationHost())
-    gamepads = GamepadManager()
     key_codes = {
         pygame.K_UP: -1,
         pygame.K_DOWN: -2,
@@ -223,59 +220,38 @@ def main() -> None:
     clock = pygame.time.Clock()
     accumulator = 0.0
 
-    def cycle_display_effect() -> None:
-        nonlocal display_effect_index
-        display_effect_index = (display_effect_index + 1) % len(display_effects)
-        window.title = (
-            f"{EMULATOR_TITLE} – {scale_modes[scale_mode_index]} – "
-            f"Filter: {display_effects[display_effect_index][0]}"
-        )
-
-    def cycle_screen_scale() -> None:
-        nonlocal game_surface, game_texture, bezel_surface, bezel_texture
-        nonlocal display_effects, game_position, background_texture, background_position
-        nonlocal background_size, scale_mode_index
-        scale_mode_index = (scale_mode_index + 1) % len(scale_modes)
-        (
-            game_surface,
-            game_texture,
-            bezel_surface,
-            bezel_texture,
-            display_effects,
-            game_position,
-            background_texture,
-            background_position,
-            background_size,
-        ) = create_presentation(scale_mode_index)
-        window.title = (
-            f"{EMULATOR_TITLE} – {scale_modes[scale_mode_index]} – "
-            f"Filter: {display_effects[display_effect_index][0]}"
-        )
-
-    def pause_game() -> None:
-        if GradiusNeoGame.screenState == ScreenState.Gameplay:
-            game.keyPressed(-7 if GradiusNeoGame.runtimeFlags[4] else -8)
-            game.keyReleased(-7)
-            game.keyReleased(-8)
-
     while game.running:
         elapsed = clock.tick(60) / 1_000.0
         accumulator += min(elapsed, 0.3)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 game.running = False
-            elif event.type in (
-                pygame.CONTROLLERDEVICEADDED,
-                pygame.CONTROLLERDEVICEREMOVED,
-                pygame.CONTROLLERDEVICEREMAPPED,
-            ):
-                gamepads.refresh()
             elif event.type == pygame.KEYDOWN and event.key in (pygame.K_F1, pygame.K_f):
-                cycle_display_effect()
+                display_effect_index = (display_effect_index + 1) % len(display_effects)
+                window.title = (
+                    f"{EMULATOR_TITLE} – {scale_modes[scale_mode_index]} – "
+                    f"Filter: {display_effects[display_effect_index][0]}"
+                )
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_F2:
-                cycle_screen_scale()
+                scale_mode_index = (scale_mode_index + 1) % len(scale_modes)
+                (
+                    game_surface,
+                    game_texture,
+                    bezel_surface,
+                    bezel_texture,
+                    display_effects,
+                    game_position,
+                    background_texture,
+                    background_position,
+                    background_size,
+                ) = create_presentation(scale_mode_index)
+                window.title = (
+                    f"{EMULATOR_TITLE} – {scale_modes[scale_mode_index]} – "
+                    f"Filter: {display_effects[display_effect_index][0]}"
+                )
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_p:
-                pause_game()
+                if GradiusNeoGame.screenState == ScreenState.Gameplay:
+                    game.keyPressed(-7 if GradiusNeoGame.runtimeFlags[4] else -8)
             elif event.type == pygame.KEYUP and event.key == pygame.K_p:
                 game.keyReleased(-7)
                 game.keyReleased(-8)
@@ -284,23 +260,9 @@ def main() -> None:
             elif event.type == pygame.KEYUP and event.key in key_codes:
                 game.keyReleased(key_codes[event.key])
 
-        pressed, released, pause_pressed, filter_pressed, scale_pressed = gamepads.poll()
-        for key_code in pressed:
-            game.keyPressed(key_code)
-        for key_code in released:
-            game.keyReleased(key_code)
-        if pause_pressed:
-            pause_game()
-        if filter_pressed:
-            cycle_display_effect()
-        if scale_pressed:
-            cycle_screen_scale()
-
         while accumulator >= LOGIC_STEP_SECONDS:
-            enforce_edition_limits()
             game.captureEntityMotionBeforeTick()
             game.paint(graphics)
-            enforce_edition_limits()
             game.captureEntityMotionAfterTick()
             game.processPendingBackgroundMusic()
             game.processPendingSoundEffect()
@@ -329,5 +291,4 @@ def main() -> None:
         renderer.blit(game_texture, pygame.Rect(game_position, game_surface.get_size()))
         renderer.present()
 
-    gamepads.close()
     pygame.quit()

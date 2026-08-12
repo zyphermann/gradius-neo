@@ -20,15 +20,5 @@ Controls:
   F1               Video filter
   F2               Screen size: 2x / 3x / full height
 
-Gamepad (SDL/XInput, including 8BitDo SN30 Pro):
-  D-pad / left stick  Move
-  A                   Fire / confirm
-  B                   Left power-up
-  X                   Right power-up
-  Back / Select       Back
-  Start               Pause
-  Left shoulder       Video filter
-  Right shoulder      Screen size
-
 Save data:
   saves\
