@@ -1,6 +1,9 @@
 # macOS / editor metadata
 .DS_Store
 ._*
+*.icloud
+# Finder/iCloud conflict copies such as "runner 2.py" or "image 3.png"
+* [0-9]*
 .idea/
 .vscode/
 *.swp
