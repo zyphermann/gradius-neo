@@ -1,8 +1,7 @@
 /** Updates entities stored in the auxiliary entity list. */
 // @ts-nocheck -- progressively removed as raw state-array accesses become typed.
 
-import { type int, type short } from '../JavaRuntime';
-import { Graphics } from '../../../j2me/lcdui/Graphics';
+import { Graphics } from '../../../platform';
 import { RENDER_SCALE } from '../../../runtime/render-config';
 import { EntityField, StateSlot } from '../state/GameState';
 import { EntityPool } from './EntityPool';
@@ -38,17 +37,23 @@ export class AuxiliaryEntitySystem {
   }
 
   update(gfx: Graphics): void {
-    let entityId: int = this.state[StateSlot.AuxiliaryEntityHead];
+    let entityId: number = this.state[StateSlot.AuxiliaryEntityHead];
 
     while (entityId !== -1) {
-      let nextEntityId: int = this.state[EntityField.Next + entityId];
-      let entityX: int = this.state[EntityField.X + entityId];
-      let entityY: int = this.state[EntityField.Y + entityId];
-      let age: int = this.state[EntityField.Age + entityId];
+      let nextEntityId: number = this.state[EntityField.Next + entityId];
+      let entityX: number = this.state[EntityField.X + entityId];
+      let entityY: number = this.state[EntityField.Y + entityId];
+      let age: number = this.state[EntityField.Age + entityId];
       this.entityDirectionSign = -1;
-      let directionSideIndex: int = (this.entityDirectionSign + 1) / 2;
+      let directionSideIndex: number = (this.entityDirectionSign + 1) / 2;
       this.changedEntityCount = 0;
-      this.renderQueue.beginEntity(entityId);
+      if (this.state[EntityField.Type + entityId] === 111) {
+        // This tunnel object consists of repeating blue segments whose command
+        // indices rotate as segments cross the edge of the screen.
+        this.renderQueue.beginMotionSource(-21, this.entities.generation(entityId));
+      } else {
+        this.renderQueue.beginEntity(entityId);
+      }
       switch (this.state[EntityField.Type + entityId]) {
         case 33:
         case 34:
@@ -128,7 +133,7 @@ export class AuxiliaryEntitySystem {
               );
 
               for (
-                let var21: int = entityX + this.entityDirectionSign * 16;
+                let var21: number = entityX + this.entityDirectionSign * 16;
                 this.entityDirectionSign * var21 <= 120 + (this.entityDirectionSign * GAME_VIEW_WIDTH) / 2;
                 var21 += this.entityDirectionSign * 16
               ) {
@@ -246,7 +251,7 @@ export class AuxiliaryEntitySystem {
             this.state[EntityField.Y + this.state[EntityField.Parameter0 + entityId]] +
             24 +
             ((this.state[471 + this.state[0]] * 16 * 4) >> 4);
-          let var12: short = 350;
+          let var12: number = 350;
           this.state[1] = 13;
           if (4 <= this.state[0] && this.state[0] <= 28) {
             var12 = 351;
@@ -279,7 +284,7 @@ export class AuxiliaryEntitySystem {
         }
 
         case 98: {
-          let var10: int = this.state[EntityField.Parameter1 + entityId] * 2 - 1;
+          let var10: number = this.state[EntityField.Parameter1 + entityId] * 2 - 1;
           if (age === 0) {
             this.state[EntityField.Health + entityId] = 256 + this.state[25] * 8;
             this.state[EntityField.XFixed + entityId] = -4;
@@ -292,13 +297,13 @@ export class AuxiliaryEntitySystem {
             this.state[4606 + entityId] = this.state[EntityField.XFixed + entityId];
             this.state[5118 + entityId] = this.state[EntityField.YFixed + entityId];
           } else {
-            let var2: short = 353;
+            let var2: number = 353;
             if (this.state[EntityField.Parameter1 + entityId] === 1) {
               var2 = 354;
             }
 
             if (this.state[EntityField.Parameter0 + this.state[EntityField.Parameter0 + entityId]] === -1) {
-              let var17: int = 32 - this.state[25] / 2;
+              let var17: number = 32 - this.state[25] / 2;
               if (age % var17 === 0) {
                 this.spawnEntity(
                   65,
@@ -337,13 +342,13 @@ export class AuxiliaryEntitySystem {
               this.state[EntityField.YFixed + entityId];
             this.renderQueue.enqueue(0, entityX, entityY, 14, var2, 393734);
             if (this.state[EntityField.Parameter1 + entityId] === 0) {
-              let var18: int;
+              let var18: number;
               if ((var18 = this.resolveEntityCollisions(entityId, entityX + 4, entityY + 4, 80, 24)) > 0) {
                 this.state[EntityField.Health + entityId] = this.state[EntityField.Health + entityId] - var18;
               }
             } else {
               if (this.state[EntityField.Parameter1 + entityId] === 1) {
-                let var19: int;
+                let var19: number;
                 if ((var19 = this.resolveEntityCollisions(entityId, entityX + 8, entityY + 8, 80, 16)) > 0) {
                   this.state[EntityField.Health + entityId] = this.state[EntityField.Health + entityId] - var19;
                 } else {
@@ -386,7 +391,7 @@ export class AuxiliaryEntitySystem {
             if (this.state[EntityField.Parameter3 + this.state[EntityField.Parameter0 + entityId]] !== 0) {
               if (this.state[EntityField.Parameter0 + this.state[EntityField.Parameter0 + entityId]] === 2) {
                 if (age % (24 - this.state[25] / 2 - this.state[EntityField.Parameter1 + entityId]) === 0) {
-                  let var23: int = age + this.state[StateSlot.PlayerX] + this.state[StateSlot.PlayerY];
+                  let var23: number = age + this.state[StateSlot.PlayerX] + this.state[StateSlot.PlayerY];
                   this.spawnEntity(
                     30,
                     entityX - 16,
@@ -457,11 +462,11 @@ export class AuxiliaryEntitySystem {
                   this.state[41] = 7;
                   this.state[86] = 3;
 
-                  for (let var14: int = 0; var14 < 20; var14++) {
+                  for (let var14: number = 0; var14 < 20; var14++) {
                     this.state[9751 + var14] = 0;
                   }
 
-                  for (let var15: int = 1; var15 < 13; var15++) {
+                  for (let var15: number = 1; var15 < 13; var15++) {
                     this.state[1265 + var15 * 16 + ((this.state[StateSlot.CollisionMapScrollX] / 16) % 16)] = 1;
                     this.state[1265 + var15 * 16 + ((this.state[StateSlot.CollisionMapScrollX] / 16 + 14) % 16)] = 1;
                   }
@@ -542,7 +547,7 @@ export class AuxiliaryEntitySystem {
             this.renderQueue.enqueue(0, entityX + 288, 160, 6, 335, 66305);
             this.renderQueue.enqueue(1, entityX + 288, 208, 6, 337, 0);
 
-            for (let var16: int = 0; var16 < 5; var16++) {
+            for (let var16: number = 0; var16 < 5; var16++) {
               this.renderQueue.enqueue(0, entityX + 48 + var16 * 16 * 3, 0, 6, 333, 196867);
               this.renderQueue.enqueue(0, entityX + 48 + var16 * 16 * 3, 208, 6, 334, 196867);
             }
@@ -601,7 +606,7 @@ export class AuxiliaryEntitySystem {
 
               case 4: {
                 if (age % 16 === 0) {
-                  let var11: int =
+                  let var11: number =
                     this.state[StateSlot.Score] / 100 +
                     this.state[StateSlot.PlayerX] +
                     this.state[StateSlot.PlayerY] +
@@ -699,7 +704,7 @@ export class AuxiliaryEntitySystem {
               }
 
               case 12: {
-                for (let var13: int = 0; var13 < 14; var13++) {
+                for (let var13: number = 0; var13 < 14; var13++) {
                   this.spawnEntity(74 + var13 / 7, GAME_VIEW_WIDTH - (var13 / 7) * 272, 16 + (var13 % 7) * 16 * 2, 0);
                   this.state[94]++;
                 }
@@ -810,7 +815,7 @@ export class AuxiliaryEntitySystem {
             } else {
               this.state[StateSlot.VisualStageScrollX] = this.state[StateSlot.VisualStageScrollX] + 2;
               if (this.state[22] === 0) {
-                for (let var3: int = 0; var3 < 5; var3++) {
+                for (let var3: number = 0; var3 < 5; var3++) {
                   this.drawSpriteRegion(
                     gfx,
                     4,

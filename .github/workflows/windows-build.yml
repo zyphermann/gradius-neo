@@ -1,0 +1,68 @@
+name: Build Windows executable
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: python-prototype/pyproject.toml
+
+      - name: Install build dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "./python-prototype[dev]" pyinstaller
+
+      - name: Run Python tests
+        shell: pwsh
+        run: python -m pytest python-prototype/tests
+
+      - name: Build portable Windows folder
+        shell: pwsh
+        run: |
+          python -m PyInstaller --noconfirm --clean python-prototype/gradius-neo-windows.spec
+
+      - name: Add user-facing files
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist/gradius-neo/roms | Out-Null
+          Copy-Item python-prototype/windows/README.txt dist/gradius-neo/README.txt
+          Copy-Item python-prototype/windows/ROM-README.txt dist/gradius-neo/roms/README.txt
+
+      - name: Verify that the original ROM is not bundled
+        shell: pwsh
+        run: |
+          $rom = Get-ChildItem dist/gradius-neo -Recurse -Filter "gradius_neo_176x220-71722.jar"
+          if ($rom) { throw "Original JAR must not be present in the Windows artifact." }
+          if (-not (Test-Path dist/gradius-neo/gradius-neo.exe)) { throw "Windows executable is missing." }
+
+      - name: Create download archive
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist/gradius-neo/* -DestinationPath dist/gradius-neo-windows-x64.zip
+
+      - name: Upload Windows build
+        uses: actions/upload-artifact@v7
+        with:
+          name: gradius-neo-windows-x64
+          path: dist/gradius-neo-windows-x64.zip
+          if-no-files-found: error
+          retention-days: 30

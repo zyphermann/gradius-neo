@@ -1,6 +1,5 @@
 import './style.css';
-import { Graphics } from './j2me/lcdui/Graphics';
-import { Image as J2MEImage } from './j2me/lcdui/Image';
+import { Graphics, Image as J2MEImage } from './platform';
 import { applyIntegerScale, calculateIntegerScale, LOGICAL_HEIGHT, LOGICAL_WIDTH } from './runtime/integer-scale';
 import { ResourceManager } from './runtime/resources';
 

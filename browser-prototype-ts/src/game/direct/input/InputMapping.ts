@@ -1,5 +1,3 @@
-import { java } from '../JavaRuntime';
-
 export const enum InputBit {
   Up = 2,
   Left = 4,
@@ -75,7 +73,7 @@ export function keyCodeToInputBit(keyCode: number, getGameAction: (keyCode: numb
         return 0;
     }
   } catch (error) {
-    if (error instanceof java.lang.IllegalArgumentException) return 0;
+    if (error instanceof RangeError) return 0;
     throw error;
   }
 }

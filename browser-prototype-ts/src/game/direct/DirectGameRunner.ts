@@ -1,5 +1,4 @@
-import type { Graphics } from '../../j2me/lcdui/Graphics';
-import { GameCanvas } from '../../j2me/lcdui/game/GameCanvas';
+import { GameSurface, type Graphics } from '../../platform';
 import type { ResourceManager } from '../../runtime/resources';
 import { BrowserApplicationHost } from './BrowserApplicationHost';
 import { GradiusNeoGame } from './GradiusNeoGame';
@@ -30,7 +29,7 @@ export class DirectGameRunner {
     resources: ResourceManager,
     private readonly onError: (error: unknown) => void,
   ) {
-    GameCanvas.configureLegacyRuntime(canvas, graphics, resources);
+    GameSurface.configureRuntime(canvas, graphics, resources);
     this.game = new GradiusNeoGame(new BrowserApplicationHost());
   }
 

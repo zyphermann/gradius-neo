@@ -1,13 +1,19 @@
 /** Direct TypeScript port of the original Gradius Neo game class. */
 // @ts-nocheck
 
-import { java, type int, type long, type char, type byte, type short } from './JavaRuntime';
-import { Command } from '../../j2me/lcdui/Command';
-import { Font } from '../../j2me/lcdui/Font';
-import { Graphics } from '../../j2me/lcdui/Graphics';
-import { Image } from '../../j2me/lcdui/Image';
-import { GameCanvas } from '../../j2me/lcdui/game/GameCanvas';
-import { RecordStore } from '../../j2me/rms/RecordStore';
+import {
+  Clock,
+  Font,
+  GameSurface,
+  Graphics,
+  Image,
+  intDiv,
+  MenuCommand,
+  type ResourceStream,
+  SaveStorage,
+  toByte,
+  toShort,
+} from '../../platform';
 import { GameSupport } from '../a';
 import { BrowserApplicationHost } from './BrowserApplicationHost';
 import { RENDER_SCALE, SPRITE_SHEET_SCALE } from '../../runtime/render-config';
@@ -39,13 +45,34 @@ function fromLegacyRenderPixels(legacyScreenCoordinate: number): number {
   return Math.trunc((legacyScreenCoordinate * RENDER_SCALE) / SPRITE_SHEET_SCALE);
 }
 
+function incrementAndGet(values: Int32Array, index: number): number {
+  values[index] += 1;
+  return values[index];
+}
+
+function getAndIncrement(values: Int32Array, index: number): number {
+  const previousValue = values[index];
+  values[index] += 1;
+  return previousValue;
+}
+
+function decrementAndGet(values: Int32Array, index: number): number {
+  values[index] -= 1;
+  return values[index];
+}
+
+function getAndDecrement(values: Int32Array, index: number): number {
+  const previousValue = values[index];
+  values[index] -= 1;
+  return previousValue;
+}
+
 // The original game uses a 240×224 coordinate system. Keep the conversion to
 // physical render pixels in one place so native-resolution rendering can later
 // be enabled by changing this value from 3 / 4 to 1.
 const GAME_VIEW_WIDTH = 240;
 const GAMEPLAY_HEIGHT = 224;
-const DEVELOPMENT_SELECTED_STAGE = 1;
-const DEVELOPMENT_HIGHEST_UNLOCKED_STAGE = 4;
+const STAGE_FIVE_ROOM_SOURCE_ID = -23;
 
 const RENDERED_GAME_VIEW_WIDTH = toRenderPixels(GAME_VIEW_WIDTH);
 const RENDERED_GAMEPLAY_HEIGHT = toRenderPixels(GAMEPLAY_HEIGHT);
@@ -111,7 +138,7 @@ const enum SaveDataSection {
   UnlocksAndStageRecords = 52,
 }
 
-export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
+export class GradiusNeoGame extends GameSurface {
   private static state: Int32Array = new Int32Array(9790);
   private static extraModeBestScores = new Int32Array(5);
   private static readonly sharedState = new GameState(GradiusNeoGame.state);
@@ -137,13 +164,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
   public static runtimeFlags: boolean[] = new Array<boolean>(10).fill(false);
   private static stageEventScript: Int16Array = new Int16Array(3836);
   private static timestamps: BigInt64Array = new BigInt64Array(5);
-  public static screenState: int;
-  public static requestedBgmId: int;
-  private static resourceInputStream: java.io.InputStream;
+  public static screenState: number;
+  public static requestedBgmId: number;
+  private static resourceInputStream: ResourceStream;
   private host: BrowserApplicationHost;
-  private static recordStore: RecordStore;
+  private static saveStorage: SaveStorage;
   private static resourceBuffer: Int8Array = new Int8Array(25112);
-  protected bgmTrackTitles: java.lang.String[][] = [
+  protected bgmTrackTitles: string[][] = [
     ['    Shooting Again '],
     [' A Stone Graveyard '],
     [' The Tension Is    ', '       Building Up '],
@@ -155,39 +182,39 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     ['        NEO Ending '],
   ];
   public soundTestActive: boolean = false;
-  private readonly canvasWidth: int;
-  private readonly canvasHeight: int;
+  private readonly canvasWidth: number;
+  private readonly canvasHeight: number;
   protected spriteSheets: Image[] = new Array<Image>(6);
   private readonly spriteRegions: Int32Array = new Int32Array(409);
-  private static terrainTileSourceX: int;
-  private static terrainTileSourceY: int;
-  protected loopIterationCount: long = 0n;
-  protected lastFrameDurationMillis: long = 0n;
-  private static softKeyCommands: Command[] = [
-    new Command('M on', 1, 1),
-    new Command('Moff', 1, 1),
-    new Command('EXIT', 1, 1),
-    new Command('BACK', 1, 1),
-    new Command('POW1', 1, 1),
-    new Command('POW2', 1, 1),
-    new Command(' ', 1, 1),
+  private static terrainTileSourceX: number;
+  private static terrainTileSourceY: number;
+  protected loopIterationCount: bigint = 0n;
+  protected lastFrameDurationMillis: bigint = 0n;
+  private static softKeyCommands: MenuCommand[] = [
+    new MenuCommand('M on', 1, 1),
+    new MenuCommand('Moff', 1, 1),
+    new MenuCommand('EXIT', 1, 1),
+    new MenuCommand('BACK', 1, 1),
+    new MenuCommand('POW1', 1, 1),
+    new MenuCommand('POW2', 1, 1),
+    new MenuCommand(' ', 1, 1),
   ];
-  private leftSoftKeyLabel: java.lang.String = ' ';
-  private rightSoftKeyLabel: java.lang.String = ' ';
+  private leftSoftKeyLabel: string = ' ';
+  private rightSoftKeyLabel: string = ' ';
   private static saveData: Int8Array = new Int8Array(SAVE_DATA_LENGTH);
   private static smoothRenderingEnabled = true;
-  protected heldInputBits: int = 0;
-  protected releasedInputBits: int = 0;
-  private static entityDirectionSign: int;
-  private static spawnedEntityCount: int;
-  private instructionsText: java.lang.String =
+  protected heldInputBits: number = 0;
+  protected releasedInputBits: number = 0;
+  private static entityDirectionSign: number;
+  private static spawnedEntityCount: number;
+  private instructionsText: string =
     'GAME SYSTEM\nChoosing Game Start, will begin a new game, or start from previously completed stages. By Choosing Continue, the game will start where the previous saved game ended.  The degree of Difficulty, Auto-fire option, or Screen Set-up can be changed in GAME SETTING. \nPressing # key or back/CLR key during game play will display the PAUSE MENU.  Pressing RESUME from PAUSE MENU will continue the game.\n\nCONTROLS\nShip movement is controlled by the D-pad.  If Auto-fire is set to OFF press the 0 key to fire. \n\nPOWER UP\nDestroying red enemies or enemy formations will result in the appearance of red capsules.  Obtaining these red capsules will highlight one of the power-ups on the lower left gauge.  At this time, pressing the left soft key will activate the highlighted power-up from the lower left gauge.\nObtaining a green capsule will highlight one of the formations in the lower right gauge.  At this time, pressing the right soft key will activate the highlighted formation from the lower right gauge.\n\nFORMATION\nKeys 1 to 6 will enable the different formations. Keys 7 to 9 reset the formation to normal.  When 4 option power-ups and the Laser power up are activated, special striking performance will be enabled.\n\nEXTRA MODE\nEXTRA MODE is a score attack mode.  Each stage has a minimum score.  Clearing the minimum score and the stage will unlock new weapons in OPTIONS - SELECT WEAPON section.\n\nPower-ups:\nS: Speed\nM: Missle\nD: Double shot\nL: Lasers\nO: Option\n?: Shield\n\nFormations:\nR: Rotate\nC: Center\nF: Forward\nW: Wing\nI: In-line\nA: Advance';
-  private instructionsLines: java.lang.String[] = null;
-  protected infoReturnScreen: int = 0;
-  protected textScrollOffset: int = 0;
-  private aboutLines: java.lang.String[] = null;
+  private instructionsLines: string[] | null = null;
+  protected infoReturnScreen: number = 0;
+  protected textScrollOffset: number = 0;
+  private aboutLines: string[] | null = null;
   public running: boolean = true;
-  protected endingCreditsPages: java.lang.String[][] = [
+  protected endingCreditsPages: string[][] = [
     ['- GRADIUS NEO -', 'Final Stage Cleared!', 'Try next round!!'],
     ['', '', '', '', '', ''],
     ['STAFF'],
@@ -206,9 +233,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
   ];
   private static bitmapFont: Font = Font.getFont(32, 0, 0);
   private konamiLogoImage: Image;
-  private introPhaseDeadlineMillis: long;
-  public static soundMode: int = 0;
-  protected audioResumeDeadlineMillis: long = 0n;
+  private introPhaseDeadlineMillis: bigint;
+  public static soundMode: number = 0;
+  protected audioResumeDeadlineMillis: bigint = 0n;
   protected audioResumePending: boolean = false;
   private readonly audioSystem = new AudioSystem((path) => this.getClass().getResourceAsStream(path));
   protected static appSuspended: boolean = false;
@@ -226,7 +253,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
       GradiusNeoGame.state[StateSlot.ViewportOffsetY] = (this.canvasHeight - RENDERED_GAME_VIEW_WIDTH) / 2;
       GradiusNeoGame.screenState = ScreenState.Boot;
     } catch (var3) {
-      if (var3 instanceof java.lang.Throwable) {
+      if (var3 instanceof Error) {
       } else {
         throw var3;
       }
@@ -234,16 +261,16 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
   }
 
   private unloadStageSpriteSheets(): void {
-    for (let var1: int = 2; var1 < 6; var1++) {
+    for (let var1: number = 2; var1 < 6; var1++) {
       this.spriteSheets[var1] = null;
     }
 
-    java.lang.System.gc();
+    Clock.collectGarbage();
   }
 
-  private loadSpriteSheet(sheetIndex: int, resourceName: java.lang.String): void {
+  private loadSpriteSheet(sheetIndex: number, resourceName: string): void {
     this.spriteSheets[sheetIndex] = null;
-    java.lang.System.gc();
+    Clock.collectGarbage();
 
     try {
       this.spriteSheets[sheetIndex] = Image.createImage('/img_' + resourceName);
@@ -251,7 +278,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         this.spriteSheets[sheetIndex].downloadAsPng(`img_${resourceName}.png`);
       }
     } catch (var4) {
-      if (var4 instanceof java.lang.Throwable) {
+      if (var4 instanceof Error) {
         return;
       } else {
         throw var4;
@@ -261,7 +288,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     this.loadResourceIntoBuffer('csv_' + resourceName);
 
     for (
-      let var3: int = 0;
+      let var3: number = 0;
       var3 < ((GradiusNeoGame.resourceBuffer[2] << 8) | (GradiusNeoGame.resourceBuffer[3] & 255));
       var3++
     ) {
@@ -275,11 +302,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
   private drawSpriteRegion(
     gfx: Graphics,
-    sheetIndex: int,
-    regionIndex: int,
-    destinationX: int,
-    destinationY: int,
-    anchor: int,
+    sheetIndex: number,
+    regionIndex: number,
+    destinationX: number,
+    destinationY: number,
+    anchor: number,
   ): void {
     const packedRegion = this.spriteRegions[regionIndex];
     const sourceX = (packedRegion >>> 24) & 0xff;
@@ -302,8 +329,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     );
   }
 
-  private renderForegroundQueue(gfx: Graphics, interpolationAlpha = 0): void {
-    for (let layer: int = 4; layer < 18; layer++) {
+  private renderForegroundQueue(gfx: Graphics, interpolationAlpha = 0, advanceVisualState = true): void {
+    for (let layer: number = 4; layer < 18; layer++) {
       for (const command of GradiusNeoGame.renderQueue.commands(layer)) {
         const motionOffset =
           command.sourceEntityId !== null && command.sourceEntityId <= -100
@@ -493,8 +520,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
           case 3: {
             if (0 < GradiusNeoGame.state[StateSlot.ShieldEnergy]) {
-              let var2: int = 140 + (GradiusNeoGame.state[StateSlot.LogicFrame] & 1) * 4;
-              let var11: int = ((GradiusNeoGame.state[StateSlot.ShieldEnergy] + 3 - 1) / 3) & 1;
+              let var2: number = 140 + (GradiusNeoGame.state[StateSlot.LogicFrame] & 1) * 4;
+              let var11: number = ((GradiusNeoGame.state[StateSlot.ShieldEnergy] + 3 - 1) / 3) & 1;
               this.drawSpriteRegion(
                 gfx,
                 0,
@@ -529,11 +556,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               );
             }
 
-            let var7: int = 80;
+            let var7: number = 80;
             if (GradiusNeoGame.state[63] < 0) {
-              GradiusNeoGame.state[63]++;
-              if (GradiusNeoGame.state[63] < -7) {
-                GradiusNeoGame.state[63] = -7;
+              if (advanceVisualState) {
+                getAndIncrement(GradiusNeoGame.state, 63);
+                if (GradiusNeoGame.state[63] < -7) {
+                  GradiusNeoGame.state[63] = -7;
+                }
               }
 
               var7--;
@@ -542,9 +571,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               }
             } else {
               if (GradiusNeoGame.state[63] > 0) {
-                GradiusNeoGame.state[63]--;
-                if (GradiusNeoGame.state[63] > 7) {
-                  GradiusNeoGame.state[63] = 7;
+                if (advanceVisualState) {
+                  getAndDecrement(GradiusNeoGame.state, 63);
+                  if (GradiusNeoGame.state[63] > 7) {
+                    GradiusNeoGame.state[63] = 7;
+                  }
                 }
 
                 var7++;
@@ -581,7 +612,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           case 4: {
             if (command.y >= 0) {
               if (command.y <= 2) {
-                for (let var10: int = 0; var10 < 9; var10++) {
+                for (let var10: number = 0; var10 < 9; var10++) {
                   this.drawSpriteRegion(
                     gfx,
                     1,
@@ -601,7 +632,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   );
                 }
               } else {
-                for (let var3: int = 0; var3 < 9; var3++) {
+                for (let var3: number = 0; var3 < 9; var3++) {
                   this.drawSpriteRegion(
                     gfx,
                     1,
@@ -619,16 +650,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   );
                 }
 
-                for (
-                  let var9: int = GradiusNeoGame.state[StateSlot.PlayerX] + 64;
-                  var9 < GradiusNeoGame.state[1185];
-                  var9 += 16
-                ) {
+                let formationBeamX = GradiusNeoGame.state[StateSlot.PlayerX] + 64;
+                while (formationBeamX < GradiusNeoGame.state[1185]) {
                   this.drawSpriteRegion(
                     gfx,
                     1,
                     264,
-                    toRenderPixels(var9),
+                    toRenderPixels(formationBeamX),
                     toRenderPixels(
                       GradiusNeoGame.state[StateSlot.PlayerY] + 0 - GradiusNeoGame.state[StateSlot.CameraOffsetY],
                     ),
@@ -638,7 +666,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     gfx,
                     1,
                     263,
-                    toRenderPixels(var9),
+                    toRenderPixels(formationBeamX),
                     toRenderPixels(
                       GradiusNeoGame.state[StateSlot.PlayerY] +
                         -16 +
@@ -651,7 +679,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     gfx,
                     1,
                     265,
-                    toRenderPixels(var9),
+                    toRenderPixels(formationBeamX),
                     toRenderPixels(
                       GradiusNeoGame.state[StateSlot.PlayerY] +
                         16 -
@@ -660,6 +688,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     ),
                     20,
                   );
+                  formationBeamX += 16;
                 }
               }
             }
@@ -672,7 +701,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
   }
 
   private renderBackgroundQueue(gfx: Graphics): void {
-    for (let layer: int = 0; layer < 3; layer++) {
+    for (let layer: number = 0; layer < 3; layer++) {
       for (const command of GradiusNeoGame.renderQueue.commands(layer)) {
         switch (command.type) {
           case 0: {
@@ -687,8 +716,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           }
 
           case 1: {
-            for (let var10: int = 0; var10 < 4 - command.spriteRegion; var10++) {
-              for (let var9: int = 0; var9 < 6; var9++) {
+            for (let var10: number = 0; var10 < 4 - command.spriteRegion; var10++) {
+              for (let var9: number = 0; var9 < 6; var9++) {
                 this.drawSpriteRegion(
                   gfx,
                   4,
@@ -711,7 +740,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           }
 
           case 2: {
-            for (let var8: int = 0; var8 < 6; var8++) {
+            for (let var8: number = 0; var8 < 6; var8++) {
               this.drawSpriteRegion(gfx, 4, 299, toRenderPixels(command.x), toRenderPixels(-command.y + var8 * 48), 20);
               this.drawSpriteRegion(
                 gfx,
@@ -726,8 +755,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           }
 
           case 3: {
-            for (let var3: int = 0; var3 < 4 - command.spriteRegion; var3++) {
-              for (let var7: int = 0; var7 < 6; var7++) {
+            for (let var3: number = 0; var3 < 4 - command.spriteRegion; var3++) {
+              for (let var7: number = 0; var7 < 6; var7++) {
                 this.drawSpriteRegion(
                   gfx,
                   4,
@@ -750,7 +779,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           }
 
           case 4: {
-            for (let var2: int = 0; var2 < 6; var2++) {
+            for (let var2: number = 0; var2 < 6; var2++) {
               this.drawSpriteRegion(gfx, 4, 295, toRenderPixels(-command.x + var2 * 48), 0, 20);
               this.drawSpriteRegion(
                 gfx,
@@ -777,9 +806,41 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
   private renderInterpolatedStarBackdrop(gfx: Graphics, alpha: number): boolean {
     const backdropMode = GradiusNeoGame.state[41];
-    if (backdropMode < 1 || backdropMode > 3) return false;
+    if (backdropMode < 1 || backdropMode > 4) return false;
 
     const visualLogicFrame = this.backdropLogicFrame + alpha;
+    if (backdropMode === 4) {
+      const streakPhase = GradiusNeoGame.state[46];
+      const lengthBits = streakPhase < 8 ? streakPhase : streakPhase - 1;
+      const lengthMask = (1 << lengthBits) - 1;
+      const brightness = 92 - 8 * streakPhase;
+      for (let group = 0; group < 2; group++) {
+        for (let starIndex = 0; starIndex < 20; starIndex++) {
+          const sourceColor = GradiusNeoGame.state[307 + starIndex];
+          const red = Math.trunc((((sourceColor >> 16) & 0xff) * brightness) / 100);
+          const green = Math.trunc((((sourceColor >> 8) & 0xff) * brightness) / 100);
+          const blue = Math.trunc(((sourceColor & 0xff) * brightness) / 100);
+          gfx.setColor((red << 16) | (green << 8) | blue);
+          const speed =
+            streakPhase < 8
+              ? (starIndex / 2 + 1) * GradiusNeoGame.state[45]
+              : (starIndex / 2) * GradiusNeoGame.state[45] + (streakPhase - 1) * 4 + 1;
+          const rawX =
+            GradiusNeoGame.state[1055 + starIndex] - visualLogicFrame * speed + (group === 0 ? 0 : 160);
+          const endX = ((rawX % 256) + 256) % 256;
+          const y = (GradiusNeoGame.state[1075 + starIndex] + (group === 0 ? 0 : 80)) & 0xff;
+          const streakLength = GradiusNeoGame.state[1055 + starIndex] & lengthMask;
+          gfx.drawLine(
+            toRenderPixels(endX - streakLength),
+            toRenderPixels(y),
+            toRenderPixels(endX),
+            toRenderPixels(y),
+          );
+        }
+      }
+      return true;
+    }
+
     if (backdropMode === 1 && GradiusNeoGame.state[22] === 0) {
       if (GradiusNeoGame.state[StateSlot.CurrentStage] === 0) {
         this.drawSpriteRegion(gfx, 3, 283, toRenderPixels(128 - this.backdropScrollX / 16 - 16), 24, 20);
@@ -812,11 +873,22 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     return true;
   }
 
+  private renderInterpolatedTunnelBands(gfx: Graphics, alpha: number): void {
+    const visualScroll =
+      this.backdropScrollX + GradiusNeoGame.state[StateSlot.StageScrollSpeed] * alpha;
+    const wrappedScroll = visualScroll % 48;
+    for (let segmentIndex = 0; segmentIndex < 6; segmentIndex++) {
+      const segmentX = toRenderPixels(-wrappedScroll + segmentIndex * 48);
+      this.drawSpriteRegion(gfx, 4, 293, segmentX, 12, 20);
+      this.drawSpriteRegion(gfx, 4, 294, segmentX, 108, 20);
+    }
+  }
+
   public run(): void {
     try {
       while (this.running) {
         this.loopIterationCount++;
-        GradiusNeoGame.timestamps[0] = java.lang.System.currentTimeMillis();
+        GradiusNeoGame.timestamps[0] = Clock.currentTimeMillis();
         this.repaint();
         this.serviceRepaints();
         this.processPendingBackgroundMusic();
@@ -827,12 +899,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           GradiusNeoGame.screenState !== ScreenState.LoadStage &&
           GradiusNeoGame.screenState !== ScreenState.InitializeNewGame
         ) {
-          this.lastFrameDurationMillis = java.lang.System.currentTimeMillis() - GradiusNeoGame.timestamps[0];
+          this.lastFrameDurationMillis = Clock.currentTimeMillis() - GradiusNeoGame.timestamps[0];
           if (this.lastFrameDurationMillis < 100n && this.lastFrameDurationMillis > 0n) {
             try {
-              java.lang.Thread.sleep(100n - this.lastFrameDurationMillis);
+              Clock.sleep(100n - this.lastFrameDurationMillis);
             } catch (var2) {
-              if (var2 instanceof java.lang.Throwable) {
+              if (var2 instanceof Error) {
               } else {
                 throw var2;
               }
@@ -844,7 +916,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
       this.host.destroyApp(false);
       this.host.notifyDestroyed();
     } catch (var3) {
-      if (var3 instanceof java.lang.Throwable) {
+      if (var3 instanceof Error) {
         GameSupport.a('main loop error ' + var3, 1);
       } else {
         throw var3;
@@ -873,7 +945,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     gfx.resetFrame(this.getWidth(), this.getHeight());
     gfx.setFont(GradiusNeoGame.bitmapFont);
     gfx.translate(GradiusNeoGame.state[StateSlot.ViewportOffsetX], GradiusNeoGame.state[StateSlot.ViewportOffsetY]);
-    if (this.gameplayPreBackdropFrame !== null && GradiusNeoGame.state[41] >= 1 && GradiusNeoGame.state[41] <= 3) {
+    if (this.gameplayPreBackdropFrame !== null && GradiusNeoGame.state[41] >= 1 && GradiusNeoGame.state[41] <= 4) {
       gfx.restoreFrame(this.gameplayPreBackdropFrame!);
       this.renderInterpolatedStarBackdrop(gfx, _alpha);
       this.renderBackgroundQueue(gfx);
@@ -885,16 +957,20 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         this.renderStageTerrain(gfx);
         GradiusNeoGame.state[StateSlot.VisualStageScrollX] = currentScroll;
       }
+    } else if (this.gameplayPreBackdropFrame !== null && GradiusNeoGame.state[41] === 6) {
+      gfx.restoreFrame(this.gameplayPreBackdropFrame);
+      this.renderInterpolatedTunnelBands(gfx, _alpha);
+      this.renderBackgroundQueue(gfx);
     } else {
       gfx.restoreFrame(this.gameplayBackgroundFrame);
     }
-    this.renderForegroundQueue(gfx, _alpha);
+    this.renderForegroundQueue(gfx, _alpha, false);
     this.renderGameplayHud(gfx);
     this.renderSoftKeyBar(gfx);
   }
 
   private renderSoftKeyBar(gfx: Graphics): void {
-    let var2: int = GAME_VIEW_WIDTH + GradiusNeoGame.state[StateSlot.ViewportOffsetY] + 14 - 5;
+    let var2: number = GAME_VIEW_WIDTH + GradiusNeoGame.state[StateSlot.ViewportOffsetY] + 14 - 5;
     gfx.translate(-gfx.getTranslateX(), -gfx.getTranslateY());
     gfx.setClip(0, 0, this.getWidth(), this.getHeight());
     gfx.setColor(0);
@@ -908,28 +984,26 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     );
   }
 
-  private setSoftKeyLabels(leftCommandIndex: int, rightCommandIndex: int): void {
+  private setSoftKeyLabels(leftCommandIndex: number, rightCommandIndex: number): void {
     this.leftSoftKeyLabel = ' ';
     this.rightSoftKeyLabel = ' ';
     this.leftSoftKeyLabel = GradiusNeoGame.softKeyCommands[leftCommandIndex].getLabel();
     this.rightSoftKeyLabel = GradiusNeoGame.softKeyCommands[rightCommandIndex].getLabel();
   }
 
-  private static calculateDirectionToPlayer(sourceX: int, sourceY: int): int {
+  private static calculateDirectionToPlayer(sourceX: number, sourceY: number): number {
     sourceX = GradiusNeoGame.state[StateSlot.PlayerX] - sourceX;
 
-    for (
-      sourceY = GradiusNeoGame.state[StateSlot.PlayerY] - sourceY;
-      ((sourceY + 8) | (8 - sourceY)) < 0;
-      sourceY /= 2
-    ) {
-      sourceX /= 2;
+    sourceY = GradiusNeoGame.state[StateSlot.PlayerY] - sourceY;
+    while (((sourceY + 8) | (8 - sourceY)) < 0) {
+      sourceX = intDiv(sourceX, 2);
+      sourceY = intDiv(sourceY, 2);
     }
 
     if (0 <= sourceX) {
       while (8 <= sourceX) {
-        sourceX /= 2;
-        sourceY /= 2;
+        sourceX = intDiv(sourceX, 2);
+        sourceY = intDiv(sourceY, 2);
       }
 
       return 0 <= sourceY
@@ -937,8 +1011,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         : 32 - GradiusNeoGame.state[327 + sourceX - sourceY * 8];
     } else {
       while (-8 >= sourceX) {
-        sourceX /= 2;
-        sourceY /= 2;
+        sourceX = intDiv(sourceX, 2);
+        sourceY = intDiv(sourceY, 2);
       }
 
       return 0 <= sourceY
@@ -947,8 +1021,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     }
   }
 
-  private static rotateDirectionTowardPlayer(xFixed: int, yFixed: int, currentDirection: int): int {
-    let directionDelta: int;
+  private static rotateDirectionTowardPlayer(xFixed: number, yFixed: number, currentDirection: number): number {
+    let directionDelta: number;
     if (
       (directionDelta = GradiusNeoGame.calculateDirectionToPlayer(xFixed >> 4, yFixed >> 4) - currentDirection) > 32
     ) {
@@ -962,18 +1036,18 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     if (directionDelta === 0) {
       return currentDirection;
     } else {
-      return directionDelta > 0 ? ++currentDirection % 64 : (currentDirection + 64 - 1) % 64;
+      return directionDelta > 0 ? (currentDirection + 1) % 64 : (currentDirection + 64 - 1) % 64;
     }
   }
 
-  private static advanceEntityX(entityId: int, direction: int, speed: int): int {
+  private static advanceEntityX(entityId: number, direction: number, speed: number): number {
     return (
       (GradiusNeoGame.state[EntityField.XFixed + entityId] =
         GradiusNeoGame.state[EntityField.XFixed + entityId] + GradiusNeoGame.state[455 + direction] * speed) >> 4
     );
   }
 
-  private static advanceEntityY(entityId: int, direction: int, speed: int): int {
+  private static advanceEntityY(entityId: number, direction: number, speed: number): number {
     return (
       (GradiusNeoGame.state[EntityField.YFixed + entityId] =
         GradiusNeoGame.state[EntityField.YFixed + entityId] + GradiusNeoGame.state[471 + direction] * speed) >> 4
@@ -992,7 +1066,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         GradiusNeoGame.state[25] = GradiusNeoGame.state[25] + 4;
       } else {
         if (GradiusNeoGame.state[StateSlot.MainWeaponState] >= 1) {
-          GradiusNeoGame.state[25]++;
+          getAndIncrement(GradiusNeoGame.state, 25);
         }
       }
 
@@ -1007,8 +1081,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     }
   }
 
-  private drawBitmapGlyphRun(gfx: Graphics, firstGlyphIndex: int, glyphCount: int, x: int, y: int): void {
-    let glyphOffset: int = 0;
+  private drawBitmapGlyphRun(gfx: Graphics, firstGlyphIndex: number, glyphCount: number, x: number, y: number): void {
+    let glyphOffset: number = 0;
 
     while (glyphOffset < glyphCount) {
       if (GradiusNeoGame.state[599 + firstGlyphIndex + glyphOffset] >= 0) {
@@ -1027,13 +1101,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     }
   }
 
-  private drawBitmapText(gfx: Graphics, text: java.lang.String, x: int, y: int): void {
-    let glyphIndex: int = 0;
-    let characterIndex: int = 0;
+  private drawBitmapText(gfx: Graphics, text: string, x: number, y: number): void {
+    let glyphIndex: number = 0;
+    let characterIndex: number = 0;
 
     while (characterIndex < text.length) {
       glyphIndex = 0;
-      let characterCode: char;
+      let characterCode: number;
       if ((characterCode = text.charCodeAt(characterIndex)) >= 65 && characterCode <= 90) {
         glyphIndex = characterCode - 65 + 14;
       }
@@ -1063,7 +1137,14 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     }
   }
 
-  private drawBitmapNumber(gfx: Graphics, value: int, digitCount: int, x: int, y: int, firstDigitGlyph: int): void {
+  private drawBitmapNumber(
+    gfx: Graphics,
+    value: number,
+    digitCount: number,
+    x: number,
+    y: number,
+    firstDigitGlyph: number,
+  ): void {
     let digitX = x + (digitCount - 1) * 14;
 
     do {
@@ -1075,12 +1156,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         toRenderPixels(y - 2),
         20,
       );
-      value = Math.trunc(value / 10);
+      value = intDiv(value, 10);
       digitX -= 14;
     } while ((-value & (x - digitX - 14)) < 0);
   }
 
-  private drawDifficultyLabel(gfx: Graphics, difficulty: int, y: int): void {
+  private drawDifficultyLabel(gfx: Graphics, difficulty: number, y: number): void {
     this.drawSpriteRegion(gfx, 0, 42, 40, toRenderPixels(y - 2), 20);
     this.drawSpriteRegion(gfx, 0, 42, 124, toRenderPixels(y - 2), 20);
     if (difficulty === 0) {
@@ -1178,23 +1259,23 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     GradiusNeoGame.updateAdaptiveDifficulty();
     GradiusNeoGame.requestSoundEffect(7);
     if (GradiusNeoGame.state[StateSlot.Difficulty] >= 2) {
-      GradiusNeoGame.state[StateSlot.CheatUseCount]++;
+      getAndIncrement(GradiusNeoGame.state, StateSlot.CheatUseCount);
     }
   }
 
-  private loadResourceIntoBuffer(resourcePath: java.lang.String): void {
+  private loadResourceIntoBuffer(resourcePath: string): void {
     try {
       GradiusNeoGame.resourceInputStream = this.getClass().getResourceAsStream('/' + resourcePath);
       GradiusNeoGame.resourceInputStream.read(GradiusNeoGame.resourceBuffer);
       GradiusNeoGame.resourceInputStream.close();
     } catch (var3) {
-      if (var3 instanceof java.lang.Throwable) {
+      if (var3 instanceof Error) {
       } else {
         throw var3;
       }
     }
 
-    java.lang.System.gc();
+    Clock.collectGarbage();
   }
 
   public stopAllAudio(): void {
@@ -1203,13 +1284,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     this.stopActiveAudioPlayer();
   }
 
-  private static requestBackgroundMusic(var0: int): void {
+  private static requestBackgroundMusic(var0: number): void {
     GradiusNeoGame.requestedBgmId = var0;
     GradiusNeoGame.runtimeFlags[2] = true;
     GradiusNeoGame.state[29] = 0;
   }
 
-  private static requestSoundEffect(var0: int): void {
+  private static requestSoundEffect(var0: number): void {
     if (!GradiusNeoGame.runtimeFlags[3] || GradiusNeoGame.state[28] < var0) {
       GradiusNeoGame.state[28] = var0;
     }
@@ -1218,51 +1299,51 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     GradiusNeoGame.state[30] = 0;
   }
 
-  private static spawnEntity(type: int, x: int, y: int, packedParameters: int): int {
+  private static spawnEntity(type: number, x: number, y: number, packedParameters: number): number {
     return GradiusNeoGame.entityPool.spawn('primary', type, x, y, packedParameters);
   }
 
-  private static spawnAuxiliaryEntity(type: int, x: int, y: int, packedParameters: int): int {
+  private static spawnAuxiliaryEntity(type: number, x: number, y: number, packedParameters: number): number {
     return GradiusNeoGame.entityPool.spawn('auxiliary', type, x, y, packedParameters);
   }
 
-  private static removePrimaryEntity(entityId: int): void {
+  private static removePrimaryEntity(entityId: number): void {
     GradiusNeoGame.entityPool.release('primary', entityId);
     GradiusNeoGame.spawnedEntityCount++;
   }
 
-  private static removeAuxiliaryEntity(entityId: int): void {
+  private static removeAuxiliaryEntity(entityId: number): void {
     GradiusNeoGame.entityPool.release('auxiliary', entityId);
     GradiusNeoGame.spawnedEntityCount++;
   }
 
   private static enqueueRenderCommand(
-    renderType: int,
-    x: int,
-    y: int,
-    layer: int,
-    spriteRegion: int,
-    packedColor: int,
-  ): int {
+    renderType: number,
+    x: number,
+    y: number,
+    layer: number,
+    spriteRegion: number,
+    packedColor: number,
+  ): number {
     return GradiusNeoGame.renderQueue.enqueue(renderType, x, y, layer, spriteRegion, packedColor);
   }
 
   private static enqueueProjectileRenderCommand(
-    projectileIndex: int,
-    renderType: int,
-    x: int,
-    y: int,
-    layer: int,
-    spriteRegion: int,
-    packedColor: int,
-  ): int {
+    projectileIndex: number,
+    renderType: number,
+    x: number,
+    y: number,
+    layer: number,
+    spriteRegion: number,
+    packedColor: number,
+  ): number {
     GradiusNeoGame.renderQueue.beginMotionSource(-100 - projectileIndex, 0, 'current');
     const commandId = GradiusNeoGame.enqueueRenderCommand(renderType, x, y, layer, spriteRegion, packedColor);
     GradiusNeoGame.renderQueue.endEntity();
     return commandId;
   }
 
-  private static sampleTerrainCollision(worldX: int, worldY: int): int {
+  private static sampleTerrainCollision(worldX: number, worldY: number): number {
     worldX += 8;
     worldY += 8;
     if (GradiusNeoGame.state[StateSlot.StageWorldHeight] !== GAMEPLAY_HEIGHT) {
@@ -1277,20 +1358,20 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
     return GradiusNeoGame.state[
       1265 +
-        Math.trunc((GradiusNeoGame.state[StateSlot.CameraOffsetY] + worldY) / 16) * 16 +
-        (Math.trunc((GradiusNeoGame.state[StateSlot.CollisionMapScrollX] + worldX) / 16) % 16)
+        intDiv(GradiusNeoGame.state[StateSlot.CameraOffsetY] + worldY, 16) * 16 +
+        (intDiv(GradiusNeoGame.state[StateSlot.CollisionMapScrollX] + worldX, 16) % 16)
     ] !== 0
       ? -1
       : 0;
   }
 
   private static applyEntityCollisionDamage(
-    entityId: int,
-    hitBoxX: int,
-    hitBoxY: int,
-    hitBoxWidth: int,
-    hitBoxHeight: int,
-    deathSpawnType: int,
+    entityId: number,
+    hitBoxX: number,
+    hitBoxY: number,
+    hitBoxWidth: number,
+    hitBoxHeight: number,
+    deathSpawnType: number,
   ): boolean {
     const collisionDamage = GradiusNeoGame.resolveEntityCollisions(
       entityId,
@@ -1386,13 +1467,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
   }
 
   private static resolveEntityCollisions(
-    entityId: int,
-    hitBoxX: int,
-    hitBoxY: int,
-    hitBoxWidth: int,
-    hitBoxHeight: int,
-  ): int {
-    let collisionStrength: int = 0;
+    entityId: number,
+    hitBoxX: number,
+    hitBoxY: number,
+    hitBoxWidth: number,
+    hitBoxHeight: number,
+  ): number {
+    let collisionStrength: number = 0;
     if (
       GradiusNeoGame.state[StateSlot.ShieldEnergy] > 0 &&
       GradiusNeoGame.state[StateSlot.PlayerX] + 12 - 6 < hitBoxX + hitBoxWidth &&
@@ -1400,7 +1481,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
       GradiusNeoGame.state[StateSlot.PlayerY] + 6 - 6 < hitBoxY + hitBoxHeight &&
       hitBoxY < GradiusNeoGame.state[StateSlot.PlayerY] + 8 + 8
     ) {
-      GradiusNeoGame.state[StateSlot.ShieldEnergy]--;
+      getAndDecrement(GradiusNeoGame.state, StateSlot.ShieldEnergy);
       return 1;
     } else {
       if (
@@ -1415,7 +1496,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
       }
 
       if (GradiusNeoGame.state[84] >= 2) {
-        for (let var5: int = 1; var5 <= GradiusNeoGame.state[StateSlot.OptionCount]; var5++) {
+        for (let var5: number = 1; var5 <= GradiusNeoGame.state[StateSlot.OptionCount]; var5++) {
           if (
             GradiusNeoGame.state[1160 + var5] + 8 < hitBoxX + hitBoxWidth &&
             hitBoxX < GradiusNeoGame.state[1160 + var5] + 8 + 16 &&
@@ -1434,7 +1515,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
       if (GradiusNeoGame.state[EntityField.Type + entityId] < 37) {
         return 0;
       } else {
-        for (let var8: int = 0; var8 < 20; var8++) {
+        for (let var8: number = 0; var8 < 20; var8++) {
           if (GradiusNeoGame.state[1245 + var8] >= 0) {
             if (GradiusNeoGame.state[1245 + var8] !== 8 && GradiusNeoGame.state[1245 + var8] !== 9) {
               if (GradiusNeoGame.state[1245 + var8] === 10) {
@@ -1491,7 +1572,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     GradiusNeoGame.state[1205 + var8] - 8 < hitBoxY + hitBoxHeight &&
                     hitBoxY < GradiusNeoGame.state[1205 + var8] + 8 + 16
                   ) {
-                    GradiusNeoGame.state[1245 + var8]--;
+                    getAndDecrement(GradiusNeoGame.state, 1245 + var8);
                     collisionStrength++;
                   }
                 } else {
@@ -1557,7 +1638,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     GradiusNeoGame.state[1165 + var8 / 4],
                     0,
                   );
-                  if (++GradiusNeoGame.state[1245 + var8] > 9) {
+                  if (incrementAndGet(GradiusNeoGame.state, 1245 + var8) > 9) {
                     GradiusNeoGame.state[1245 + var8] = -1;
                   }
                 }
@@ -1577,63 +1658,64 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     try {
       switch (section) {
         case SaveDataSection.SettingsAndHighScores: {
-          GradiusNeoGame.saveData[0] = GradiusNeoGame.state[StateSlot.Difficulty] as byte;
-          GradiusNeoGame.saveData[0] = (GradiusNeoGame.saveData[0] | ((GradiusNeoGame.soundMode << 4) as byte)) as byte;
-          GradiusNeoGame.saveData[1] = GradiusNeoGame.state[StateSlot.AutoFireSetting] as byte;
-          GradiusNeoGame.saveData[2] = (GradiusNeoGame.state[22] |
-            (GradiusNeoGame.smoothRenderingEnabled ? 0 : 2)) as byte;
-          GradiusNeoGame.saveData[3] = GradiusNeoGame.state[StateSlot.HighestUnlockedStage] as byte;
-          GradiusNeoGame.saveData[4] = GradiusNeoGame.state[33] as byte;
-          GradiusNeoGame.saveData[5] = GradiusNeoGame.state[100] as byte;
+          GradiusNeoGame.saveData[0] = toByte(GradiusNeoGame.state[StateSlot.Difficulty]);
+          GradiusNeoGame.saveData[0] = toByte(GradiusNeoGame.saveData[0] | toByte(GradiusNeoGame.soundMode << 4));
+          GradiusNeoGame.saveData[1] = toByte(GradiusNeoGame.state[StateSlot.AutoFireSetting]);
+          GradiusNeoGame.saveData[2] = toByte(
+            GradiusNeoGame.state[22] | (GradiusNeoGame.smoothRenderingEnabled ? 0 : 2),
+          );
+          GradiusNeoGame.saveData[3] = toByte(GradiusNeoGame.state[StateSlot.HighestUnlockedStage]);
+          GradiusNeoGame.saveData[4] = toByte(GradiusNeoGame.state[33]);
+          GradiusNeoGame.saveData[5] = toByte(GradiusNeoGame.state[100]);
           writeInt32(GradiusNeoGame.saveData, SaveOffset.FirstHighScore, GradiusNeoGame.state[97]);
-          GradiusNeoGame.saveData[10] = GradiusNeoGame.state[101] as byte;
+          GradiusNeoGame.saveData[10] = toByte(GradiusNeoGame.state[101]);
           writeInt32(GradiusNeoGame.saveData, SaveOffset.SecondHighScore, GradiusNeoGame.state[98]);
-          GradiusNeoGame.saveData[15] = GradiusNeoGame.state[102] as byte;
+          GradiusNeoGame.saveData[15] = toByte(GradiusNeoGame.state[102]);
           writeInt32(GradiusNeoGame.saveData, SaveOffset.ThirdHighScore, GradiusNeoGame.state[99]);
           break;
         }
 
         case SaveDataSection.GameProgress: {
-          GradiusNeoGame.saveData[20] = GradiusNeoGame.state[StateSlot.CurrentStage] as byte;
-          GradiusNeoGame.saveData[21] = GradiusNeoGame.state[StateSlot.CurrentRound] as byte;
-          GradiusNeoGame.saveData[22] = GradiusNeoGame.state[StateSlot.LogicFrame] as byte;
-          GradiusNeoGame.saveData[23] = GradiusNeoGame.state[72] as byte;
+          GradiusNeoGame.saveData[20] = toByte(GradiusNeoGame.state[StateSlot.CurrentStage]);
+          GradiusNeoGame.saveData[21] = toByte(GradiusNeoGame.state[StateSlot.CurrentRound]);
+          GradiusNeoGame.saveData[22] = toByte(GradiusNeoGame.state[StateSlot.LogicFrame]);
+          GradiusNeoGame.saveData[23] = toByte(GradiusNeoGame.state[72]);
           writeInt32(GradiusNeoGame.saveData, SaveOffset.Score, GradiusNeoGame.state[StateSlot.Score]);
           writeInt32(
             GradiusNeoGame.saveData,
             SaveOffset.NextExtraLifeScore,
             GradiusNeoGame.state[StateSlot.NextExtraLifeScore],
           );
-          GradiusNeoGame.saveData[32] = GradiusNeoGame.state[StateSlot.Lives] as byte;
-          GradiusNeoGame.saveData[33] = GradiusNeoGame.state[StateSlot.Continues] as byte;
-          GradiusNeoGame.saveData[34] = GradiusNeoGame.state[StateSlot.SelectedPowerUp] as byte;
-          GradiusNeoGame.saveData[35] = GradiusNeoGame.state[StateSlot.SelectedFormation] as byte;
-          GradiusNeoGame.saveData[36] = GradiusNeoGame.state[StateSlot.CheatUseCount] as byte;
-          GradiusNeoGame.saveData[37] = GradiusNeoGame.state[StateSlot.PlayerMoveSpeed] as byte;
-          GradiusNeoGame.saveData[38] = GradiusNeoGame.state[StateSlot.MainWeaponState] as byte;
-          GradiusNeoGame.saveData[39] = GradiusNeoGame.state[StateSlot.MissileState] as byte;
-          GradiusNeoGame.saveData[40] = GradiusNeoGame.state[StateSlot.OptionCount] as byte;
-          GradiusNeoGame.saveData[41] = GradiusNeoGame.state[StateSlot.ShieldEnergy] as byte;
-          GradiusNeoGame.saveData[42] = GradiusNeoGame.state[81] as byte;
-          GradiusNeoGame.saveData[43] = GradiusNeoGame.state[StateSlot.FormationUnlock0] as byte;
-          GradiusNeoGame.saveData[44] = GradiusNeoGame.state[StateSlot.FormationUnlock1] as byte;
-          GradiusNeoGame.saveData[45] = GradiusNeoGame.state[StateSlot.FormationUnlock2] as byte;
-          GradiusNeoGame.saveData[46] = GradiusNeoGame.state[StateSlot.FormationUnlock3] as byte;
-          GradiusNeoGame.saveData[47] = GradiusNeoGame.state[StateSlot.FormationUnlock4] as byte;
-          GradiusNeoGame.saveData[48] = GradiusNeoGame.state[StateSlot.FormationUnlock5] as byte;
-          GradiusNeoGame.saveData[49] = GradiusNeoGame.state[73] as byte;
-          GradiusNeoGame.saveData[50] = GradiusNeoGame.state[74] as byte;
-          GradiusNeoGame.saveData[51] = GradiusNeoGame.state[75] as byte;
+          GradiusNeoGame.saveData[32] = toByte(GradiusNeoGame.state[StateSlot.Lives]);
+          GradiusNeoGame.saveData[33] = toByte(GradiusNeoGame.state[StateSlot.Continues]);
+          GradiusNeoGame.saveData[34] = toByte(GradiusNeoGame.state[StateSlot.SelectedPowerUp]);
+          GradiusNeoGame.saveData[35] = toByte(GradiusNeoGame.state[StateSlot.SelectedFormation]);
+          GradiusNeoGame.saveData[36] = toByte(GradiusNeoGame.state[StateSlot.CheatUseCount]);
+          GradiusNeoGame.saveData[37] = toByte(GradiusNeoGame.state[StateSlot.PlayerMoveSpeed]);
+          GradiusNeoGame.saveData[38] = toByte(GradiusNeoGame.state[StateSlot.MainWeaponState]);
+          GradiusNeoGame.saveData[39] = toByte(GradiusNeoGame.state[StateSlot.MissileState]);
+          GradiusNeoGame.saveData[40] = toByte(GradiusNeoGame.state[StateSlot.OptionCount]);
+          GradiusNeoGame.saveData[41] = toByte(GradiusNeoGame.state[StateSlot.ShieldEnergy]);
+          GradiusNeoGame.saveData[42] = toByte(GradiusNeoGame.state[81]);
+          GradiusNeoGame.saveData[43] = toByte(GradiusNeoGame.state[StateSlot.FormationUnlock0]);
+          GradiusNeoGame.saveData[44] = toByte(GradiusNeoGame.state[StateSlot.FormationUnlock1]);
+          GradiusNeoGame.saveData[45] = toByte(GradiusNeoGame.state[StateSlot.FormationUnlock2]);
+          GradiusNeoGame.saveData[46] = toByte(GradiusNeoGame.state[StateSlot.FormationUnlock3]);
+          GradiusNeoGame.saveData[47] = toByte(GradiusNeoGame.state[StateSlot.FormationUnlock4]);
+          GradiusNeoGame.saveData[48] = toByte(GradiusNeoGame.state[StateSlot.FormationUnlock5]);
+          GradiusNeoGame.saveData[49] = toByte(GradiusNeoGame.state[73]);
+          GradiusNeoGame.saveData[50] = toByte(GradiusNeoGame.state[74]);
+          GradiusNeoGame.saveData[51] = toByte(GradiusNeoGame.state[75]);
           break;
         }
 
         case SaveDataSection.UnlocksAndStageRecords: {
-          GradiusNeoGame.saveData[52] = GradiusNeoGame.state[66] as byte;
-          GradiusNeoGame.saveData[53] = GradiusNeoGame.state[67] as byte;
-          GradiusNeoGame.saveData[54] = GradiusNeoGame.state[68] as byte;
-          GradiusNeoGame.saveData[55] = GradiusNeoGame.state[StateSlot.MissileVariant] as byte;
-          GradiusNeoGame.saveData[56] = GradiusNeoGame.state[70] as byte;
-          GradiusNeoGame.saveData[57] = GradiusNeoGame.state[71] as byte;
+          GradiusNeoGame.saveData[52] = toByte(GradiusNeoGame.state[66]);
+          GradiusNeoGame.saveData[53] = toByte(GradiusNeoGame.state[67]);
+          GradiusNeoGame.saveData[54] = toByte(GradiusNeoGame.state[68]);
+          GradiusNeoGame.saveData[55] = toByte(GradiusNeoGame.state[StateSlot.MissileVariant]);
+          GradiusNeoGame.saveData[56] = toByte(GradiusNeoGame.state[70]);
+          GradiusNeoGame.saveData[57] = toByte(GradiusNeoGame.state[71]);
           for (let stage = 0; stage < GradiusNeoGame.extraModeBestScores.length; stage++) {
             writeInt32(
               GradiusNeoGame.saveData,
@@ -1646,11 +1728,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         default:
       }
 
-      GradiusNeoGame.recordStore = RecordStore.openRecordStore('R', true);
-      GradiusNeoGame.recordStore.setRecord(1, GradiusNeoGame.saveData, 0, SAVE_DATA_LENGTH);
-      GradiusNeoGame.recordStore.closeRecordStore();
+      GradiusNeoGame.saveStorage = SaveStorage.open('R', true);
+      GradiusNeoGame.saveStorage.setRecord(1, GradiusNeoGame.saveData, 0, SAVE_DATA_LENGTH);
+      GradiusNeoGame.saveStorage.close();
     } catch (var2) {
-      if (var2 instanceof java.lang.Throwable) {
+      if (var2 instanceof Error) {
       } else {
         throw var2;
       }
@@ -1728,7 +1810,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     }
   }
 
-  protected keyPressed(var1: int): void {
+  protected keyPressed(var1: number): void {
     if (var1 !== -10) {
       GradiusNeoGame.state[StateSlot.PressedInputAccumulator] =
         GradiusNeoGame.state[StateSlot.PressedInputAccumulator] |
@@ -1737,7 +1819,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     }
   }
 
-  protected keyReleased(var1: int): void {
+  protected keyReleased(var1: number): void {
     if (var1 !== -10) {
       this.releasedInputBits =
         this.releasedInputBits | keyCodeToInputBit(var1, (keyCode) => this.getGameAction(keyCode));
@@ -1762,7 +1844,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     gfx.drawString('Instructions', 90, 2, 17);
     gfx.setColor(16777215);
 
-    for (let var2: int = 0; var2 < 8; var2++) {
+    for (let var2: number = 0; var2 < 8; var2++) {
       gfx.drawString(this.instructionsLines[this.textScrollOffset + var2], 93, toRenderPixels(3 + 26 * (var2 + 1)), 17);
     }
 
@@ -1790,7 +1872,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
   private renderAboutScreen(gfx: Graphics): void {
     if (this.aboutLines === null) {
-      let var2: java.lang.String = this.host.getAppProperty('MIDlet-Version');
+      let var2: string = this.host.getAppProperty('MIDlet-Version');
       this.aboutLines = GameSupport.a(
         172,
         'Gradius Neo\n\n© 2004 2006 KONAMI\nAll Rights Reserved.\n\nPublished by Konami Digital Entertainment\n\nv' +
@@ -1804,7 +1886,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     gfx.drawString('About', 90, 2, 17);
     gfx.setColor(16777215);
 
-    for (let var3: int = 0; var3 < 8; var3++) {
+    for (let var3: number = 0; var3 < 8; var3++) {
       gfx.drawString(this.aboutLines[this.textScrollOffset + var3], 93, toRenderPixels(3 + 26 * (var3 + 1)), 17);
     }
 
@@ -1835,10 +1917,10 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     this.drawBitmapText(gfx, 'YES', 92, 112);
     this.drawBitmapText(gfx, 'NO', 92, 128);
     if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2) !== 0) {
-      GradiusNeoGame.state[0]++;
+      getAndIncrement(GradiusNeoGame.state, 0);
     } else {
       if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64) !== 0) {
-        GradiusNeoGame.state[0]++;
+        getAndIncrement(GradiusNeoGame.state, 0);
       }
     }
 
@@ -1926,7 +2008,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
   private updatePauseMenu(gfx: Graphics): void {
     this.drawBitmapGlyphRun(gfx, 219, 5, 85, 80);
     this.drawBitmapText(gfx, 'RESUME', 43, 96);
-    let var10: java.lang.String[] = ['NONE', 'BGM', 'SFX'];
+    let var10: string[] = ['NONE', 'BGM', 'SFX', 'MIXED'];
     this.drawBitmapText(gfx, 'SOUND - ' + var10[GradiusNeoGame.soundMode], 43, 112);
     this.drawBitmapText(gfx, 'HELP', 43, 128);
     this.drawBitmapText(gfx, 'EXIT', 43, 144);
@@ -1934,7 +2016,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
       GradiusNeoGame.state[0] = GradiusNeoGame.state[0] + 3;
     } else {
       if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64) !== 0) {
-        GradiusNeoGame.state[0]++;
+        getAndIncrement(GradiusNeoGame.state, 0);
       }
     }
 
@@ -1983,7 +2065,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     }
   }
 
-  private updateDelayedBackgroundMusicEntity(entityId: int, age: int): int {
+  private updateDelayedBackgroundMusicEntity(entityId: number, age: number): number {
     if (age === 0) {
       const configuredDelay = GradiusNeoGame.state[EntityField.Parameter1 + entityId];
       GradiusNeoGame.state[EntityField.Parameter3 + entityId] = configuredDelay || DEFAULT_BGM_CHANGE_DELAY_TICKS;
@@ -2012,15 +2094,15 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
   }
 
   private updatePrimaryEntities(): void {
-    let entityId: int = GradiusNeoGame.state[StateSlot.PrimaryEntityHead];
+    let entityId: number = GradiusNeoGame.state[StateSlot.PrimaryEntityHead];
 
     while (entityId !== -1) {
-      let nextEntityId: int = GradiusNeoGame.state[EntityField.Next + entityId];
-      let entityX: int = GradiusNeoGame.state[EntityField.X + entityId];
-      let entityY: int = GradiusNeoGame.state[EntityField.Y + entityId];
-      let age: int = GradiusNeoGame.state[EntityField.Age + entityId];
+      let nextEntityId: number = GradiusNeoGame.state[EntityField.Next + entityId];
+      let entityX: number = GradiusNeoGame.state[EntityField.X + entityId];
+      let entityY: number = GradiusNeoGame.state[EntityField.Y + entityId];
+      let age: number = GradiusNeoGame.state[EntityField.Age + entityId];
       GradiusNeoGame.entityDirectionSign = -1;
-      let directionSideIndex: int = (GradiusNeoGame.entityDirectionSign + 1) / 2;
+      let directionSideIndex: number = (GradiusNeoGame.entityDirectionSign + 1) / 2;
       GradiusNeoGame.spawnedEntityCount = 0;
       if (GradiusNeoGame.state[StateSlot.StageWorldHeight] > GAME_VIEW_WIDTH) {
         if (((entityX + 48) | (272 - entityX)) < 0) {
@@ -2039,7 +2121,14 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         }
       }
 
-      GradiusNeoGame.renderQueue.beginEntity(entityId);
+      if (GradiusNeoGame.state[EntityField.Type + entityId] === 7) {
+        // Stage 4 recycles its dark/light trapezoid bands at different
+        // periods. Their command indices stay fixed while their positions
+        // wrap, so they require spatial rather than index-based matching.
+        GradiusNeoGame.renderQueue.beginMotionSource(-22, GradiusNeoGame.entityPool.generation(entityId));
+      } else {
+        GradiusNeoGame.renderQueue.beginEntity(entityId);
+      }
       switch (GradiusNeoGame.state[EntityField.Type + entityId]) {
         case EntityType.DelayedBackgroundMusic: {
           age = this.updateDelayedBackgroundMusicEntity(entityId, age);
@@ -2104,7 +2193,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 GradiusNeoGame.state[4606 + entityId] =
                   GradiusNeoGame.state[4606 + entityId] + (GradiusNeoGame.entityDirectionSign * 16 * 9) / 2;
                 if (age == 4) {
-                  GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 } else {
                   GradiusNeoGame.state[5118 + entityId] =
                     GradiusNeoGame.state[5118 + entityId] + (GradiusNeoGame.entityDirectionSign * 16 * 7) / 1;
@@ -2132,7 +2221,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               }
             }
 
-            for (let var63: int = 0; var63 < 4; var63++) {
+            for (let var63: number = 0; var63 < 4; var63++) {
               GradiusNeoGame.enqueueRenderCommand(
                 2,
                 GradiusNeoGame.state[4606 + entityId] + 16 + (var63 * 16 * 9) / 2,
@@ -2143,7 +2232,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               );
             }
 
-            for (let var64: int = 0; var64 < 3; var64++) {
+            for (let var64: number = 0; var64 < 3; var64++) {
               GradiusNeoGame.enqueueRenderCommand(
                 0,
                 GradiusNeoGame.state[5118 + entityId] + 0 + var64 * 16 * 7,
@@ -2167,13 +2256,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           entityX -= GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.entityDirectionSign;
           break;
         case 11:
-          let var62: int;
+          let var62: number;
           if ((var62 = (GradiusNeoGame.state[StateSlot.LogicFrame] - 1) % 6) < 2) {
-            let var32: int = 132 + var62 * 2;
+            let var32: number = 132 + var62 * 2;
             GradiusNeoGame.enqueueRenderCommand(0, entityX - 24, entityY - 24, 9, var32, 263176);
           }
 
-          let var31: int = 131 + (GradiusNeoGame.state[StateSlot.LogicFrame] % 2) * 2;
+          let var31: number = 131 + (GradiusNeoGame.state[StateSlot.LogicFrame] % 2) * 2;
           GradiusNeoGame.enqueueRenderCommand(0, entityX - 24, entityY - 24, 9, var31, 263176);
           GradiusNeoGame.entityDirectionSign = 0;
           GradiusNeoGame.removePrimaryEntity(entityId);
@@ -2181,7 +2270,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         case 13:
           GradiusNeoGame.entityDirectionSign = 0;
         case 14:
-          let var30: int = 121 + (GradiusNeoGame.state[EntityField.Type + entityId] - 13) * 2;
+          let var30: number = 121 + (GradiusNeoGame.state[EntityField.Type + entityId] - 13) * 2;
           GradiusNeoGame.enqueueRenderCommand(1, entityX, entityY, 16, var30 + age, 0);
           if (1 <= age) {
             GradiusNeoGame.removePrimaryEntity(entityId);
@@ -2200,15 +2289,15 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           );
           break;
         case 20:
-          let var103: int =
+          let var103: number =
             Number(GradiusNeoGame.timestamps[0] / 1000n) +
             GradiusNeoGame.state[StateSlot.LogicFrame] +
             entityId +
             entityX +
             entityY;
 
-          for (let var61: int = 0; var61 < (age + 1) % 4; var61++) {
-            let var28: int;
+          for (let var61: number = 0; var61 < (age + 1) % 4; var61++) {
+            let var28: number;
             if ((var28 = 14 + ((GradiusNeoGame.state[1055 + ((var103 + var61) & 63)] & 7) % 5)) == 17) {
               var28++;
             }
@@ -2262,8 +2351,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           }
           break;
         case 23:
-          let var60: int = 0;
-          let var4: int =
+          let var60: number = 0;
+          let var4: number =
             GradiusNeoGame.state[EntityField.Parameter0 + entityId] -
             (GradiusNeoGame.state[EntityField.Parameter1 + entityId] / 2) *
               GradiusNeoGame.state[EntityField.Parameter2 + entityId];
@@ -2313,7 +2402,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             }
           }
 
-          let var66: int;
+          let var66: number;
           entityX =
             (var66 =
               entityX + GradiusNeoGame.entityDirectionSign * GradiusNeoGame.state[EntityField.Parameter0 + entityId]) -
@@ -2414,7 +2503,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         case 48:
           GradiusNeoGame.entityDirectionSign =
             (directionSideIndex = GradiusNeoGame.state[EntityField.Type + entityId] - 47) * 2 - 1;
-          let var27: int = 229 + directionSideIndex * 2;
+          let var27: number = 229 + directionSideIndex * 2;
           if (GradiusNeoGame.state[EntityField.Parameter3 + entityId] == 1) {
             var27 = 232 + directionSideIndex * 4;
           } else if (GradiusNeoGame.state[EntityField.Parameter3 + entityId] == 2) {
@@ -2440,7 +2529,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     GradiusNeoGame.entityDirectionSign <
                   0
                 ) {
-                  GradiusNeoGame.state[4606 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, 4606 + entityId);
                 }
               } else {
                 if (GradiusNeoGame.state[4606 + entityId] == 2) {
@@ -2462,13 +2551,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   entityY = GradiusNeoGame.state[EntityField.YFixed + entityId] >> 4;
                 }
 
-                GradiusNeoGame.state[4606 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, 4606 + entityId);
               }
               break;
             case 2:
             case 3:
               GradiusNeoGame.state[0] = GradiusNeoGame.state[EntityField.Parameter1 + entityId] - 2;
-              let var84: int = GradiusNeoGame.state[0] * 2 - 1;
+              let var84: number = GradiusNeoGame.state[0] * 2 - 1;
               if (age == 0) {
                 GradiusNeoGame.state[4606 + entityId] = 0;
               }
@@ -2480,11 +2569,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     GradiusNeoGame.entityDirectionSign <
                   0
                 ) {
-                  GradiusNeoGame.state[4606 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, 4606 + entityId);
                 }
               } else {
                 if ((GradiusNeoGame.state[StateSlot.PlayerY] - entityY) * var84 < 0) {
-                  GradiusNeoGame.state[4606 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, 4606 + entityId);
                 }
 
                 if (GradiusNeoGame.state[4606 + entityId] == 1) {
@@ -2497,7 +2586,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             case 4:
             case 5:
               GradiusNeoGame.state[0] = GradiusNeoGame.state[EntityField.Parameter1 + entityId] - 4;
-              let var83: int = GradiusNeoGame.state[0] * 2 - 1;
+              let var83: number = GradiusNeoGame.state[0] * 2 - 1;
               if (age == 0) {
                 GradiusNeoGame.state[4606 + entityId] = 288;
               }
@@ -2514,7 +2603,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             case 6:
             case 7:
               GradiusNeoGame.state[0] = GradiusNeoGame.state[EntityField.Parameter1 + entityId] - 6;
-              let var82: int = GradiusNeoGame.state[0] * 2 - 1;
+              let var82: number = GradiusNeoGame.state[0] * 2 - 1;
               if ((age / 16) % 2 != 0) {
                 var82 *= -1;
               }
@@ -2525,8 +2614,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             case 8:
             case 9:
               GradiusNeoGame.state[0] = GradiusNeoGame.state[EntityField.Parameter1 + entityId] - 8;
-              let var81: int = GradiusNeoGame.state[0] * 2 - 1;
-              let var12: int;
+              let var81: number = GradiusNeoGame.state[0] * 2 - 1;
+              let var12: number;
               if ((age / 16) % 2 == 0) {
                 var12 =
                   (GradiusNeoGame.state[0] * 64) / 2 - (age % 16) * 2 * GradiusNeoGame.entityDirectionSign * var81 + 64;
@@ -2554,7 +2643,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           GradiusNeoGame.enqueueRenderCommand(2, entityX, entityY, 13, var27 + (age % 4), 0);
           if (
             GradiusNeoGame.applyEntityCollisionDamage(entityId, entityX + 4, entityY, 26, 16, 16) &&
-            ++GradiusNeoGame.state[9731 + GradiusNeoGame.state[EntityField.Parameter2 + entityId]] >=
+            incrementAndGet(GradiusNeoGame.state, 9731 + GradiusNeoGame.state[EntityField.Parameter2 + entityId]) >=
               GradiusNeoGame.state[EntityField.Parameter0 + entityId]
           ) {
             GradiusNeoGame.spawnEntity(114, entityX + 8, entityY, 0);
@@ -2570,8 +2659,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         case 54:
           GradiusNeoGame.entityDirectionSign =
             (directionSideIndex = (GradiusNeoGame.state[EntityField.Type + entityId] - 49) % 2) * 2 - 1;
-          let var79: int = ((GradiusNeoGame.state[EntityField.Type + entityId] - 49) / 2) * 2 - 1;
-          let var26: int = 152 + directionSideIndex * 8;
+          let var79: number = ((GradiusNeoGame.state[EntityField.Type + entityId] - 49) / 2) * 2 - 1;
+          let var26: number = 152 + directionSideIndex * 8;
           if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] != 0) {
             var26 -= 4;
           }
@@ -2590,7 +2679,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             if (GradiusNeoGame.state[EntityField.Parameter2 + entityId] <= age) {
               GradiusNeoGame.state[EntityField.Type + entityId] = 49;
               if (entityX < GradiusNeoGame.state[StateSlot.PlayerX]) {
-                GradiusNeoGame.state[EntityField.Type + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Type + entityId);
               }
 
               GradiusNeoGame.state[EntityField.Parameter1 + entityId] = 1;
@@ -2628,7 +2717,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           GradiusNeoGame.enqueueRenderCommand(2, entityX, entityY, 13, var26 + (age % 4), 0);
           if (GradiusNeoGame.applyEntityCollisionDamage(entityId, entityX + 4, entityY, 26, 16, 16)) {
             if (GradiusNeoGame.state[86] == 2) {
-              GradiusNeoGame.state[95]++;
+              getAndIncrement(GradiusNeoGame.state, 95);
             }
 
             if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] != 0) {
@@ -2641,7 +2730,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         case 57:
         case 58:
           GradiusNeoGame.entityDirectionSign = ((GradiusNeoGame.state[EntityField.Type + entityId] - 55) % 2) * 2 - 1;
-          let var25: short = 180;
+          let var25: number = 180;
           if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] != 0) {
             var25 -= 16;
           }
@@ -2702,12 +2791,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         case 63:
         case 64:
           GradiusNeoGame.entityDirectionSign = ((GradiusNeoGame.state[EntityField.Type + entityId] - 59) % 2) * 2 - 1;
-          let var78: int = ((GradiusNeoGame.state[EntityField.Type + entityId] - 59) / 2) * 2 - 1;
+          let var78: number = ((GradiusNeoGame.state[EntityField.Type + entityId] - 59) / 2) * 2 - 1;
           if (GradiusNeoGame.state[EntityField.Type + entityId] >= 63) {
             var78 = (GradiusNeoGame.state[EntityField.Type + entityId] - 63) * 2 - 1;
           }
 
-          let var72: byte = 0;
+          let var72: number = 0;
           if (
             (GradiusNeoGame.state[EntityField.XFixed + entityId] >> 4) + 16 <
             GradiusNeoGame.state[StateSlot.PlayerX]
@@ -2715,7 +2804,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             var72 = 1;
           }
 
-          let var24: int = 229 + var72 * 2;
+          let var24: number = 229 + var72 * 2;
           if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] != 0) {
             var24--;
           }
@@ -2752,7 +2841,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     0 <= entityX &&
                     entityX <= 144
                   ) {
-                    GradiusNeoGame.state[EntityField.Parameter2 + entityId]++;
+                    getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId);
                     age = 3;
                   }
                 } else if (
@@ -2763,7 +2852,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   GradiusNeoGame.state[EntityField.Parameter3 + entityId] * 16 <= entityX &&
                   entityX <= GAME_VIEW_WIDTH - (2 + GradiusNeoGame.state[EntityField.Parameter3 + entityId]) * 16
                 ) {
-                  GradiusNeoGame.state[EntityField.Parameter2 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId);
                   age = 3;
                 }
               } else {
@@ -2784,7 +2873,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     GradiusNeoGame.entityDirectionSign <=
                   0
                 ) {
-                  GradiusNeoGame.state[EntityField.Parameter2 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId);
                   GradiusNeoGame.state[4606 + entityId] = GradiusNeoGame.entityDirectionSign * 16;
                   age = 0;
                 }
@@ -2792,7 +2881,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             } else if (GradiusNeoGame.state[EntityField.Parameter2 + entityId] == 1) {
               if (GradiusNeoGame.state[EntityField.Parameter1 + entityId] == 0) {
                 if (age % 4 == 0) {
-                  let var102: int =
+                  let var102: number =
                     Number(GradiusNeoGame.timestamps[0] / 1000n) +
                     GradiusNeoGame.state[StateSlot.LogicFrame] +
                     entityId +
@@ -2859,7 +2948,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 }
 
                 if (age > 80) {
-                  GradiusNeoGame.state[EntityField.Parameter2 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId);
                   age = 1;
                   GradiusNeoGame.spawnEntity(
                     21,
@@ -2880,7 +2969,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   GradiusNeoGame.state[471 + GradiusNeoGame.state[4606 + entityId]] *
                     (6 + GradiusNeoGame.state[25] / 12);
                 if (age >= 48) {
-                  GradiusNeoGame.state[EntityField.Parameter2 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId);
                   age = 1;
                 }
               }
@@ -2931,7 +3020,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             ) {
               GradiusNeoGame.spawnEntity(114, entityX + 8, entityY, 0);
               if (GradiusNeoGame.state[86] > 0) {
-                GradiusNeoGame.state[95]++;
+                getAndIncrement(GradiusNeoGame.state, 95);
               }
             }
           }
@@ -2994,12 +3083,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           GradiusNeoGame.entityDirectionSign =
             (directionSideIndex = (GradiusNeoGame.state[EntityField.Type + entityId] - 66) % 2) * 2 - 1;
           GradiusNeoGame.state[0] = (GradiusNeoGame.state[EntityField.Type + entityId] - 66) / 4;
-          let var23: int =
+          let var23: number =
             212 +
             GradiusNeoGame.state[EntityField.Parameter0 + entityId] * 2 +
             directionSideIndex * 4 +
             GradiusNeoGame.state[0] * 1;
-          let var2: int =
+          let var2: number =
             220 +
             GradiusNeoGame.state[EntityField.Parameter0 + entityId] * 1 +
             directionSideIndex * 4 +
@@ -3086,12 +3175,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               GradiusNeoGame.state[EntityField.Parameter2 + entityId] = GradiusNeoGame.state[0];
             }
 
-            let var70: byte = 0;
+            let var70: number = 0;
             if (GradiusNeoGame.state[EntityField.Parameter2 + entityId] < 32) {
               var70 = 1;
             }
 
-            let var22: int = GAME_VIEW_WIDTH + var70 * 2 + GradiusNeoGame.state[EntityField.Parameter0 + entityId] * 1;
+            let var22: number =
+              GAME_VIEW_WIDTH + var70 * 2 + GradiusNeoGame.state[EntityField.Parameter0 + entityId] * 1;
             GradiusNeoGame.state[EntityField.Parameter2 + entityId] = GradiusNeoGame.rotateDirectionTowardPlayer(
               GradiusNeoGame.state[EntityField.XFixed + entityId],
               GradiusNeoGame.state[EntityField.YFixed + entityId],
@@ -3127,7 +3217,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 ((64 / GradiusNeoGame.state[1]) << 16) | (GradiusNeoGame.state[1] << 8) | 0,
               );
               if (GradiusNeoGame.state[86] > 0) {
-                GradiusNeoGame.state[95]++;
+                getAndIncrement(GradiusNeoGame.state, 95);
               }
             }
 
@@ -3143,7 +3233,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             GradiusNeoGame.state[EntityField.Health + entityId] = 1;
             GradiusNeoGame.state[EntityField.Parameter3 + entityId] = -1;
           } else {
-            let var77: int = GradiusNeoGame.state[EntityField.Parameter0 + entityId] * 2 - 1;
+            let var77: number = GradiusNeoGame.state[EntityField.Parameter0 + entityId] * 2 - 1;
             GradiusNeoGame.state[0] = GradiusNeoGame.state[StateSlot.LogicFrame] % 4;
             if (
               GradiusNeoGame.sampleTerrainCollision(
@@ -3158,7 +3248,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             if (GradiusNeoGame.state[EntityField.Parameter2 + entityId] == 0) {
               entityX += (GradiusNeoGame.state[EntityField.Parameter3 + entityId] * 16) / 8;
               if (age % 24 == 0) {
-                GradiusNeoGame.state[EntityField.Parameter2 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId);
               }
             } else {
               if (
@@ -3177,7 +3267,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 );
               }
 
-              if (GradiusNeoGame.state[EntityField.Parameter2 + entityId]++ >= 3) {
+              if (getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId) >= 3) {
                 GradiusNeoGame.state[EntityField.Parameter2 + entityId] = 0;
               }
 
@@ -3188,7 +3278,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               entityY + 16 >= GradiusNeoGame.state[StateSlot.CameraOffsetY] &&
               GradiusNeoGame.state[StateSlot.CameraOffsetY] + GAMEPLAY_HEIGHT >= entityY
             ) {
-              let var21: int =
+              let var21: number =
                 381 +
                 ((GradiusNeoGame.state[EntityField.Parameter3 + entityId] + 1) / 2) * 5 +
                 GradiusNeoGame.state[EntityField.Parameter0 + entityId] * 10 +
@@ -3222,13 +3312,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               GradiusNeoGame.state[EntityField.Parameter3 + entityId] = 1;
             }
           } else {
-            let var69: byte = 0;
+            let var69: number = 0;
             if (entityX < 120) {
               var69 = 1;
             }
 
             GradiusNeoGame.entityDirectionSign = var69 * 2 - 1;
-            let var20: int = 288 + var69 * 1;
+            let var20: number = 288 + var69 * 1;
             if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == -1) {
               entityX += GradiusNeoGame.entityDirectionSign * 4;
               if (GradiusNeoGame.state[EntityField.Type + entityId] == 78) {
@@ -3272,7 +3362,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 }
 
                 if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 1 && entityY <= -32) {
-                  GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 }
 
                 if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 3 && GAME_VIEW_WIDTH <= entityY) {
@@ -3287,13 +3377,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               }
 
               if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 0 && 192 <= entityX) {
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 GradiusNeoGame.state[EntityField.Parameter3 + entityId] = -1;
                 entityX = 192;
               }
 
               if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 2 && entityX <= 0) {
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 GradiusNeoGame.state[EntityField.Parameter3 + entityId] = 1;
                 entityX = 0;
               }
@@ -3322,7 +3412,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               GradiusNeoGame.spawnEntity(115, entityX + 16, entityY + 4, 0);
               GradiusNeoGame.requestSoundEffect(3);
               if (GradiusNeoGame.state[86] > 0) {
-                GradiusNeoGame.state[95]++;
+                getAndIncrement(GradiusNeoGame.state, 95);
               } else {
                 GradiusNeoGame.state[StateSlot.StageScrollSpeed] = 1;
                 GradiusNeoGame.state[StateSlot.StageScriptAdvancePerTick] = 1;
@@ -3336,7 +3426,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             GradiusNeoGame.state[EntityField.Parameter3 + entityId] = 3;
           } else {
             GradiusNeoGame.entityDirectionSign = -1;
-            let var19: int = 284 + GradiusNeoGame.state[EntityField.Parameter3 + entityId] * 1;
+            let var19: number = 284 + GradiusNeoGame.state[EntityField.Parameter3 + entityId] * 1;
             if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 0) {
               entityX -= 4;
               GradiusNeoGame.state[EntityField.Parameter3 + entityId] = (entityX - 176) / 16;
@@ -3346,7 +3436,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   GradiusNeoGame.state[EntityField.Parameter1 + entityId] = -1;
                 }
 
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
               }
             } else if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 1) {
               if (GradiusNeoGame.state[StateSlot.PlayerY] + 24 < entityY) {
@@ -3367,7 +3457,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 GradiusNeoGame.state[StateSlot.PlayerY] - 8 <= entityY &&
                 entityY <= GradiusNeoGame.state[StateSlot.PlayerY] + 8
               ) {
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 GradiusNeoGame.state[EntityField.Parameter2 + entityId] = 1;
                 GradiusNeoGame.spawnEntity(30, entityX, entityY, 8);
               }
@@ -3409,7 +3499,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 GradiusNeoGame.spawnEntity(115, entityX + 16, entityY, 0);
                 GradiusNeoGame.requestSoundEffect(3);
                 if (GradiusNeoGame.state[86] > 0) {
-                  GradiusNeoGame.state[95]++;
+                  getAndIncrement(GradiusNeoGame.state, 95);
                 } else {
                   GradiusNeoGame.state[StateSlot.StageScrollSpeed] = 1;
                   GradiusNeoGame.state[StateSlot.StageScriptAdvancePerTick] = 1;
@@ -3422,20 +3512,20 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           if (age >= 128) {
             if (age >= 140) {
               GradiusNeoGame.removePrimaryEntity(entityId);
-              GradiusNeoGame.state[95]++;
+              getAndIncrement(GradiusNeoGame.state, 95);
             }
           } else if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] <= 2) {
             if (age % (5 - GradiusNeoGame.state[25] / 9) == 0) {
-              let var100: int =
+              let var100: number =
                 Number(GradiusNeoGame.timestamps[0] / 1000n) +
                 GradiusNeoGame.state[StateSlot.LogicFrame] +
                 GradiusNeoGame.state[EntityField.Parameter1 + entityId];
               GradiusNeoGame.state[0] = 0;
               if (
                 GradiusNeoGame.state[EntityField.Parameter0 + entityId] % 2 == 0 &&
-                ++GradiusNeoGame.state[EntityField.Parameter1 + entityId] % 8 == 0
+                incrementAndGet(GradiusNeoGame.state, EntityField.Parameter1 + entityId) % 8 == 0
               ) {
-                GradiusNeoGame.state[0]++;
+                getAndIncrement(GradiusNeoGame.state, 0);
               }
 
               GradiusNeoGame.spawnEntity(
@@ -3449,16 +3539,16 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             GradiusNeoGame.state[EntityField.Parameter0 + entityId] <= 4 &&
             age % (6 - GradiusNeoGame.state[25] / 9) == 0
           ) {
-            let var101: int =
+            let var101: number =
               Number(GradiusNeoGame.timestamps[0] / 1000n) +
               GradiusNeoGame.state[StateSlot.LogicFrame] +
               GradiusNeoGame.state[EntityField.Parameter1 + entityId];
             GradiusNeoGame.state[0] = 1;
             if (
               GradiusNeoGame.state[EntityField.Parameter0 + entityId] % 2 == 0 &&
-              ++GradiusNeoGame.state[EntityField.Parameter1 + entityId] % 8 == 0
+              incrementAndGet(GradiusNeoGame.state, EntityField.Parameter1 + entityId) % 8 == 0
             ) {
-              GradiusNeoGame.state[0]++;
+              getAndIncrement(GradiusNeoGame.state, 0);
             }
 
             GradiusNeoGame.spawnEntity(
@@ -3470,7 +3560,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           }
           break;
         case 81:
-          let var18: int = 359;
+          let var18: number = 359;
           if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 1) {
             var18 = 349;
           }
@@ -3561,10 +3651,10 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             } else {
               if (age == 24) {
                 GradiusNeoGame.state[0] = 382;
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 GradiusNeoGame.state[EntityField.Parameter1 + entityId] = age + 16 + (GradiusNeoGame.state[25] / 4) * 4;
               } else if (age == 16) {
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
               }
 
               if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 1) {
@@ -3609,7 +3699,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
             GradiusNeoGame.state[9738] = 0;
 
-            for (let var59: int = 0; var59 < GradiusNeoGame.state[EntityField.Parameter3 + entityId]; var59++) {
+            for (let var59: number = 0; var59 < GradiusNeoGame.state[EntityField.Parameter3 + entityId]; var59++) {
               GradiusNeoGame.spawnAuxiliaryEntity(
                 87,
                 entityX + 16,
@@ -3624,7 +3714,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               GradiusNeoGame.state[EntityField.XFixed + entityId] =
                 GradiusNeoGame.state[EntityField.XFixed + entityId] - 96;
               if (GradiusNeoGame.state[EntityField.XFixed + entityId] >> 4 <= 160) {
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 age = 47;
               }
             } else if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 1) {
@@ -3645,13 +3735,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 GradiusNeoGame.state[StateSlot.Score] = GradiusNeoGame.state[StateSlot.Score] + 1000;
               }
 
-              GradiusNeoGame.state[5118 + entityId]++;
+              getAndIncrement(GradiusNeoGame.state, 5118 + entityId);
               GradiusNeoGame.spawnEntity(EntityType.TwoFrameLargeExplosion, entityX + 16, entityY + 16, 0);
-              GradiusNeoGame.state[9738]++;
+              getAndIncrement(GradiusNeoGame.state, 9738);
               GradiusNeoGame.spawnEntity(115, entityX + 16, entityY + 16, 0);
               GradiusNeoGame.requestSoundEffect(3);
               if (GradiusNeoGame.state[86] > 0) {
-                GradiusNeoGame.state[95]++;
+                getAndIncrement(GradiusNeoGame.state, 95);
               } else {
                 GradiusNeoGame.state[StateSlot.StageScrollSpeed] = 1;
                 GradiusNeoGame.state[StateSlot.StageScriptAdvancePerTick] = 1;
@@ -3670,7 +3760,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             GradiusNeoGame.state[StateSlot.CameraOffsetY] + GAMEPLAY_HEIGHT >= entityY - 88 &&
             age % (13 - GradiusNeoGame.state[25] / 4) == 0
           ) {
-            let var99: int =
+            let var99: number =
               Number(GradiusNeoGame.timestamps[0] / 1000n) +
               GradiusNeoGame.state[StateSlot.LogicFrame] +
               entityId +
@@ -3710,7 +3800,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               GradiusNeoGame.state[EntityField.Parameter0 + entityId],
               8,
             );
-            let var17: int = 365 + GradiusNeoGame.state[EntityField.Parameter1 + entityId] * 2;
+            let var17: number = 365 + GradiusNeoGame.state[EntityField.Parameter1 + entityId] * 2;
             GradiusNeoGame.enqueueRenderCommand(2, entityX, entityY, 13, var17 + (age & 1) * 1, 0);
             if (
               GradiusNeoGame.sampleTerrainCollision(entityX, entityY - GradiusNeoGame.state[StateSlot.CameraOffsetY]) <
@@ -3739,20 +3829,20 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               GradiusNeoGame.state[EntityField.Parameter3 + entityId] = 1;
             }
 
-            let var76: int = (GradiusNeoGame.state[0] & 1) * 2 - 1;
+            let var76: number = (GradiusNeoGame.state[0] & 1) * 2 - 1;
             entityY += var76;
             GradiusNeoGame.state[1] = 0;
             if ((age + 4) % 32 <= 4) {
               GradiusNeoGame.state[1] = ((age & 1) * 2 - 1) * 2;
               if ((age & 1) == 1) {
-                let var98: int =
+                let var98: number =
                   Number(GradiusNeoGame.timestamps[0] / 1000n) +
                   GradiusNeoGame.state[StateSlot.LogicFrame] +
                   entityId +
                   entityX +
                   entityY;
 
-                for (let var58: int = 0; var58 <= GradiusNeoGame.state[25] / 10; var58++) {
+                for (let var58: number = 0; var58 <= GradiusNeoGame.state[25] / 10; var58++) {
                   GradiusNeoGame.state[2] =
                     ((GradiusNeoGame.state[1055 + ((var98 + var58) & 63)] & 0xff) % 25) +
                     4 +
@@ -3768,7 +3858,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               }
             }
 
-            let var16: int = 379 + ((GradiusNeoGame.state[EntityField.Parameter3 + entityId] + 1) / 2) * 1;
+            let var16: number = 379 + ((GradiusNeoGame.state[EntityField.Parameter3 + entityId] + 1) / 2) * 1;
             GradiusNeoGame.enqueueRenderCommand(0, entityX + GradiusNeoGame.state[1], entityY, 12, var16, 197379);
             if (GradiusNeoGame.applyEntityCollisionDamage(entityId, entityX + 8, entityY + 8, 32, 32, 10)) {
               GradiusNeoGame.removePrimaryEntity(entityId);
@@ -3800,7 +3890,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 GradiusNeoGame.state[EntityField.Parameter2 + entityId],
                 6,
               );
-              GradiusNeoGame.state[EntityField.Parameter1 + entityId]--;
+              getAndDecrement(GradiusNeoGame.state, EntityField.Parameter1 + entityId);
             } else if (age <= 80) {
               GradiusNeoGame.state[EntityField.Parameter2 + entityId] = GradiusNeoGame.rotateDirectionTowardPlayer(
                 GradiusNeoGame.state[EntityField.XFixed + entityId],
@@ -3827,7 +3917,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               GradiusNeoGame.state[EntityField.Parameter3 + entityId] = 1;
             }
 
-            let var15: int = 371 + ((GradiusNeoGame.state[EntityField.Parameter3 + entityId] + 1) / 2) * 1;
+            let var15: number = 371 + ((GradiusNeoGame.state[EntityField.Parameter3 + entityId] + 1) / 2) * 1;
             GradiusNeoGame.enqueueRenderCommand(1, entityX, entityY, 13, var15, 0);
             GradiusNeoGame.applyEntityCollisionDamage(entityId, entityX, entityY, 16, 16, 16);
           } else {
@@ -3837,13 +3927,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         case 92:
         case 93:
           directionSideIndex = (GradiusNeoGame.entityDirectionSign + 1) / 2;
-          let var14: short = 349;
+          let var14: number = 349;
           if (GradiusNeoGame.state[EntityField.Type + entityId] == 93) {
             var14 = 350;
           }
 
           if (age % 32 == 0) {
-            let var97: int =
+            let var97: number =
               Number(GradiusNeoGame.timestamps[0] / 1000n) +
               GradiusNeoGame.state[StateSlot.LogicFrame] +
               entityId +
@@ -3868,7 +3958,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               entityX = -GradiusNeoGame.state[4606 + entityId];
             }
           } else {
-            let var11: byte = 0;
+            let var11: number = 0;
             if (GradiusNeoGame.state[StateSlot.PlayerY] + 16 <= entityY) {
               var11 = -1;
             }
@@ -3955,7 +4045,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   16 -
                   directionSideIndex * GradiusNeoGame.state[4606 + entityId]
               ) {
-                GradiusNeoGame.state[1]++;
+                getAndIncrement(GradiusNeoGame.state, 1);
               }
 
               GradiusNeoGame.state[2] = 0;
@@ -4060,7 +4150,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             GradiusNeoGame.state[EntityField.Health + entityId] = 256 + GradiusNeoGame.state[25] * 8;
             GradiusNeoGame.state[9738] = 0;
 
-            for (let var57: int = 0; var57 < 8; var57++) {
+            for (let var57: number = 0; var57 < 8; var57++) {
               GradiusNeoGame.spawnAuxiliaryEntity(95, entityX + 16, entityY + 16, (var57 << 8) | entityId);
             }
 
@@ -4069,18 +4159,18 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 0) {
               entityX -= 6;
               if (entityX <= 144) {
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
               }
             } else if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 1) {
               entityY += GradiusNeoGame.state[EntityField.Parameter1 + entityId] * (GradiusNeoGame.state[25] / 12 + 2);
               if (age % (64 - GradiusNeoGame.state[25]) == 0) {
                 GradiusNeoGame.spawnAuxiliaryEntity(33, -16, 24, 16777216 | (entityId << 16) | 256 | 12);
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 GradiusNeoGame.state[EntityField.Parameter2 + entityId] = 0;
               }
             } else if (
               GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 2 &&
-              ++GradiusNeoGame.state[EntityField.Parameter2 + entityId] >= 20
+              incrementAndGet(GradiusNeoGame.state, EntityField.Parameter2 + entityId) >= 20
             ) {
               GradiusNeoGame.state[EntityField.Parameter0 + entityId] = 1;
               GradiusNeoGame.state[EntityField.Parameter1 + entityId] = -1;
@@ -4121,11 +4211,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
               GradiusNeoGame.spawnEntity(EntityType.TwoFrameLargeExplosion, entityX + 40, entityY + 24, 0);
               GradiusNeoGame.spawnEntity(20, entityX + 40, entityY + 24, 2627594);
-              GradiusNeoGame.state[9738]++;
-              GradiusNeoGame.state[85]++;
+              getAndIncrement(GradiusNeoGame.state, 9738);
+              getAndIncrement(GradiusNeoGame.state, 85);
               this.stopAllAudio();
               GradiusNeoGame.requestSoundEffect(9);
-              GradiusNeoGame.state[34]++;
+              getAndIncrement(GradiusNeoGame.state, 34);
               GradiusNeoGame.removePrimaryEntity(entityId);
             }
 
@@ -4151,7 +4241,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == -2) {
               entityX -= 4;
               if (entityX <= 176) {
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 GradiusNeoGame.state[EntityField.Parameter2 + entityId] = 4;
               }
             } else if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] >= -1) {
@@ -4163,7 +4253,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 }
               }
 
-              GradiusNeoGame.state[EntityField.Parameter2 + entityId]++;
+              getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId);
               if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] >= 0) {
                 if (GradiusNeoGame.state[4606 + entityId] == 0) {
                   entityY -= GradiusNeoGame.state[EntityField.YFixed + entityId] * (2 + GradiusNeoGame.state[25] / 8);
@@ -4179,14 +4269,14 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     GradiusNeoGame.state[EntityField.Parameter0 + entityId] = -1;
                   }
                 } else if (GradiusNeoGame.state[4606 + entityId] == 1) {
-                  if (GradiusNeoGame.state[EntityField.Parameter0 + entityId]++ == 0) {
+                  if (getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId) == 0) {
                     GradiusNeoGame.spawnAuxiliaryEntity(
                       35,
                       8 + (GradiusNeoGame.state[EntityField.XFixed + entityId] * 16 * 3) / 2,
                       0,
                       16777216 | (entityId << 16) | 512 | 20,
                     );
-                    GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                    getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                   }
                 } else if (GradiusNeoGame.state[4606 + entityId] == 2) {
                   entityY -= GradiusNeoGame.state[EntityField.YFixed + entityId] * (2 + GradiusNeoGame.state[25] / 8);
@@ -4231,7 +4321,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 }
 
                 if (GradiusNeoGame.state[EntityField.Parameter2 + entityId] % 32 == 0) {
-                  let var96: int =
+                  let var96: number =
                     Number(GradiusNeoGame.timestamps[0] / 1000n) +
                     GradiusNeoGame.state[StateSlot.LogicFrame] +
                     entityId +
@@ -4283,10 +4373,10 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
               GradiusNeoGame.spawnEntity(EntityType.TwoFrameLargeExplosion, entityX + 8, entityY + 8, 0);
               GradiusNeoGame.spawnEntity(20, entityX + 8, entityY - 16, 2109450);
-              GradiusNeoGame.state[85]++;
+              getAndIncrement(GradiusNeoGame.state, 85);
               this.stopAllAudio();
               GradiusNeoGame.requestSoundEffect(9);
-              GradiusNeoGame.state[34]++;
+              getAndIncrement(GradiusNeoGame.state, 34);
               GradiusNeoGame.removePrimaryEntity(entityId);
             }
 
@@ -4328,7 +4418,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == -4) {
               entityX -= 8;
               if (entityX + 256 < 0) {
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 entityY = 88;
               }
             } else if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == -3) {
@@ -4382,7 +4472,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                       131590,
                     );
                   } else {
-                    for (let var55: int = 0; var55 < 4; var55++) {
+                    for (let var55: number = 0; var55 < 4; var55++) {
                       GradiusNeoGame.enqueueRenderCommand(
                         1,
                         160 + (var55 % 2) * 16,
@@ -4393,7 +4483,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                       );
                     }
 
-                    for (let var56: int = 0; var56 < 10; var56++) {
+                    for (let var56: number = 0; var56 < 10; var56++) {
                       GradiusNeoGame.enqueueRenderCommand(1, 16 * var56, entityY + 40 + -48, 8, 277, 0);
                       GradiusNeoGame.enqueueRenderCommand(1, 16 * var56, entityY + 40 + -48 + 16, 8, 3, 0);
                       GradiusNeoGame.enqueueRenderCommand(1, 16 * var56, entityY + 40 + -48 + 32, 8, 3, 0);
@@ -4460,11 +4550,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
               GradiusNeoGame.spawnEntity(EntityType.TwoFrameLargeExplosion, entityX + 80, entityY + 32, 0);
               GradiusNeoGame.spawnEntity(20, entityX + 40, entityY + 32, 2625546);
-              GradiusNeoGame.state[9738]++;
+              getAndIncrement(GradiusNeoGame.state, 9738);
               this.stopAllAudio();
               GradiusNeoGame.requestSoundEffect(9);
-              GradiusNeoGame.state[34]++;
-              GradiusNeoGame.state[5118 + entityId]++;
+              getAndIncrement(GradiusNeoGame.state, 34);
+              getAndIncrement(GradiusNeoGame.state, 5118 + entityId);
             }
 
             GradiusNeoGame.resolveEntityCollisions(entityId, entityX + 80, entityY + 16, 128, 44);
@@ -4499,10 +4589,10 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
               if (GradiusNeoGame.state[EntityField.Parameter1 + entityId] == 0) {
                 if (age % (48 - GradiusNeoGame.state[25]) == 0) {
-                  let var93: int =
+                  let var93: number =
                     GradiusNeoGame.state[StateSlot.PlayerX] +
                     GradiusNeoGame.state[StateSlot.PlayerY] +
-                    GradiusNeoGame.state[4]++;
+                    getAndIncrement(GradiusNeoGame.state, 4);
                   GradiusNeoGame.state[0] = 16 * (7 + (GradiusNeoGame.state[1055 + (var93 & 63)] % 6));
                   GradiusNeoGame.state[1] = 63;
                   if (GradiusNeoGame.state[0] <= 96) {
@@ -4519,10 +4609,10 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 }
               } else if (GradiusNeoGame.state[EntityField.Parameter1 + entityId] == 1) {
                 if (age % (16 - GradiusNeoGame.state[25] / 4) == 0) {
-                  let var94: int =
+                  let var94: number =
                     GradiusNeoGame.state[StateSlot.PlayerX] +
                     GradiusNeoGame.state[StateSlot.PlayerY] +
-                    GradiusNeoGame.state[4]++;
+                    getAndIncrement(GradiusNeoGame.state, 4);
                   GradiusNeoGame.state[0] = (GradiusNeoGame.state[1055 + (var94 & 63)] & 15) % 5;
                   GradiusNeoGame.spawnEntity(
                     21,
@@ -4535,10 +4625,10 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 GradiusNeoGame.state[EntityField.Parameter1 + entityId] == 2 &&
                 age % (24 - GradiusNeoGame.state[25] / 16) == 0
               ) {
-                let var95: int =
+                let var95: number =
                   GradiusNeoGame.state[StateSlot.PlayerX] +
                   GradiusNeoGame.state[StateSlot.PlayerY] +
-                  GradiusNeoGame.state[4]++;
+                  getAndIncrement(GradiusNeoGame.state, 4);
                 GradiusNeoGame.state[0] = (GradiusNeoGame.state[1055 + (var95 & 63)] & 15) % 5;
                 GradiusNeoGame.spawnEntity(
                   23,
@@ -4553,34 +4643,34 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               }
 
               if (age % 128 == 0) {
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 GradiusNeoGame.state[5118 + entityId] = GradiusNeoGame.entityDirectionSign;
               }
             } else if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == -1) {
               GradiusNeoGame.state[4606 + entityId] =
                 GradiusNeoGame.state[4606 + entityId] + GradiusNeoGame.state[5118 + entityId] * 2;
               if (0 >= GradiusNeoGame.entityDirectionSign * GradiusNeoGame.state[4606 + entityId]) {
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]--;
-                let var92: int =
+                getAndDecrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
+                let var92: number =
                   GradiusNeoGame.state[StateSlot.PlayerX] +
                   GradiusNeoGame.state[StateSlot.PlayerY] +
-                  GradiusNeoGame.state[4]++;
+                  getAndIncrement(GradiusNeoGame.state, 4);
                 GradiusNeoGame.state[EntityField.Parameter1 + entityId] =
                   (GradiusNeoGame.state[1055 + (var92 & 63)] & 15) % 3;
                 GradiusNeoGame.state[5] = (GradiusNeoGame.state[1055 + ((var92 + 1) & 63)] & 15) % 5;
                 GradiusNeoGame.state[6] = (GradiusNeoGame.state[1055 + ((var92 + 2) & 63)] & 1) * 2 - 1;
               } else if (16 <= GradiusNeoGame.entityDirectionSign * GradiusNeoGame.state[4606 + entityId]) {
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 GradiusNeoGame.state[EntityField.Parameter2 + entityId] = 1;
               }
             } else if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] < 0) {
               if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == -4) {
                 if (GradiusNeoGame.state[StateSlot.VisualStageScrollX] % 48 == 0) {
-                  GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                   entityX = 272;
                 }
               } else if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == -3 && entityX <= 176) {
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 GradiusNeoGame.state[StateSlot.StageScrollSpeed] = 0;
                 GradiusNeoGame.state[103] =
                   GradiusNeoGame.state[104] =
@@ -4609,11 +4699,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     131590,
                   );
                 } else {
-                  for (let var53: int = 0; var53 < 8; var53++) {
+                  for (let var53: number = 0; var53 < 8; var53++) {
                     GradiusNeoGame.enqueueRenderCommand(1, 128 + (var53 % 2) * 16, 80 + (var53 / 2) * 16, 8, 3, 0);
                   }
 
-                  for (let var54: int = 0; var54 < 8; var54++) {
+                  for (let var54: number = 0; var54 < 8; var54++) {
                     GradiusNeoGame.enqueueRenderCommand(1, var54 * 16, 48, 8, 277, 0);
                     GradiusNeoGame.enqueueRenderCommand(1, var54 * 16, 64, 8, 3, 0);
                     GradiusNeoGame.enqueueRenderCommand(1, var54 * 16, 80, 8, 3, 0);
@@ -4647,7 +4737,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
               if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] <= 0) {
                 GradiusNeoGame.state[EntityField.Parameter2 + entityId] = -1;
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]--;
+                getAndDecrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 GradiusNeoGame.state[5118 + entityId] = -GradiusNeoGame.entityDirectionSign;
               }
 
@@ -4675,7 +4765,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 GradiusNeoGame.requestSoundEffect(9);
               }
 
-              if (GradiusNeoGame.state[EntityField.Parameter3 + entityId]++ >= 8) {
+              if (getAndIncrement(GradiusNeoGame.state, EntityField.Parameter3 + entityId) >= 8) {
                 GradiusNeoGame.removePrimaryEntity(entityId);
               }
             } else if (GradiusNeoGame.state[EntityField.Health + entityId] <= 0 || age >= 1500) {
@@ -4687,12 +4777,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               GradiusNeoGame.spawnEntity(20, entityX + 32, 48, 3170314);
               GradiusNeoGame.spawnEntity(20, entityX + 24, 104, 4218890);
               GradiusNeoGame.spawnEntity(20, entityX + 32, 160, 3170314);
-              GradiusNeoGame.state[85]++;
+              getAndIncrement(GradiusNeoGame.state, 85);
               this.stopAllAudio();
               GradiusNeoGame.requestSoundEffect(9);
               GradiusNeoGame.state[EntityField.Parameter0 + entityId] = -5;
-              GradiusNeoGame.state[EntityField.Parameter3 + entityId]++;
-              GradiusNeoGame.state[34]++;
+              getAndIncrement(GradiusNeoGame.state, EntityField.Parameter3 + entityId);
+              getAndIncrement(GradiusNeoGame.state, 34);
             }
 
             if (GradiusNeoGame.state[EntityField.Parameter3 + entityId] < 6) {
@@ -4721,7 +4811,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           break;
         case 100:
           if (age == 0) {
-            for (let var49: int = 0; var49 < 16; var49++) {
+            for (let var49: number = 0; var49 < 16; var49++) {
               if (var49 < 4) {
                 GradiusNeoGame.state[103 + var49] = 40 + (var49 % 4) * 16 * 3;
                 GradiusNeoGame.state[127 + var49] = 208;
@@ -4742,7 +4832,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               if (age <= 8) {
                 GradiusNeoGame.state[0] = 5;
 
-                for (let var51: int = 0; var51 < 16; var51++) {
+                for (let var51: number = 0; var51 < 16; var51++) {
                   if (var51 < 4) {
                     GradiusNeoGame.state[127 + var51] = GradiusNeoGame.state[127 + var51] - 2;
                   } else if (var51 < 8) {
@@ -4754,9 +4844,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   }
                 }
               } else if (age >= 200) {
-                GradiusNeoGame.state[EntityField.Parameter2 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId);
               } else {
-                let var91: int =
+                let var91: number =
                   GradiusNeoGame.state[StateSlot.PlayerX] +
                   GradiusNeoGame.state[StateSlot.PlayerY] +
                   GradiusNeoGame.state[EntityField.Parameter1 + entityId];
@@ -4769,13 +4859,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     GradiusNeoGame.state[127 + GradiusNeoGame.state[1]],
                     GradiusNeoGame.state[2],
                   );
-                  GradiusNeoGame.state[EntityField.Parameter1 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, EntityField.Parameter1 + entityId);
                 }
               }
             } else {
               GradiusNeoGame.state[0] = 5;
 
-              for (let var50: int = 0; var50 < 16; var50++) {
+              for (let var50: number = 0; var50 < 16; var50++) {
                 if (var50 < 4) {
                   GradiusNeoGame.state[127 + var50] = GradiusNeoGame.state[127 + var50] - -2;
                 } else if (var50 < 8) {
@@ -4787,13 +4877,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 }
               }
 
-              if (GradiusNeoGame.state[EntityField.Parameter2 + entityId]++ >= 8) {
+              if (getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId) >= 8) {
                 GradiusNeoGame.removePrimaryEntity(entityId);
-                GradiusNeoGame.state[95]++;
+                getAndIncrement(GradiusNeoGame.state, 95);
               }
             }
 
-            for (let var52: int = 0; var52 < 16; var52++) {
+            for (let var52: number = 0; var52 < 16; var52++) {
               GradiusNeoGame.enqueueRenderCommand(
                 1,
                 GradiusNeoGame.state[103 + var52],
@@ -4814,7 +4904,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           break;
         case 101:
           if (age == 0) {
-            for (let var45: int = 0; var45 < 24; var45++) {
+            for (let var45: number = 0; var45 < 24; var45++) {
               GradiusNeoGame.state[103 + var45] = GAMEPLAY_HEIGHT - (var45 / 12) * 16 * 14;
               GradiusNeoGame.state[127 + var45] = 0;
               if (var45 < 12) {
@@ -4829,14 +4919,14 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               if (age <= 8) {
                 GradiusNeoGame.state[0] = 5;
 
-                for (let var47: int = 0; var47 < 24; var47++) {
+                for (let var47: number = 0; var47 < 24; var47++) {
                   GradiusNeoGame.state[103 + var47] =
                     GradiusNeoGame.state[103 + var47] + (((var47 / 12) * 2 - 1) * 16) / 8;
                 }
               } else if (age >= 300) {
-                GradiusNeoGame.state[EntityField.Parameter2 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId);
               } else {
-                let var90: int =
+                let var90: number =
                   GradiusNeoGame.state[StateSlot.PlayerX] +
                   GradiusNeoGame.state[StateSlot.PlayerY] +
                   GradiusNeoGame.state[EntityField.Parameter1 + entityId];
@@ -4856,24 +4946,24 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     16 + (GradiusNeoGame.state[1] % 12) * 16,
                     1288,
                   );
-                  GradiusNeoGame.state[EntityField.Parameter1 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, EntityField.Parameter1 + entityId);
                 }
               }
             } else {
               GradiusNeoGame.state[0] = 5;
 
-              for (let var46: int = 0; var46 < 24; var46++) {
+              for (let var46: number = 0; var46 < 24; var46++) {
                 GradiusNeoGame.state[103 + var46] =
                   GradiusNeoGame.state[103 + var46] - (((var46 / 12) * 2 - 1) * 16) / 8;
               }
 
-              if (GradiusNeoGame.state[EntityField.Parameter2 + entityId]++ >= 8) {
+              if (getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId) >= 8) {
                 GradiusNeoGame.removePrimaryEntity(entityId);
-                GradiusNeoGame.state[95]++;
+                getAndIncrement(GradiusNeoGame.state, 95);
               }
             }
 
-            for (let var48: int = 0; var48 < 24; var48++) {
+            for (let var48: number = 0; var48 < 24; var48++) {
               if (
                 (var48 < 12 || GradiusNeoGame.state[EntityField.Parameter0 + entityId] != 0) &&
                 GradiusNeoGame.state[127 + var48] > 0
@@ -4896,7 +4986,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     16,
                   );
                 if (GradiusNeoGame.state[127 + var48] <= 0) {
-                  GradiusNeoGame.state[EntityField.Parameter3 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, EntityField.Parameter3 + entityId);
                   GradiusNeoGame.state[StateSlot.Score] = GradiusNeoGame.state[StateSlot.Score] + 500;
                   GradiusNeoGame.spawnEntity(
                     EntityType.ThreeFrameEffectA,
@@ -4915,14 +5005,14 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               GradiusNeoGame.spawnedEntityCount == 0
             ) {
               GradiusNeoGame.removePrimaryEntity(entityId);
-              GradiusNeoGame.state[95]++;
+              getAndIncrement(GradiusNeoGame.state, 95);
             }
           }
           break;
         case 102:
           if (age == 0) {
-            for (let var41: int = 0; var41 < 6; var41++) {
-              let var87: int =
+            for (let var41: number = 0; var41 < 6; var41++) {
+              let var87: number =
                 Number(GradiusNeoGame.timestamps[0] / 1000n) +
                 GradiusNeoGame.state[StateSlot.LogicFrame] +
                 GradiusNeoGame.state[EntityField.Parameter1 + entityId];
@@ -4932,7 +5022,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 ((GradiusNeoGame.state[25] / 12) * 16) / 8 +
                 ((GradiusNeoGame.state[1055 + (var87 & 63)] & 3) * 16) / 8;
               GradiusNeoGame.state[127 + var41] = GradiusNeoGame.state[127 + var41] * ((var41 & 1) * 2 - 1);
-              GradiusNeoGame.state[EntityField.Parameter1 + entityId]++;
+              getAndIncrement(GradiusNeoGame.state, EntityField.Parameter1 + entityId);
             }
 
             GradiusNeoGame.state[EntityField.Parameter2 + entityId] = -1;
@@ -4946,35 +5036,35 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               );
               GradiusNeoGame.state[StateSlot.Score] = GradiusNeoGame.state[StateSlot.Score] + 2000;
               GradiusNeoGame.requestSoundEffect(3);
-              if (++GradiusNeoGame.state[EntityField.Parameter2 + entityId] >= 6) {
+              if (incrementAndGet(GradiusNeoGame.state, EntityField.Parameter2 + entityId) >= 6) {
                 GradiusNeoGame.removePrimaryEntity(entityId);
-                GradiusNeoGame.state[95]++;
+                getAndIncrement(GradiusNeoGame.state, 95);
               }
             } else if (age <= 16) {
-              for (let var43: int = 0; var43 < 6; var43++) {
+              for (let var43: number = 0; var43 < 6; var43++) {
                 GradiusNeoGame.state[103 + var43] =
                   GradiusNeoGame.state[103 + var43] + (((var43 & 1) * 2 - 1) * 16) / 8;
               }
             } else if (age >= 200) {
-              GradiusNeoGame.state[EntityField.Parameter2 + entityId]++;
+              getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId);
             } else {
-              for (let var42: int = 0; var42 < 6; var42++) {
+              for (let var42: number = 0; var42 < 6; var42++) {
                 GradiusNeoGame.state[103 + var42] =
                   GradiusNeoGame.state[103 + var42] + GradiusNeoGame.state[127 + var42];
                 if (GradiusNeoGame.state[127 + var42] < 0 && GradiusNeoGame.state[103 + var42] <= 16) {
-                  let var89: int =
+                  let var89: number =
                     GradiusNeoGame.state[StateSlot.PlayerX] +
                     GradiusNeoGame.state[StateSlot.PlayerY] +
-                    GradiusNeoGame.state[EntityField.Parameter1 + entityId]++;
+                    getAndIncrement(GradiusNeoGame.state, EntityField.Parameter1 + entityId);
                   GradiusNeoGame.state[127 + var42] =
                     4 +
                     ((GradiusNeoGame.state[25] / 12) * 16) / 8 +
                     ((GradiusNeoGame.state[1055 + (var89 & 63)] & 3) * 16) / 8;
                 } else if (GradiusNeoGame.state[127 + var42] > 0 && GradiusNeoGame.state[103 + var42] >= 192) {
-                  let var88: int =
+                  let var88: number =
                     GradiusNeoGame.state[StateSlot.PlayerX] +
                     GradiusNeoGame.state[StateSlot.PlayerY] +
-                    GradiusNeoGame.state[EntityField.Parameter1 + entityId]++;
+                    getAndIncrement(GradiusNeoGame.state, EntityField.Parameter1 + entityId);
                   GradiusNeoGame.state[127 + var42] =
                     4 +
                     ((GradiusNeoGame.state[25] / 12) * 16) / 8 +
@@ -4984,7 +5074,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               }
             }
 
-            for (let var44: int = 0; var44 < 6; var44++) {
+            for (let var44: number = 0; var44 < 6; var44++) {
               if (GradiusNeoGame.state[EntityField.Parameter2 + entityId] <= var44) {
                 GradiusNeoGame.enqueueRenderCommand(
                   0,
@@ -5007,7 +5097,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           break;
         case 103:
           if (age == 0) {
-            for (let var37: int = 0; var37 < 6; var37++) {
+            for (let var37: number = 0; var37 < 6; var37++) {
               GradiusNeoGame.state[103 + var37] = 24 + var37 * 16 * 2;
               GradiusNeoGame.state[127 + var37] = 208;
               if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 1) {
@@ -5020,7 +5110,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             if (GradiusNeoGame.state[EntityField.Parameter2 + entityId] > 0) {
               GradiusNeoGame.state[0] = 5;
 
-              for (let var38: int = 0; var38 < 6; var38++) {
+              for (let var38: number = 0; var38 < 6; var38++) {
                 if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 0) {
                   GradiusNeoGame.state[127 + var38] = GradiusNeoGame.state[127 + var38] + 2;
                 } else {
@@ -5029,15 +5119,15 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 }
               }
 
-              if (GradiusNeoGame.state[EntityField.Parameter2 + entityId]++ >= 8) {
+              if (getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId) >= 8) {
                 GradiusNeoGame.removePrimaryEntity(entityId);
-                GradiusNeoGame.state[95]++;
+                getAndIncrement(GradiusNeoGame.state, 95);
                 break;
               }
             } else if (age <= 16) {
               GradiusNeoGame.state[0] = 5;
 
-              for (let var39: int = 0; var39 < 6; var39++) {
+              for (let var39: number = 0; var39 < 6; var39++) {
                 if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 0) {
                   GradiusNeoGame.state[127 + var39] = GradiusNeoGame.state[127 + var39] - 2;
                 } else {
@@ -5046,11 +5136,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 }
               }
             } else if (age <= 18) {
-              GradiusNeoGame.state[EntityField.Parameter3 + entityId]++;
+              getAndIncrement(GradiusNeoGame.state, EntityField.Parameter3 + entityId);
             } else if (age >= 200) {
-              GradiusNeoGame.state[EntityField.Parameter2 + entityId]++;
+              getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId);
             } else {
-              let var86: int =
+              let var86: number =
                 GradiusNeoGame.state[StateSlot.LogicFrame] +
                 GradiusNeoGame.state[StateSlot.PlayerX] +
                 GradiusNeoGame.state[StateSlot.PlayerY] +
@@ -5069,7 +5159,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     GradiusNeoGame.state[127 + GradiusNeoGame.state[1]] + 16,
                     8192 | GradiusNeoGame.state[2],
                   );
-                  GradiusNeoGame.state[EntityField.Parameter1 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, EntityField.Parameter1 + entityId);
                 }
               } else if (age % (6 - GradiusNeoGame.state[25] / 9) == 0) {
                 GradiusNeoGame.state[2] = 0;
@@ -5083,11 +5173,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   GradiusNeoGame.state[127 + GradiusNeoGame.state[1]] + 16 * (GradiusNeoGame.state[1] / 3),
                   ((((GradiusNeoGame.state[1] / 3) * 64) / 2) << 8) | GradiusNeoGame.state[2],
                 );
-                GradiusNeoGame.state[EntityField.Parameter1 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter1 + entityId);
               }
             }
 
-            for (let var40: int = 0; var40 < 6; var40++) {
+            for (let var40: number = 0; var40 < 6; var40++) {
               if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 0) {
                 GradiusNeoGame.enqueueRenderCommand(
                   0,
@@ -5147,7 +5237,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           }
 
           if (4 <= GradiusNeoGame.state[EntityField.Parameter0 + entityId]) {
-            GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+            getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
             GradiusNeoGame.state[EntityField.Parameter0 + entityId] =
               4 + (GradiusNeoGame.state[EntityField.Parameter0 + entityId] & 1);
             GradiusNeoGame.state[0] = GradiusNeoGame.state[EntityField.Parameter0 + entityId];
@@ -5155,7 +5245,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               GradiusNeoGame.state[0] = 4;
             }
           } else {
-            GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+            getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
             GradiusNeoGame.state[EntityField.Parameter0 + entityId] =
               GradiusNeoGame.state[EntityField.Parameter0 + entityId] & 3;
             GradiusNeoGame.state[0] = GradiusNeoGame.state[EntityField.Parameter0 + entityId];
@@ -5189,23 +5279,23 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           break;
         case 105:
           if (age == 0) {
-            for (let var35: int = 0; var35 < 156; var35++) {
+            for (let var35: number = 0; var35 < 156; var35++) {
               GradiusNeoGame.state[151 + var35] = 0;
             }
           }
 
           if (age % (3 + GradiusNeoGame.state[EntityField.Parameter0 + entityId]) == 0) {
             GradiusNeoGame.state[2] = 0;
-            let var85: int =
+            let var85: number =
               GradiusNeoGame.state[StateSlot.Score] / 100 +
               GradiusNeoGame.state[StateSlot.PlayerX] +
               GradiusNeoGame.state[StateSlot.PlayerY] +
               GradiusNeoGame.state[EntityField.Parameter1 + entityId];
             GradiusNeoGame.state[1] = (GradiusNeoGame.state[1055 + (var85 & 63)] & 0xff) % 12;
             if (GradiusNeoGame.state[151 + GradiusNeoGame.state[1] * 13 + 12] != 0) {
-              GradiusNeoGame.state[2]++;
+              getAndIncrement(GradiusNeoGame.state, 2);
 
-              for (let var36: int = 1; var36 < 12; var36++) {
+              for (let var36: number = 1; var36 < 12; var36++) {
                 if (GradiusNeoGame.state[151 + ((GradiusNeoGame.state[1] + var36) % 12) * 13 + 12] == 0) {
                   GradiusNeoGame.state[1] = (GradiusNeoGame.state[1] + var36) % 12;
                   GradiusNeoGame.state[2] = 0;
@@ -5215,7 +5305,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             }
 
             if (GradiusNeoGame.state[2] == 0) {
-              GradiusNeoGame.state[EntityField.Parameter1 + entityId]++;
+              getAndIncrement(GradiusNeoGame.state, EntityField.Parameter1 + entityId);
               GradiusNeoGame.state[0] = GradiusNeoGame.state[EntityField.Parameter1 + entityId] & 3;
               if (
                 GradiusNeoGame.state[EntityField.Parameter0 + entityId] == 1 &&
@@ -5235,7 +5325,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
           if (GradiusNeoGame.state[EntityField.Parameter1 + entityId] >= 128) {
             GradiusNeoGame.removePrimaryEntity(entityId);
-            GradiusNeoGame.state[95]++;
+            getAndIncrement(GradiusNeoGame.state, 95);
           }
           break;
         case 106:
@@ -5247,14 +5337,14 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           }
 
           if (GradiusNeoGame.state[EntityField.Parameter2 + entityId] > 0) {
-            if (GradiusNeoGame.state[EntityField.Parameter2 + entityId]++ >= 16) {
+            if (getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId) >= 16) {
               GradiusNeoGame.spawnEntity(EntityType.DelayedBackgroundMusic, GAME_VIEW_WIDTH, 0, 38433);
               GradiusNeoGame.spawnAuxiliaryEntity(113, 16, GAME_VIEW_WIDTH, 0);
               GradiusNeoGame.removePrimaryEntity(entityId);
             }
           } else if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] <= 0) {
             if (GradiusNeoGame.state[EntityField.Parameter1 + entityId] <= GradiusNeoGame.state[9738]) {
-              GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+              getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
               GradiusNeoGame.state[EntityField.Parameter1 + entityId] = 2;
               GradiusNeoGame.state[9738] = 0;
               GradiusNeoGame.spawnEntity(107, 128, GAMEPLAY_HEIGHT, 16);
@@ -5264,7 +5354,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             GradiusNeoGame.state[EntityField.Parameter0 + entityId] <= 1 &&
             GradiusNeoGame.state[EntityField.Parameter1 + entityId] <= GradiusNeoGame.state[9738]
           ) {
-            GradiusNeoGame.state[EntityField.Parameter2 + entityId]++;
+            getAndIncrement(GradiusNeoGame.state, EntityField.Parameter2 + entityId);
           }
           break;
         case 107:
@@ -5276,7 +5366,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               GradiusNeoGame.state[EntityField.Health + entityId] = 32;
             }
           } else if (GradiusNeoGame.state[EntityField.Parameter0 + entityId] > 0) {
-            if (--GradiusNeoGame.state[EntityField.Parameter0 + entityId] < 1) {
+            if (decrementAndGet(GradiusNeoGame.state, EntityField.Parameter0 + entityId) < 1) {
               age = 0;
             }
           } else {
@@ -5295,7 +5385,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
             entityY += GradiusNeoGame.state[5118 + entityId] * (4 + GradiusNeoGame.state[25] / 8);
             if (3 <= GradiusNeoGame.state[EntityField.Parameter3 + entityId]) {
-              for (let var34: int = 3; var34 <= GradiusNeoGame.state[EntityField.Parameter3 + entityId]; var34++) {
+              for (let var34: number = 3; var34 <= GradiusNeoGame.state[EntityField.Parameter3 + entityId]; var34++) {
                 GradiusNeoGame.enqueueRenderCommand(
                   1,
                   entityX + 16 + GradiusNeoGame.entityDirectionSign * 4 * (var34 - 3),
@@ -5401,15 +5491,15 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 GradiusNeoGame.state[StateSlot.Score] = GradiusNeoGame.state[StateSlot.Score] + 10000;
               }
 
-              GradiusNeoGame.state[EntityField.Parameter3 + entityId]--;
+              getAndDecrement(GradiusNeoGame.state, EntityField.Parameter3 + entityId);
             }
 
             if (GradiusNeoGame.state[EntityField.Parameter3 + entityId] <= 0) {
-              if (GradiusNeoGame.state[EntityField.Parameter3 + entityId]-- <= -16) {
+              if (getAndDecrement(GradiusNeoGame.state, EntityField.Parameter3 + entityId) <= -16) {
                 GradiusNeoGame.spawnEntity(EntityType.TwoFrameLargeExplosion, entityX + 24, entityY + 8, 0);
                 GradiusNeoGame.spawnEntity(20, entityX + 40, entityY + 24, 3153926);
                 GradiusNeoGame.requestSoundEffect(9);
-                GradiusNeoGame.state[9738]++;
+                getAndIncrement(GradiusNeoGame.state, 9738);
                 GradiusNeoGame.removePrimaryEntity(entityId);
               }
             } else if (age >= 400) {
@@ -5434,7 +5524,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             GradiusNeoGame.state[4606 + entityId] = 40;
             GradiusNeoGame.state[5118 + entityId] = 40;
 
-            for (let var3: int = 0; var3 < 4; var3++) {
+            for (let var3: number = 0; var3 < 4; var3++) {
               GradiusNeoGame.spawnAuxiliaryEntity(
                 110,
                 GradiusNeoGame.state[EntityField.XFixed + entityId] + 0,
@@ -5450,7 +5540,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               GradiusNeoGame.state[EntityField.XFixed + entityId] = entityX;
               if (entityX <= 144) {
                 GradiusNeoGame.state[StateSlot.StageScrollSpeed] = 0;
-                GradiusNeoGame.state[EntityField.Parameter0 + entityId]++;
+                getAndIncrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
                 GradiusNeoGame.state[EntityField.Parameter1 + entityId] = 0;
                 GradiusNeoGame.state[EntityField.Parameter2 + entityId] = 1;
               }
@@ -5464,10 +5554,10 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               }
 
               if (GradiusNeoGame.state[EntityField.Parameter1 + entityId] % 64 == 0) {
-                let var13: int =
+                let var13: number =
                   GradiusNeoGame.state[StateSlot.PlayerX] +
                   GradiusNeoGame.state[StateSlot.PlayerY] +
-                  GradiusNeoGame.state[4]++;
+                  getAndIncrement(GradiusNeoGame.state, 4);
                 GradiusNeoGame.state[EntityField.Parameter0 + entityId] = GradiusNeoGame.state[1055 + (var13 & 63)] & 3;
                 GradiusNeoGame.state[EntityField.Parameter1 + entityId] = 0;
                 GradiusNeoGame.state[EntityField.Parameter2 + entityId] = 1;
@@ -5526,7 +5616,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   GradiusNeoGame.state[EntityField.Parameter1 + entityId] +
                   GradiusNeoGame.state[EntityField.Parameter2 + entityId];
                 if (12 <= GradiusNeoGame.state[EntityField.Parameter1 + entityId]) {
-                  GradiusNeoGame.state[EntityField.Parameter3 + entityId]++;
+                  getAndIncrement(GradiusNeoGame.state, EntityField.Parameter3 + entityId);
                 } else if (GradiusNeoGame.state[EntityField.Parameter1 + entityId] <= 0) {
                   GradiusNeoGame.state[EntityField.Parameter0 + entityId] = 0;
                   GradiusNeoGame.state[EntityField.Parameter1 + entityId] = 0;
@@ -5539,7 +5629,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 if (48 <= GradiusNeoGame.state[EntityField.Parameter1 + entityId]) {
                   GradiusNeoGame.state[EntityField.Parameter2 + entityId] = -1;
                 } else if (GradiusNeoGame.state[EntityField.Parameter1 + entityId] <= 12) {
-                  GradiusNeoGame.state[EntityField.Parameter3 + entityId]--;
+                  getAndDecrement(GradiusNeoGame.state, EntityField.Parameter3 + entityId);
                 }
               }
             }
@@ -5547,7 +5637,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             GradiusNeoGame.enqueueRenderCommand(0, entityX, entityY + 96, 11, 393, 393990);
             GradiusNeoGame.enqueueRenderCommand(0, entityX + 48, entityY, 11, 392, 198147);
 
-            for (let var33: int = 0; var33 < 3; var33++) {
+            for (let var33: number = 0; var33 < 3; var33++) {
               GradiusNeoGame.state[0] = 395;
               if (GradiusNeoGame.state[151 + var33] > 0) {
                 GradiusNeoGame.state[0] = 394;
@@ -5569,7 +5659,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     entityY + GradiusNeoGame.state[127 + var33],
                     0,
                   );
-                  GradiusNeoGame.state[9738]++;
+                  getAndIncrement(GradiusNeoGame.state, 9738);
                 }
               }
 
@@ -5598,13 +5688,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 GradiusNeoGame.spawnEntity(20, entityX + 64, entityY + 64, 4210698);
               }
             } else {
-              GradiusNeoGame.state[EntityField.Parameter0 + entityId]--;
+              getAndDecrement(GradiusNeoGame.state, EntityField.Parameter0 + entityId);
               if (-30 <= GradiusNeoGame.state[EntityField.Parameter0 + entityId]) {
                 if ((GradiusNeoGame.state[EntityField.Parameter0 + entityId] & 1) == 0) {
                   GradiusNeoGame.requestSoundEffect(9);
                 }
               } else {
-                GradiusNeoGame.state[34]++;
+                getAndIncrement(GradiusNeoGame.state, 34);
               }
 
               GradiusNeoGame.enqueueRenderCommand(
@@ -5623,7 +5713,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           if (entityX + 16 < 0) {
             GradiusNeoGame.removePrimaryEntity(entityId);
           } else {
-            let var1: int = 83 + (GradiusNeoGame.state[EntityField.Type + entityId] - 114) * 4;
+            let var1: number = 83 + (GradiusNeoGame.state[EntityField.Type + entityId] - 114) * 4;
             GradiusNeoGame.state[0] = 1;
             if (age >= 228) {
               if (age % 2 == 0) {
@@ -5652,15 +5742,15 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               if (GradiusNeoGame.state[EntityField.Type + entityId] == 115) {
                 GradiusNeoGame.state[StateSlot.Score] = GradiusNeoGame.state[StateSlot.Score] + 1000;
                 GradiusNeoGame.state[StateSlot.SelectedFormation] =
-                  ++GradiusNeoGame.state[StateSlot.SelectedFormation] % 7;
+                  incrementAndGet(GradiusNeoGame.state, StateSlot.SelectedFormation) % 7;
                 if (GradiusNeoGame.state[StateSlot.SelectedFormation] == 0) {
-                  GradiusNeoGame.state[StateSlot.SelectedFormation]++;
+                  getAndIncrement(GradiusNeoGame.state, StateSlot.SelectedFormation);
                 }
               } else {
                 GradiusNeoGame.state[StateSlot.Score] = GradiusNeoGame.state[StateSlot.Score] + 100;
-                GradiusNeoGame.state[StateSlot.SelectedPowerUp] = ++GradiusNeoGame.state[StateSlot.SelectedPowerUp] % 7;
+                GradiusNeoGame.state[StateSlot.SelectedPowerUp] = incrementAndGet(GradiusNeoGame.state, StateSlot.SelectedPowerUp) % 7;
                 if (GradiusNeoGame.state[StateSlot.SelectedPowerUp] == 0) {
-                  GradiusNeoGame.state[StateSlot.SelectedPowerUp]++;
+                  getAndIncrement(GradiusNeoGame.state, StateSlot.SelectedPowerUp);
                 }
               }
 
@@ -5679,7 +5769,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         GradiusNeoGame.state[EntityField.X + entityId] =
           entityX + GradiusNeoGame.state[StateSlot.StageScrollSpeed] * GradiusNeoGame.entityDirectionSign;
         GradiusNeoGame.state[EntityField.Y + entityId] = entityY;
-        GradiusNeoGame.state[EntityField.Age + entityId] = ++age;
+        age += 1;
+        GradiusNeoGame.state[EntityField.Age + entityId] = age;
       }
 
       entityId = nextEntityId;
@@ -5695,7 +5786,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
       if (GradiusNeoGame.state[StateSlot.PlayerDamagePhase] === -52) {
         GradiusNeoGame.requestSoundEffect(10);
 
-        for (let var2: int = 0; var2 < 20; var2++) {
+        for (let var2: number = 0; var2 < 20; var2++) {
           GradiusNeoGame.state[1245 + var2] = -1;
         }
       }
@@ -5711,7 +5802,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         );
       }
 
-      GradiusNeoGame.state[StateSlot.PlayerDamagePhase]++;
+      getAndIncrement(GradiusNeoGame.state, StateSlot.PlayerDamagePhase);
       if (GradiusNeoGame.state[StateSlot.PlayerDamagePhase] === -40) {
         GradiusNeoGame.state[StateSlot.PlayerX] = 32;
         GradiusNeoGame.state[StateSlot.PlayerY] = 104;
@@ -5724,12 +5815,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         GradiusNeoGame.state[84] = 0;
         GradiusNeoGame.state[StateSlot.ShieldEnergy] = 0;
 
-        for (let var7: int = 1; var7 < 17; var7++) {
+        for (let var7: number = 1; var7 < 17; var7++) {
           GradiusNeoGame.state[1126 + var7] = GradiusNeoGame.state[StateSlot.PlayerX];
           GradiusNeoGame.state[1143 + var7] = GradiusNeoGame.state[StateSlot.PlayerY];
         }
 
-        for (let var8: int = 1; var8 < 5; var8++) {
+        for (let var8: number = 1; var8 < 5; var8++) {
           GradiusNeoGame.state[1160 + var8] = GradiusNeoGame.state[1126 + var8 * 4];
           GradiusNeoGame.state[1165 + var8] = GradiusNeoGame.state[1143 + var8 * 4];
         }
@@ -5743,13 +5834,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           GradiusNeoGame.state[StateSlot.PlayerY] + GradiusNeoGame.state[StateSlot.CameraOffsetY];
         GradiusNeoGame.state[StateSlot.PlayerX] = -32;
 
-        for (let var9: int = 1; var9 < 17; var9++) {
+        for (let var9: number = 1; var9 < 17; var9++) {
           GradiusNeoGame.state[1126 + var9] = -32;
           GradiusNeoGame.state[1143 + var9] = 112;
         }
 
         GradiusNeoGame.updateAdaptiveDifficulty();
-        if (--GradiusNeoGame.state[StateSlot.Lives] < 0) {
+        if (decrementAndGet(GradiusNeoGame.state, StateSlot.Lives) < 0) {
           GradiusNeoGame.screenState = ScreenState.PrepareGameOver;
           GradiusNeoGame.state[StateSlot.Lives] = 0;
           return;
@@ -5757,7 +5848,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
       }
     } else {
       if (GradiusNeoGame.state[StateSlot.PlayerDamagePhase] < -32) {
-        for (let var28: int = 16; var28 >= 1; var28--) {
+        for (let var28: number = 16; var28 >= 1; var28--) {
           GradiusNeoGame.state[1126 + var28] = GradiusNeoGame.state[1126 + (var28 - 1)];
           GradiusNeoGame.state[1143 + var28] = GradiusNeoGame.state[1143 + (var28 - 1)];
         }
@@ -5766,13 +5857,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         GradiusNeoGame.state[1160] = GradiusNeoGame.state[StateSlot.PlayerX];
         GradiusNeoGame.state[1165] = GradiusNeoGame.state[StateSlot.PlayerY];
 
-        for (let var29: int = 1; var29 <= GradiusNeoGame.state[StateSlot.OptionCount]; var29++) {
+        for (let var29: number = 1; var29 <= GradiusNeoGame.state[StateSlot.OptionCount]; var29++) {
           GradiusNeoGame.state[1160 + var29] = GradiusNeoGame.state[1126 + var29 * 4];
           GradiusNeoGame.state[1165 + var29] = GradiusNeoGame.state[1143 + var29 * 4];
         }
 
-        for (let var30: int = 1; var30 <= GradiusNeoGame.state[StateSlot.OptionCount]; var30++) {
-          let var6: int;
+        for (let var30: number = 1; var30 <= GradiusNeoGame.state[StateSlot.OptionCount]; var30++) {
+          let var6: number;
           if ((GradiusNeoGame.state[StateSlot.LogicFrame] & 3) === 0) {
             var6 = 104 + GradiusNeoGame.state[84] * 3;
           } else {
@@ -5801,7 +5892,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           0,
         );
         GradiusNeoGame.renderQueue.endEntity();
-        GradiusNeoGame.state[StateSlot.PlayerDamagePhase]++;
+        getAndIncrement(GradiusNeoGame.state, StateSlot.PlayerDamagePhase);
         return;
       }
 
@@ -5868,7 +5959,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
             case 5: {
               if (GradiusNeoGame.state[StateSlot.OptionCount] < 4) {
-                GradiusNeoGame.state[StateSlot.OptionCount]++;
+                getAndIncrement(GradiusNeoGame.state, StateSlot.OptionCount);
                 if (GradiusNeoGame.state[81] === 6) {
                   GradiusNeoGame.state[1160 + GradiusNeoGame.state[StateSlot.OptionCount]] =
                     GradiusNeoGame.state[StateSlot.PlayerX] - 16;
@@ -5880,7 +5971,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 GradiusNeoGame.requestSoundEffect(7);
               } else {
                 if (GradiusNeoGame.state[71] === 1 && GradiusNeoGame.state[84] < 2) {
-                  GradiusNeoGame.state[84]++;
+                  getAndIncrement(GradiusNeoGame.state, 84);
                   GradiusNeoGame.state[StateSlot.SelectedPowerUp] = 0;
                   GradiusNeoGame.requestSoundEffect(7);
                 }
@@ -5916,14 +6007,14 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
         if (GradiusNeoGame.state[86] < 6) {
           if ((GradiusNeoGame.state[StateSlot.HeldInputBits] & 102) !== 0) {
-            for (let var10: int = 16; var10 >= 1; var10--) {
+            for (let var10: number = 16; var10 >= 1; var10--) {
               GradiusNeoGame.state[1126 + var10] = GradiusNeoGame.state[1126 + (var10 - 1)];
               GradiusNeoGame.state[1143 + var10] = GradiusNeoGame.state[1143 + (var10 - 1)];
             }
           }
 
-          let var3: int = 0;
-          let var11: int = 0;
+          let var3: number = 0;
+          let var11: number = 0;
           if ((GradiusNeoGame.state[StateSlot.HeldInputBits] & 64) !== 0) {
             if (GradiusNeoGame.state[41] !== 3) {
               GradiusNeoGame.state[StateSlot.PlayerY] =
@@ -5993,7 +6084,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               var11 <= 2 &&
               (var3 = (var3 = var3 / var11) % 64) !== GradiusNeoGame.state[64]
             ) {
-              let var13: byte;
+              let var13: number;
               if ((var11 = var3 - GradiusNeoGame.state[64]) > -32 && 32 > var11) {
                 var13 = 1;
               } else {
@@ -6011,9 +6102,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           }
         }
 
-        let var1: int = 3;
+        let var1: number = 3;
         if (GradiusNeoGame.state[StateSlot.PlayerDamagePhase] !== 0) {
-          GradiusNeoGame.state[StateSlot.PlayerDamagePhase]++;
+          getAndIncrement(GradiusNeoGame.state, StateSlot.PlayerDamagePhase);
           if ((GradiusNeoGame.state[StateSlot.PlayerDamagePhase] & 3) >= 2) {
             var1 = 0;
           }
@@ -6030,7 +6121,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               )) <
               0
           ) {
-            GradiusNeoGame.state[StateSlot.ShieldEnergy]--;
+            getAndDecrement(GradiusNeoGame.state, StateSlot.ShieldEnergy);
           }
 
           if (
@@ -6084,11 +6175,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         );
         GradiusNeoGame.renderQueue.endEntity();
         if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 1046784) !== 0) {
-          let var14: int = 1;
-
-          let var33: int;
-          for (var33 = 0; var14 < 7; var14++) {
-            if (GradiusNeoGame.state[1119 + var14] === 1) {
+          let var33: number = 0;
+          for (let formationSlot = 1; formationSlot < 7; formationSlot++) {
+            if (GradiusNeoGame.state[1119 + formationSlot] === 1) {
               var33++;
             }
           }
@@ -6096,7 +6185,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 129024) !== 0) {
             var33 = 0;
 
-            for (let var4: int = 1; var4 <= 6; var4++) {
+            for (let var4: number = 1; var4 <= 6; var4++) {
               if (
                 ((GradiusNeoGame.state[StateSlot.PressedInputBits] >> var4) & 1024) !== 0 &&
                 GradiusNeoGame.state[1119 + var4] === 1 &&
@@ -6123,7 +6212,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               GradiusNeoGame.state[1225] = 21;
             } else {
               if (GradiusNeoGame.state[81] === 6) {
-                for (let var15: int = 1; var15 <= GradiusNeoGame.state[StateSlot.OptionCount]; var15++) {
+                for (let var15: number = 1; var15 <= GradiusNeoGame.state[StateSlot.OptionCount]; var15++) {
                   GradiusNeoGame.state[1245 + var15 * 4] = -1;
                 }
               }
@@ -6131,14 +6220,14 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
             if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.Fire) !== 0) {
               do {
-                GradiusNeoGame.state[81]++;
+                getAndIncrement(GradiusNeoGame.state, 81);
                 GradiusNeoGame.state[81] = GradiusNeoGame.state[81] % 7;
               } while (GradiusNeoGame.state[1119 + GradiusNeoGame.state[81]] === 0);
             } else {
               GradiusNeoGame.state[81] = var33 % 7;
             }
 
-            for (let var16: int = 1; var16 < 5; var16++) {
+            for (let var16: number = 1; var16 < 5; var16++) {
               GradiusNeoGame.state[1170 + var16] = GradiusNeoGame.state[1160 + var16] << 4;
               GradiusNeoGame.state[1175 + var16] = GradiusNeoGame.state[1165 + var16] << 4;
             }
@@ -6153,7 +6242,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         if (GradiusNeoGame.state[82] === 0) {
           switch (GradiusNeoGame.state[81]) {
             case 0: {
-              for (let var19: int = 1; var19 <= GradiusNeoGame.state[StateSlot.OptionCount]; var19++) {
+              for (let var19: number = 1; var19 <= GradiusNeoGame.state[StateSlot.OptionCount]; var19++) {
                 GradiusNeoGame.state[1160 + var19] = GradiusNeoGame.state[1126 + var19 * 4];
                 GradiusNeoGame.state[1165 + var19] = GradiusNeoGame.state[1143 + var19 * 4];
               }
@@ -6161,7 +6250,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             }
 
             case 1: {
-              for (let var18: int = 1; var18 < 5; var18++) {
+              for (let var18: number = 1; var18 < 5; var18++) {
                 GradiusNeoGame.state[1160 + var18] =
                   GradiusNeoGame.state[StateSlot.PlayerX] +
                   ((GradiusNeoGame.state[
@@ -6229,12 +6318,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             }
 
             case 6: {
-              for (let var17: int = 1; var17 <= GradiusNeoGame.state[StateSlot.OptionCount]; var17++) {
+              for (let var17: number = 1; var17 <= GradiusNeoGame.state[StateSlot.OptionCount]; var17++) {
                 if (GradiusNeoGame.state[1180 + var17] === 0) {
                   GradiusNeoGame.state[1160 + var17] = GradiusNeoGame.state[1160 + var17] + 16;
                   if (GAME_VIEW_WIDTH <= GradiusNeoGame.state[1160 + var17]) {
                     GradiusNeoGame.state[1160 + var17] = GAMEPLAY_HEIGHT;
-                    GradiusNeoGame.state[1180 + var17]++;
+                    getAndIncrement(GradiusNeoGame.state, 1180 + var17);
                   }
                 } else {
                   if (GradiusNeoGame.state[1180 + var17] === 1) {
@@ -6290,7 +6379,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                         GradiusNeoGame.state[1165 + var17] = GradiusNeoGame.state[StateSlot.PlayerY];
                       }
                     } else {
-                      GradiusNeoGame.state[1180 + var17]++;
+                      getAndIncrement(GradiusNeoGame.state, 1180 + var17);
                       GradiusNeoGame.state[1160 + var17] = GradiusNeoGame.state[StateSlot.PlayerX];
                       GradiusNeoGame.state[1165 + var17] = GradiusNeoGame.state[StateSlot.PlayerY];
                     }
@@ -6305,7 +6394,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
         switch (GradiusNeoGame.state[82]) {
           case 1: {
-            for (let var23: int = 1; var23 < 5; var23++) {
+            for (let var23: number = 1; var23 < 5; var23++) {
               GradiusNeoGame.state[1170 + var23] =
                 GradiusNeoGame.state[1170 + var23] +
                 GradiusNeoGame.state[
@@ -6330,15 +6419,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               GradiusNeoGame.state[1165 + var23] = GradiusNeoGame.state[1175 + var23] >> 4;
             }
 
-            let var24: int = 1;
-
-            let var34: int;
-            for (var34 = 0; var24 <= GradiusNeoGame.state[StateSlot.OptionCount]; var24++) {
+            let var34: number = 0;
+            for (let optionIndex = 1; optionIndex <= GradiusNeoGame.state[StateSlot.OptionCount]; optionIndex++) {
               if (
-                ((GradiusNeoGame.state[StateSlot.PlayerX] - 16 - GradiusNeoGame.state[1160 + var24]) &
-                  (GradiusNeoGame.state[1160 + var24] - (GradiusNeoGame.state[StateSlot.PlayerX] + 16)) &
-                  (GradiusNeoGame.state[StateSlot.PlayerY] - 16 - GradiusNeoGame.state[1165 + var24]) &
-                  (GradiusNeoGame.state[1165 + var24] - (GradiusNeoGame.state[StateSlot.PlayerY] + 16))) <
+                ((GradiusNeoGame.state[StateSlot.PlayerX] - 16 - GradiusNeoGame.state[1160 + optionIndex]) &
+                  (GradiusNeoGame.state[1160 + optionIndex] - (GradiusNeoGame.state[StateSlot.PlayerX] + 16)) &
+                  (GradiusNeoGame.state[StateSlot.PlayerY] - 16 - GradiusNeoGame.state[1165 + optionIndex]) &
+                  (GradiusNeoGame.state[1165 + optionIndex] - (GradiusNeoGame.state[StateSlot.PlayerY] + 16))) <
                 0
               ) {
                 var34++;
@@ -6355,7 +6442,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           case 2: {
             switch (GradiusNeoGame.state[81]) {
               case 0: {
-                for (let var22: int = 1; var22 < 17; var22++) {
+                for (let var22: number = 1; var22 < 17; var22++) {
                   GradiusNeoGame.state[1126 + var22] = GradiusNeoGame.state[StateSlot.PlayerX];
                   GradiusNeoGame.state[1143 + var22] = GradiusNeoGame.state[StateSlot.PlayerY];
                 }
@@ -6365,7 +6452,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               }
 
               case 1: {
-                for (let var21: int = 1; var21 < 5; var21++) {
+                for (let var21: number = 1; var21 < 5; var21++) {
                   GradiusNeoGame.state[1160 + var21] =
                     GradiusNeoGame.state[StateSlot.PlayerX] +
                     ((GradiusNeoGame.state[
@@ -6384,7 +6471,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                       4);
                 }
 
-                if (GradiusNeoGame.state[83]++ >= 3) {
+                if (getAndIncrement(GradiusNeoGame.state, 83) >= 3) {
                   GradiusNeoGame.state[82] = 0;
                 }
                 break;
@@ -6399,7 +6486,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 GradiusNeoGame.state[1168] = GradiusNeoGame.state[StateSlot.PlayerY] + 16 * GradiusNeoGame.state[83];
                 GradiusNeoGame.state[1164] = GradiusNeoGame.state[StateSlot.PlayerX] + 16 * -GradiusNeoGame.state[83];
                 GradiusNeoGame.state[1169] = GradiusNeoGame.state[StateSlot.PlayerY] + 0;
-                if (GradiusNeoGame.state[83]++ >= 3) {
+                if (getAndIncrement(GradiusNeoGame.state, 83) >= 3) {
                   GradiusNeoGame.state[82] = 0;
                 }
                 break;
@@ -6414,7 +6501,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 GradiusNeoGame.state[1168] = GradiusNeoGame.state[StateSlot.PlayerY] + -5 * GradiusNeoGame.state[83];
                 GradiusNeoGame.state[1164] = GradiusNeoGame.state[StateSlot.PlayerX] + 16 * GradiusNeoGame.state[83];
                 GradiusNeoGame.state[1169] = GradiusNeoGame.state[StateSlot.PlayerY] + 5 * GradiusNeoGame.state[83];
-                if (GradiusNeoGame.state[83]++ >= 3) {
+                if (getAndIncrement(GradiusNeoGame.state, 83) >= 3) {
                   GradiusNeoGame.state[82] = 0;
                 }
                 break;
@@ -6429,7 +6516,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 GradiusNeoGame.state[1168] = GradiusNeoGame.state[StateSlot.PlayerY] + -13 * GradiusNeoGame.state[83];
                 GradiusNeoGame.state[1164] = GradiusNeoGame.state[StateSlot.PlayerX] + 0 * GradiusNeoGame.state[83];
                 GradiusNeoGame.state[1169] = GradiusNeoGame.state[StateSlot.PlayerY] + 13 * GradiusNeoGame.state[83];
-                if (GradiusNeoGame.state[83]++ >= 3) {
+                if (getAndIncrement(GradiusNeoGame.state, 83) >= 3) {
                   GradiusNeoGame.state[82] = 0;
                 }
                 break;
@@ -6448,14 +6535,14 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 GradiusNeoGame.state[1164] = GradiusNeoGame.state[StateSlot.PlayerX] + 0;
                 GradiusNeoGame.state[1169] =
                   GradiusNeoGame.state[StateSlot.PlayerY] + (GradiusNeoGame.state[83] * 16 * 5) / 3;
-                if (GradiusNeoGame.state[83]++ >= 3) {
+                if (getAndIncrement(GradiusNeoGame.state, 83) >= 3) {
                   GradiusNeoGame.state[82] = 0;
                 }
                 break;
               }
 
               case 6: {
-                for (let var20: int = 1; var20 <= GradiusNeoGame.state[StateSlot.OptionCount]; var20++) {
+                for (let var20: number = 1; var20 <= GradiusNeoGame.state[StateSlot.OptionCount]; var20++) {
                   GradiusNeoGame.state[1180 + var20] = -var20 * 6;
                 }
 
@@ -6473,7 +6560,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           default:
         }
 
-        for (let var25: int = 1; var25 <= GradiusNeoGame.state[StateSlot.OptionCount]; var25++) {
+        for (let var25: number = 1; var25 <= GradiusNeoGame.state[StateSlot.OptionCount]; var25++) {
           if ((GradiusNeoGame.state[StateSlot.LogicFrame] & 3) === 0) {
             var1 = 104 + GradiusNeoGame.state[84] * 3;
           } else {
@@ -6492,7 +6579,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           GradiusNeoGame.renderQueue.endEntity();
         }
 
-        let var26: int =
+        let var26: number =
           GradiusNeoGame.state[StateSlot.HeldInputBits] | -GradiusNeoGame.state[StateSlot.AutoFireSetting];
         if (
           (GradiusNeoGame.state[StateSlot.HeldInputBits] & 1024) * GradiusNeoGame.state[StateSlot.AutoFireSetting] !==
@@ -6502,8 +6589,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         }
 
         if (GradiusNeoGame.state[86] < 4 && (var26 & 1024) !== 0 && GradiusNeoGame.state[82] === 0) {
-          for (let var27: int = 0; var27 <= GradiusNeoGame.state[StateSlot.OptionCount]; var27++) {
-            let var35: int = var27 * 4;
+          for (let var27: number = 0; var27 <= GradiusNeoGame.state[StateSlot.OptionCount]; var27++) {
+            let var35: number = var27 * 4;
             if (GradiusNeoGame.state[StateSlot.MainWeaponState] === 10) {
               if (var27 === 0 && GradiusNeoGame.state[1245 + var35] < 0) {
                 GradiusNeoGame.state[1225 + var35] = 0;
@@ -6550,7 +6637,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                       GradiusNeoGame.state[1245 + var35] = GradiusNeoGame.state[StateSlot.MainWeaponState];
                       GradiusNeoGame.state[1225 + var35] = -1;
                     } else {
-                      if (GradiusNeoGame.state[1245 + ++var35] < 0) {
+                      var35 += 1;
+                      if (GradiusNeoGame.state[1245 + var35] < 0) {
                         GradiusNeoGame.state[1185 + var35] = GradiusNeoGame.state[1160 + var27] - 32;
                         GradiusNeoGame.state[1205 + var35] = GradiusNeoGame.state[1165 + var27] - 16;
                         GradiusNeoGame.state[1245 + var35] = GradiusNeoGame.state[StateSlot.MainWeaponState];
@@ -6579,7 +6667,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                         GradiusNeoGame.state[StateSlot.MainWeaponState] === 0 ||
                         GradiusNeoGame.state[StateSlot.MainWeaponState] >= 16
                       ) {
-                        if (GradiusNeoGame.state[1245 + ++var35] < 0) {
+                        var35 += 1;
+                        if (GradiusNeoGame.state[1245 + var35] < 0) {
                           GradiusNeoGame.state[1185 + var35] = GradiusNeoGame.state[1160 + var27] - 16;
                           GradiusNeoGame.state[1205 + var35] = GradiusNeoGame.state[1165 + var27];
                           GradiusNeoGame.state[1245 + var35] = GradiusNeoGame.state[StateSlot.MainWeaponState];
@@ -6600,21 +6689,24 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     }
 
                     if (GradiusNeoGame.state[StateSlot.MainWeaponState] === 1) {
-                      if (GradiusNeoGame.state[1245 + ++var35] < 0) {
+                      var35 += 1;
+                      if (GradiusNeoGame.state[1245 + var35] < 0) {
                         GradiusNeoGame.state[1185 + var35] = GradiusNeoGame.state[1160 + var27];
                         GradiusNeoGame.state[1205 + var35] = GradiusNeoGame.state[1165 + var27] + 8;
                         GradiusNeoGame.state[1245 + var35] = 2;
                       }
                     } else {
                       if (GradiusNeoGame.state[StateSlot.MainWeaponState] === 3) {
-                        if (GradiusNeoGame.state[1245 + ++var35] < 0) {
+                        var35 += 1;
+                        if (GradiusNeoGame.state[1245 + var35] < 0) {
                           GradiusNeoGame.state[1185 + var35] = GradiusNeoGame.state[1160 + var27] + 32;
                           GradiusNeoGame.state[1205 + var35] = GradiusNeoGame.state[1165 + var27];
                           GradiusNeoGame.state[1245 + var35] = 4;
                         }
                       } else {
                         if (GradiusNeoGame.state[StateSlot.MainWeaponState] === 5) {
-                          if (GradiusNeoGame.state[1245 + ++var35] < 0) {
+                          var35 += 1;
+                          if (GradiusNeoGame.state[1245 + var35] < 0) {
                             GradiusNeoGame.state[1185 + var35] = GradiusNeoGame.state[1160 + var27] + 8;
                             GradiusNeoGame.state[1205 + var35] = GradiusNeoGame.state[1165 + var27] + 24;
                             GradiusNeoGame.state[1245 + var35] = 6;
@@ -6642,7 +6734,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 GradiusNeoGame.state[1245 + var35] = 21;
               }
 
-              if (GradiusNeoGame.state[1245 + ++var35] < 0) {
+              var35 += 1;
+              if (GradiusNeoGame.state[1245 + var35] < 0) {
                 GradiusNeoGame.state[1185 + var35] = GradiusNeoGame.state[1160 + var27] + 16;
                 GradiusNeoGame.state[1205 + var35] = GradiusNeoGame.state[1165 + var27];
                 GradiusNeoGame.state[1225 + var35] = 0;
@@ -6656,14 +6749,14 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
   }
 
   private renderStageTerrain(gfx: Graphics): void {
-    for (let screenTileRow: int = 0; screenTileRow < 15; screenTileRow++) {
-      const terrainRow = Math.trunc(GradiusNeoGame.state[StateSlot.CameraOffsetY] / 16) + screenTileRow;
-      let stageRowOffset: int = 66 * terrainRow;
+    for (let screenTileRow: number = 0; screenTileRow < 15; screenTileRow++) {
+      const terrainRow = intDiv(GradiusNeoGame.state[StateSlot.CameraOffsetY], 16) + screenTileRow;
+      let stageRowOffset: number = 66 * terrainRow;
 
-      for (let screenTileColumn: int = 0; screenTileColumn < 16; screenTileColumn++) {
-        let worldPixelX: int;
-        let stageTileColumn: int =
-          Math.trunc((worldPixelX = GradiusNeoGame.state[StateSlot.VisualStageScrollX] - GAME_VIEW_WIDTH) / 16) +
+      for (let screenTileColumn: number = 0; screenTileColumn < 16; screenTileColumn++) {
+        let worldPixelX: number;
+        let stageTileColumn: number =
+          intDiv((worldPixelX = GradiusNeoGame.state[StateSlot.VisualStageScrollX] - GAME_VIEW_WIDTH), 16) +
           screenTileColumn;
         if (worldPixelX < 0 && worldPixelX % 16 !== 0) {
           stageTileColumn--;
@@ -6707,7 +6800,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               );
             }
           } catch (error) {
-            if (error instanceof java.lang.Throwable) {
+            if (error instanceof Error) {
             } else {
               throw error;
             }
@@ -6718,7 +6811,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
   }
 
   private renderGameplayHud(gfx: Graphics): void {
-    let powerUpSpriteId: byte = 50;
+    let powerUpSpriteId: number = 50;
     if (GradiusNeoGame.state[StateSlot.PlayerMoveSpeed] >= 13) {
       powerUpSpriteId = 56;
     }
@@ -6842,8 +6935,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
   public paint(gfx: Graphics): void {
     if (GradiusNeoGame.screenState !== ScreenState.PaintDisabled) {
       try {
-        java.lang.System.gc();
-        GradiusNeoGame.state[StateSlot.LogicFrame]++;
+        // Some late-stage branches in the decompiled game still use the
+        // original short alias for the shared state buffer.
+        const s = GradiusNeoGame.state;
+        Clock.collectGarbage();
+        getAndIncrement(GradiusNeoGame.state, StateSlot.LogicFrame);
         GradiusNeoGame.state[StateSlot.HeldInputBits] = this.heldInputBits;
         this.heldInputBits = this.heldInputBits & ~this.releasedInputBits;
         this.releasedInputBits = 0;
@@ -6871,24 +6967,21 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
         switch (GradiusNeoGame.screenState) {
           case ScreenState.LoadSaveData: {
             try {
-              GradiusNeoGame.recordStore = RecordStore.openRecordStore('R', true);
-              if (GradiusNeoGame.recordStore.getNumRecords() === 0) {
+              GradiusNeoGame.saveStorage = SaveStorage.open('R', true);
+              if (GradiusNeoGame.saveStorage.getNumRecords() === 0) {
                 initializeDefaultSaveData(GradiusNeoGame.saveData, {
                   screenSetup: GradiusNeoGame.state[22],
-                  highestUnlockedStage: Math.max(
-                    GradiusNeoGame.state[StateSlot.HighestUnlockedStage],
-                    DEVELOPMENT_HIGHEST_UNLOCKED_STAGE,
-                  ),
+                  highestUnlockedStage: GradiusNeoGame.state[StateSlot.HighestUnlockedStage],
                   highestRound: GradiusNeoGame.state[33],
                 });
-                GradiusNeoGame.recordStore.addRecord(GradiusNeoGame.saveData, 0, SAVE_DATA_LENGTH);
+                GradiusNeoGame.saveStorage.addRecord(GradiusNeoGame.saveData, 0, SAVE_DATA_LENGTH);
               } else {
-                GradiusNeoGame.recordStore.getRecord(1, GradiusNeoGame.saveData, 0);
+                GradiusNeoGame.saveStorage.getRecord(1, GradiusNeoGame.saveData, 0);
               }
 
-              GradiusNeoGame.recordStore.closeRecordStore();
+              GradiusNeoGame.saveStorage.close();
             } catch (var28) {
-              if (var28 instanceof java.lang.Throwable) {
+              if (var28 instanceof Error) {
               } else {
                 throw var28;
               }
@@ -6897,13 +6990,6 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             GradiusNeoGame.loadSaveDataSection(SaveDataSection.SettingsAndHighScores);
             GradiusNeoGame.loadSaveDataSection(SaveDataSection.GameProgress);
             GradiusNeoGame.loadSaveDataSection(SaveDataSection.UnlocksAndStageRecords);
-            GradiusNeoGame.state[StateSlot.HighestUnlockedStage] = Math.max(
-              GradiusNeoGame.state[StateSlot.HighestUnlockedStage],
-              DEVELOPMENT_HIGHEST_UNLOCKED_STAGE,
-            );
-            GradiusNeoGame.state[66] = GradiusNeoGame.saveData[52];
-            GradiusNeoGame.state[67] = GradiusNeoGame.saveData[53];
-            GradiusNeoGame.state[68] = GradiusNeoGame.saveData[54];
             GradiusNeoGame.state[StateSlot.MissileVariant] = GradiusNeoGame.saveData[55];
             GradiusNeoGame.state[70] = GradiusNeoGame.saveData[56];
             GradiusNeoGame.state[71] = GradiusNeoGame.saveData[57];
@@ -6917,7 +7003,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             try {
               this.spriteSheets[5] = Image.createImage('/img_sub');
             } catch (var27) {
-              if (var27 instanceof java.lang.Throwable) {
+              if (var27 instanceof Error) {
               } else {
                 throw var27;
               }
@@ -6925,9 +7011,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
             this.loadSpriteSheet(1, 'c2');
             this.loadResourceIntoBuffer('c');
-            let var109: int = (GradiusNeoGame.resourceBuffer[4] << 8) | (GradiusNeoGame.resourceBuffer[5] & 255);
+            let var109: number = (GradiusNeoGame.resourceBuffer[4] << 8) | (GradiusNeoGame.resourceBuffer[5] & 255);
 
-            for (let var92: int = 0; var92 < 20; var92++) {
+            for (let var92: number = 0; var92 < 20; var92++) {
               GradiusNeoGame.state[307 + var92] =
                 ((GradiusNeoGame.resourceBuffer[var109] & 255) << 16) |
                 ((GradiusNeoGame.resourceBuffer[var109 + 1] & 255) << 8) |
@@ -6935,8 +7021,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               var109 += 3;
             }
 
-            for (let var93: int = 0; var93 < 792; var93++) {
-              GradiusNeoGame.state[327 + var93] = GradiusNeoGame.resourceBuffer[var109++];
+            for (let var93: number = 0; var93 < 792; var93++) {
+              GradiusNeoGame.state[327 + var93] = GradiusNeoGame.resourceBuffer[var109];
+              var109 += 1;
             }
 
             GradiusNeoGame.state[0] = 0;
@@ -6950,7 +7037,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
           case ScreenState.ReturnToTitle: {
             this.stopAllAudio();
-            java.lang.System.gc();
+            Clock.collectGarbage();
             this.loadSpriteSheet(2, 'title');
           }
 
@@ -6995,7 +7082,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               GradiusNeoGame.state[0] = GradiusNeoGame.state[0] + 6;
             } else {
               if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64) !== 0) {
-                GradiusNeoGame.state[0]++;
+                getAndIncrement(GradiusNeoGame.state, 0);
               }
             }
 
@@ -7017,7 +7104,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               this.setSoftKeyLabels(6, 6);
               if (GradiusNeoGame.state[0] === 0) {
                 this.setSoftKeyLabels(6, 3);
-                GradiusNeoGame.state[0] = DEVELOPMENT_SELECTED_STAGE;
+                GradiusNeoGame.state[0] = 0;
                 GradiusNeoGame.screenState = ScreenState.NewGameStageSelect;
               } else {
                 if (GradiusNeoGame.state[0] === 1) {
@@ -7065,7 +7152,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               this.drawSpriteRegion(gfx, 2, 349, 0, fromLegacyRenderPixels(16 + 4 * GradiusNeoGame.state[0]), 20);
             }
 
-            if (++GradiusNeoGame.state[0] >= 4) {
+            if (incrementAndGet(GradiusNeoGame.state, 0) >= 4) {
               GradiusNeoGame.screenState = ScreenState.PrepareMainMenu;
               if (GradiusNeoGame.state[1] === -1) {
                 this.setSoftKeyLabels(6, 3);
@@ -7090,10 +7177,10 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             let var136: boolean = false;
             this.drawBitmapGlyphRun(gfx, 82, 13, 42, 160);
             this.drawBitmapGlyphRun(gfx, 95, 10, 42, 176);
-            let var144: java.lang.String[] = ['NONE', 'BGM', 'SFX'];
+            let var144: string[] = ['NONE', 'BGM', 'SFX', 'MIXED'];
             this.drawBitmapText(gfx, 'SOUND - ' + var144[GradiusNeoGame.soundMode], 42, 192);
-            let var15: byte;
-            let var16: byte;
+            let var15: number;
+            let var16: number;
             if (GradiusNeoGame.state[33] > 0) {
               var15 = 4;
               this.drawBitmapGlyphRun(gfx, 105, 10, 42, 208);
@@ -7109,7 +7196,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               GradiusNeoGame.state[0] = GradiusNeoGame.state[0] + var16 - 1 + 1;
             } else {
               if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64) !== 0) {
-                GradiusNeoGame.state[0]++;
+                getAndIncrement(GradiusNeoGame.state, 0);
               }
             }
 
@@ -7183,7 +7270,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               GradiusNeoGame.state[0] = GradiusNeoGame.state[0] + 5;
             } else {
               if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64) !== 0) {
-                GradiusNeoGame.state[0]++;
+                getAndIncrement(GradiusNeoGame.state, 0);
               }
             }
 
@@ -7209,7 +7296,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 4) !== 0) {
                     GradiusNeoGame.state[1] = GradiusNeoGame.state[1] + 3;
                   } else {
-                    GradiusNeoGame.state[1]++;
+                    getAndIncrement(GradiusNeoGame.state, 1);
                   }
 
                   GradiusNeoGame.state[1] = GradiusNeoGame.state[1] % 4;
@@ -7245,7 +7332,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               }
             } else {
               this.drawBitmapGlyphRun(gfx, 202, 5, 120, 192);
-              GradiusNeoGame.state[10]++;
+              getAndIncrement(GradiusNeoGame.state, 10);
             }
             break;
           }
@@ -7305,7 +7392,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               GradiusNeoGame.state[0] = GradiusNeoGame.state[0] + 4;
             } else {
               if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64) !== 0) {
-                GradiusNeoGame.state[0]++;
+                getAndIncrement(GradiusNeoGame.state, 0);
               }
             }
 
@@ -7329,7 +7416,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 4) !== 0) {
                     GradiusNeoGame.state[1] = GradiusNeoGame.state[1] + (GradiusNeoGame.state[66] - 1);
                   } else {
-                    GradiusNeoGame.state[1]++;
+                    getAndIncrement(GradiusNeoGame.state, 1);
                   }
 
                   GradiusNeoGame.state[1] = GradiusNeoGame.state[1] % GradiusNeoGame.state[66];
@@ -7338,7 +7425,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 4) !== 0) {
                       GradiusNeoGame.state[2] = GradiusNeoGame.state[2] + (GradiusNeoGame.state[67] - 1);
                     } else {
-                      GradiusNeoGame.state[2]++;
+                      getAndIncrement(GradiusNeoGame.state, 2);
                     }
 
                     GradiusNeoGame.state[2] = GradiusNeoGame.state[2] % GradiusNeoGame.state[67];
@@ -7347,7 +7434,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                       if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 4) !== 0) {
                         GradiusNeoGame.state[3] = GradiusNeoGame.state[3] + (GradiusNeoGame.state[68] - 1);
                       } else {
-                        GradiusNeoGame.state[3]++;
+                        getAndIncrement(GradiusNeoGame.state, 3);
                       }
 
                       GradiusNeoGame.state[3] = GradiusNeoGame.state[3] % GradiusNeoGame.state[68];
@@ -7377,7 +7464,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               }
             } else {
               this.drawBitmapGlyphRun(gfx, 202, 5, 120, 200);
-              GradiusNeoGame.state[10]++;
+              getAndIncrement(GradiusNeoGame.state, 10);
             }
             break;
           }
@@ -7385,18 +7472,22 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           case ScreenState.NewGameStageSelect: {
             this.drawBitmapGlyphRun(gfx, 25, 12, 36, 48);
 
-            let var91: int;
-            for (var91 = 0; var91 <= GradiusNeoGame.state[StateSlot.HighestUnlockedStage]; var91++) {
-              this.drawBitmapGlyphRun(gfx, 259 + var91 * 7, 7, 71, 96 + var91 * 16);
+            for (
+              let stageIndex = 0;
+              stageIndex <= GradiusNeoGame.state[StateSlot.HighestUnlockedStage];
+              stageIndex++
+            ) {
+              this.drawBitmapGlyphRun(gfx, 259 + stageIndex * 7, 7, 71, 96 + stageIndex * 16);
             }
 
-            this.drawBitmapGlyphRun(gfx, 294, 7, 71, 96 + var91 * 16);
+            const exitMenuRow = GradiusNeoGame.state[StateSlot.HighestUnlockedStage] + 1;
+            this.drawBitmapGlyphRun(gfx, 294, 7, 71, 96 + exitMenuRow * 16);
             if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2) !== 0) {
               GradiusNeoGame.state[0] =
                 GradiusNeoGame.state[0] + GradiusNeoGame.state[StateSlot.HighestUnlockedStage] + 1;
             } else {
               if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64) !== 0) {
-                GradiusNeoGame.state[0]++;
+                getAndIncrement(GradiusNeoGame.state, 0);
               }
             }
 
@@ -7441,7 +7532,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   GradiusNeoGame.screenState = ScreenState.ReturnToTitle;
                 }
               } else {
-                GradiusNeoGame.state[0]++;
+                getAndIncrement(GradiusNeoGame.state, 0);
                 GradiusNeoGame.state[1] = 0;
               }
             } else {
@@ -7480,7 +7571,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   }
                 }
               } else {
-                for (let var89: int = 0; var89 <= GradiusNeoGame.state[StateSlot.HighestUnlockedStage]; var89++) {
+                for (let var89: number = 0; var89 <= GradiusNeoGame.state[StateSlot.HighestUnlockedStage]; var89++) {
                   gfx.setColor(5263440);
                   if (EXTRA_MODE_TARGET_SCORES[var89] <= GradiusNeoGame.extraModeBestScores[var89]) {
                     gfx.setColor(32896);
@@ -7489,27 +7580,38 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   gfx.fillRect(90, toRenderPixels(32 + (var89 * 16 * 9) / 4 - 2), 84, 13);
                 }
 
-                let var90: int;
-                for (var90 = 0; var90 <= GradiusNeoGame.state[StateSlot.HighestUnlockedStage]; var90++) {
-                  this.drawBitmapGlyphRun(gfx, 259 + var90 * 7, 7, 16, 32 + (var90 * 16 * 9) / 4);
-                  this.drawBitmapNumber(gfx, EXTRA_MODE_TARGET_SCORES[var90], 7, 128, 32 + (var90 * 16 * 9) / 4, 4);
+                for (
+                  let stageIndex = 0;
+                  stageIndex <= GradiusNeoGame.state[StateSlot.HighestUnlockedStage];
+                  stageIndex++
+                ) {
+                  this.drawBitmapGlyphRun(gfx, 259 + stageIndex * 7, 7, 16, 32 + (stageIndex * 16 * 9) / 4);
                   this.drawBitmapNumber(
                     gfx,
-                    GradiusNeoGame.extraModeBestScores[var90],
+                    EXTRA_MODE_TARGET_SCORES[stageIndex],
                     7,
                     128,
-                    48 + (var90 * 16 * 9) / 4,
+                    32 + (stageIndex * 16 * 9) / 4,
+                    4,
+                  );
+                  this.drawBitmapNumber(
+                    gfx,
+                    GradiusNeoGame.extraModeBestScores[stageIndex],
+                    7,
+                    128,
+                    48 + (stageIndex * 16 * 9) / 4,
                     4,
                   );
                 }
 
-                this.drawBitmapGlyphRun(gfx, 301, 7, 16, 32 + (var90 * 16 * 9) / 4);
+                const exitMenuRow = GradiusNeoGame.state[StateSlot.HighestUnlockedStage] + 1;
+                this.drawBitmapGlyphRun(gfx, 301, 7, 16, 32 + (exitMenuRow * 16 * 9) / 4);
                 if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2) !== 0) {
                   GradiusNeoGame.state[1] =
                     GradiusNeoGame.state[1] + GradiusNeoGame.state[StateSlot.HighestUnlockedStage] + 1;
                 } else {
                   if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64) !== 0) {
-                    GradiusNeoGame.state[1]++;
+                    getAndIncrement(GradiusNeoGame.state, 1);
                   }
                 }
 
@@ -7580,12 +7682,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             GradiusNeoGame.state[84] = 0;
             GradiusNeoGame.state[StateSlot.ShieldEnergy] = 0;
 
-            for (let var87: int = 1; var87 < 17; var87++) {
+            for (let var87: number = 1; var87 < 17; var87++) {
               GradiusNeoGame.state[1126 + var87] = GradiusNeoGame.state[StateSlot.PlayerX];
               GradiusNeoGame.state[1143 + var87] = GradiusNeoGame.state[StateSlot.PlayerY];
             }
 
-            for (let var88: int = 1; var88 < 5; var88++) {
+            for (let var88: number = 1; var88 < 5; var88++) {
               GradiusNeoGame.state[1160 + var88] = GradiusNeoGame.state[1126 + var88 * 4];
               GradiusNeoGame.state[1165 + var88] = GradiusNeoGame.state[1143 + var88 * 4];
             }
@@ -7616,11 +7718,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
           case ScreenState.LoadSavedGame: {
             try {
-              GradiusNeoGame.recordStore = RecordStore.openRecordStore('R', true);
-              GradiusNeoGame.recordStore.getRecord(1, GradiusNeoGame.saveData, 0);
-              GradiusNeoGame.recordStore.closeRecordStore();
+              GradiusNeoGame.saveStorage = SaveStorage.open('R', true);
+              GradiusNeoGame.saveStorage.getRecord(1, GradiusNeoGame.saveData, 0);
+              GradiusNeoGame.saveStorage.close();
             } catch (var26) {
-              if (var26 instanceof java.lang.Throwable) {
+              if (var26 instanceof Error) {
               } else {
                 throw var26;
               }
@@ -7652,10 +7754,10 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               20,
             );
             if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 2) !== 0) {
-              GradiusNeoGame.state[0]++;
+              getAndIncrement(GradiusNeoGame.state, 0);
             } else {
               if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64) !== 0) {
-                GradiusNeoGame.state[0]++;
+                getAndIncrement(GradiusNeoGame.state, 0);
               }
             }
 
@@ -7691,12 +7793,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 GradiusNeoGame.state[84] = 0;
                 GradiusNeoGame.state[StateSlot.ShieldEnergy] = 0;
 
-                for (let var85: int = 1; var85 < 17; var85++) {
+                for (let var85: number = 1; var85 < 17; var85++) {
                   GradiusNeoGame.state[1126 + var85] = GradiusNeoGame.state[StateSlot.PlayerX];
                   GradiusNeoGame.state[1143 + var85] = GradiusNeoGame.state[StateSlot.PlayerY];
                 }
 
-                for (let var86: int = 1; var86 < 5; var86++) {
+                for (let var86: number = 1; var86 < 5; var86++) {
                   GradiusNeoGame.state[1160 + var86] = GradiusNeoGame.state[1126 + var86 * 4];
                   GradiusNeoGame.state[1165 + var86] = GradiusNeoGame.state[1143 + var86 * 4];
                 }
@@ -7737,24 +7839,23 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             GradiusNeoGame.state[StateSlot.FreeEntityHead] = 0;
             GradiusNeoGame.state[StateSlot.PrimaryEntityHead] = -1;
             GradiusNeoGame.state[StateSlot.AuxiliaryEntityHead] = -1;
-            let var78: int = 0;
-            for (var78 = 0; var78 < 511; var78++) {
-              GradiusNeoGame.state[EntityField.Next + var78] = var78 + 1;
+            for (let entityId = 0; entityId < 511; entityId++) {
+              GradiusNeoGame.state[EntityField.Next + entityId] = entityId + 1;
             }
 
-            GradiusNeoGame.state[EntityField.Next + var78] = -1;
+            GradiusNeoGame.state[EntityField.Next + 511] = -1;
 
-            for (let var79: int = 0; var79 < 18; var79++) {
+            for (let var79: number = 0; var79 < 18; var79++) {
               GradiusNeoGame.state[EntityField.RenderLayerHead + var79] = -1;
             }
 
-            for (let var80: int = 0; var80 < 20; var80++) {
+            for (let var80: number = 0; var80 < 20; var80++) {
               GradiusNeoGame.state[1245 + var80] = -1;
             }
 
             GradiusNeoGame.synchronizeFormationWeapon();
 
-            for (let var81: int = 0; var81 < 752; var81++) {
+            for (let var81: number = 0; var81 < 752; var81++) {
               GradiusNeoGame.state[1265 + var81] = 0;
             }
 
@@ -7776,7 +7877,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               GradiusNeoGame.runtimeFlags[7] = false;
               GradiusNeoGame.runtimeFlags[8] = false;
               if (GradiusNeoGame.state[StateSlot.CurrentStage] === 4) {
-                for (let var82: int = 0; var82 < 16; var82++) {
+                for (let var82: number = 0; var82 < 16; var82++) {
                   GradiusNeoGame.state[1265 + 0 + var82] = 1;
                   GradiusNeoGame.state[1265 + 208 + var82] = 1;
                 }
@@ -7801,15 +7902,23 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             }
 
             this.loadResourceIntoBuffer('' + GradiusNeoGame.state[StateSlot.CurrentStage]);
-            let var99: int = (GradiusNeoGame.resourceBuffer[0] << 8) | (GradiusNeoGame.resourceBuffer[1] & 255);
-            GradiusNeoGame.state[37] = (GradiusNeoGame.resourceBuffer[var99++] & 255) << 8;
-            GradiusNeoGame.state[37] = GradiusNeoGame.state[37] | (GradiusNeoGame.resourceBuffer[var99++] & 255);
-            GradiusNeoGame.state[38] = (GradiusNeoGame.resourceBuffer[var99++] & 255) << 8;
-            GradiusNeoGame.state[38] = GradiusNeoGame.state[38] | (GradiusNeoGame.resourceBuffer[var99++] & 255);
-            GradiusNeoGame.state[39] = GradiusNeoGame.resourceBuffer[var99++] & 255;
-            GradiusNeoGame.state[40] = GradiusNeoGame.resourceBuffer[var99++] & 255;
-            GradiusNeoGame.state[41] = GradiusNeoGame.resourceBuffer[var99++] & 255;
-            GradiusNeoGame.state[StateSlot.StageScrollSpeed] = GradiusNeoGame.resourceBuffer[var99++] & 255;
+            let var99: number = (GradiusNeoGame.resourceBuffer[0] << 8) | (GradiusNeoGame.resourceBuffer[1] & 255);
+            GradiusNeoGame.state[37] = (GradiusNeoGame.resourceBuffer[var99] & 255) << 8;
+            var99 += 1;
+            GradiusNeoGame.state[37] = GradiusNeoGame.state[37] | (GradiusNeoGame.resourceBuffer[var99] & 255);
+            var99 += 1;
+            GradiusNeoGame.state[38] = (GradiusNeoGame.resourceBuffer[var99] & 255) << 8;
+            var99 += 1;
+            GradiusNeoGame.state[38] = GradiusNeoGame.state[38] | (GradiusNeoGame.resourceBuffer[var99] & 255);
+            var99 += 1;
+            GradiusNeoGame.state[39] = GradiusNeoGame.resourceBuffer[var99] & 255;
+            var99 += 1;
+            GradiusNeoGame.state[40] = GradiusNeoGame.resourceBuffer[var99] & 255;
+            var99 += 1;
+            GradiusNeoGame.state[41] = GradiusNeoGame.resourceBuffer[var99] & 255;
+            var99 += 1;
+            GradiusNeoGame.state[StateSlot.StageScrollSpeed] = GradiusNeoGame.resourceBuffer[var99] & 255;
+            var99 += 1;
             GradiusNeoGame.state[StateSlot.StageWorldHeight] = GradiusNeoGame.state[37];
             GradiusNeoGame.state[45] = 1;
             GradiusNeoGame.state[StateSlot.PendingCameraDeltaY] = 0;
@@ -7823,7 +7932,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               GradiusNeoGame.state[StateSlot.PlayerY] =
                 GradiusNeoGame.state[StateSlot.PlayerY] + GradiusNeoGame.state[StateSlot.CameraOffsetY];
 
-              for (let var83: int = 1; var83 < 17; var83++) {
+              for (let var83: number = 1; var83 < 17; var83++) {
                 GradiusNeoGame.state[1143 + var83] =
                   GradiusNeoGame.state[1143 + var83] + GradiusNeoGame.state[StateSlot.CameraOffsetY];
                 GradiusNeoGame.state[1175 + var83] =
@@ -7831,35 +7940,39 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               }
             }
 
-            for (var78 = 0; GradiusNeoGame.resourceBuffer[var99] !== -1; var99 += 2) {
-              GradiusNeoGame.stageEventScript[3656 + var78++] = ((GradiusNeoGame.resourceBuffer[var99] << 8) +
-                (GradiusNeoGame.resourceBuffer[var99 + 1] & 255)) as short;
+            let stageEventCount = 0;
+            while (GradiusNeoGame.resourceBuffer[var99] !== -1) {
+              GradiusNeoGame.stageEventScript[3656 + stageEventCount] = toShort(
+                (GradiusNeoGame.resourceBuffer[var99] << 8) + (GradiusNeoGame.resourceBuffer[var99 + 1] & 255),
+              );
+              stageEventCount++;
+              var99 += 2;
             }
 
             var99++;
 
-            let var114: int;
-            for (
-              GradiusNeoGame.state[StateSlot.StageScriptPosition] = var78;
-              (var114 =
-                (GradiusNeoGame.resourceBuffer[var99] << 8) | (GradiusNeoGame.resourceBuffer[var99 + 1] & 255)) !==
-              32512;
-              var99 += 2
-            ) {
-              GradiusNeoGame.stageEventScript[3656 + var78++] = var114 as short;
+            GradiusNeoGame.state[StateSlot.StageScriptPosition] = stageEventCount;
+            let stageEventWord =
+              (GradiusNeoGame.resourceBuffer[var99] << 8) | (GradiusNeoGame.resourceBuffer[var99 + 1] & 255);
+            while (stageEventWord !== 32512) {
+              GradiusNeoGame.stageEventScript[3656 + stageEventCount] = toShort(stageEventWord);
+              stageEventCount++;
+              var99 += 2;
+              stageEventWord =
+                (GradiusNeoGame.resourceBuffer[var99] << 8) | (GradiusNeoGame.resourceBuffer[var99 + 1] & 255);
             }
 
             if (GradiusNeoGame.state[StateSlot.CurrentStage] === 1) {
               try {
                 this.spriteSheets[4] = Image.createImage('/img_st2c');
               } catch (var25) {
-                if (var25 instanceof java.lang.Throwable) {
+                if (var25 instanceof Error) {
                 } else {
                   throw var25;
                 }
               }
 
-              let var140: int = 0;
+              let var140: number = 0;
               var140 = (GradiusNeoGame.resourceBuffer[6] << 8) | (GradiusNeoGame.resourceBuffer[7] & 255);
               GradiusNeoGame.state[48] = var140 + (GradiusNeoGame.resourceBuffer[var140 + 1] & 255) * 64 + 6;
             }
@@ -7951,7 +8064,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & InputBit.Fire) !== 0) {
               GradiusNeoGame.screenState = ScreenState.ReturnToTitle;
               if (GradiusNeoGame.state[StateSlot.Continues] > 0 && GradiusNeoGame.state[0] === 0) {
-                GradiusNeoGame.state[StateSlot.Continues]--;
+                getAndDecrement(GradiusNeoGame.state, StateSlot.Continues);
                 GradiusNeoGame.state[StateSlot.Score] = 0;
                 GradiusNeoGame.state[StateSlot.NextExtraLifeScore] = 70000;
                 GradiusNeoGame.state[StateSlot.Lives] = 2;
@@ -7976,12 +8089,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               GradiusNeoGame.state[StateSlot.PlayerX] = 32;
               GradiusNeoGame.state[StateSlot.PlayerY] = 104;
 
-              for (let var76: int = 1; var76 < 17; var76++) {
+              for (let var76: number = 1; var76 < 17; var76++) {
                 GradiusNeoGame.state[1126 + var76] = GradiusNeoGame.state[StateSlot.PlayerX];
                 GradiusNeoGame.state[1143 + var76] = GradiusNeoGame.state[StateSlot.PlayerY];
               }
 
-              for (let var77: int = 0; var77 < 20; var77++) {
+              for (let var77: number = 0; var77 < 20; var77++) {
                 GradiusNeoGame.state[1245 + var77] = -1;
               }
 
@@ -8004,12 +8117,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             if (GradiusNeoGame.state[2] <= 1) {
               this.drawSpriteRegion(gfx, 3, 283, toRenderPixels(41 + GradiusNeoGame.state[1] / 16 - 16), 0, 20);
 
-              for (let var73: int = 0; var73 < 20; var73++) {
-                let var125: int =
+              for (let var73: number = 0; var73 < 20; var73++) {
+                let var125: number =
                   (GradiusNeoGame.state[1055 + var73] -
                     (GradiusNeoGame.state[1] / 2) * (var73 / 2 + 1) * GradiusNeoGame.state[45]) &
                   0xff;
-                let var133: int = GradiusNeoGame.state[1055 + 20 + var73] & 0xff;
+                let var133: number = GradiusNeoGame.state[1055 + 20 + var73] & 0xff;
                 gfx.setColor(GradiusNeoGame.state[307 + var73]);
                 gfx.drawLine(
                   toRenderPixels(var125),
@@ -8056,11 +8169,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               }
 
               if (GradiusNeoGame.state[2] === 0) {
-                let var113: short = 0;
+                let var113: number = 0;
                 gfx.setFont(Font.getFont(64, 0, 8));
 
-                for (let var74: int = 0; var74 < this.endingCreditsPages.length - 1; var74++) {
-                  for (let var98: int = 0; var98 < this.endingCreditsPages[var74].length; var98++) {
+                for (let var74: number = 0; var74 < this.endingCreditsPages.length - 1; var74++) {
+                  for (let var98: number = 0; var98 < this.endingCreditsPages[var74].length; var98++) {
                     if (-26 < GradiusNeoGame.state[0] + var113 && GradiusNeoGame.state[0] + var113 < 266) {
                       if (var98 === 0 && var74 < this.endingCreditsPages.length - 1) {
                         gfx.setColor(8421504);
@@ -8142,7 +8255,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 gfx.setFont(Font.getFont(64, 0, 8));
 
                 for (
-                  let var75: int = 0;
+                  let var75: number = 0;
                   var75 < this.endingCreditsPages[this.endingCreditsPages.length - 1].length;
                   var75++
                 ) {
@@ -8198,7 +8311,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             gfx.setFont(Font.getFont(32, 0, 8));
             gfx.setClip(0, 0, this.getWidth(), this.getHeight());
 
-            for (let var72: int = 0; var72 < this.bgmTrackTitles[GradiusNeoGame.state[1]].length; var72++) {
+            for (let var72: number = 0; var72 < this.bgmTrackTitles[GradiusNeoGame.state[1]].length; var72++) {
               gfx.drawString(
                 this.bgmTrackTitles[GradiusNeoGame.state[1]][var72],
                 90,
@@ -8222,7 +8335,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               GradiusNeoGame.state[0] = GradiusNeoGame.state[0] + 3;
             } else {
               if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 64) !== 0) {
-                GradiusNeoGame.state[0]++;
+                getAndIncrement(GradiusNeoGame.state, 0);
               }
             }
 
@@ -8251,10 +8364,10 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
             } else {
               if ((GradiusNeoGame.state[StateSlot.PressedInputBits] & 32) !== 0) {
                 if (GradiusNeoGame.state[0] === 0) {
-                  GradiusNeoGame.state[1]++;
+                  getAndIncrement(GradiusNeoGame.state, 1);
                 } else {
                   if (GradiusNeoGame.state[0] === 1) {
-                    GradiusNeoGame.state[2]++;
+                    getAndIncrement(GradiusNeoGame.state, 2);
                   }
                 }
               }
@@ -8293,7 +8406,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           case ScreenState.StageReady: {
             this.drawBitmapGlyphRun(gfx, 7, 10, 50, 113);
             this.drawDifficultyLabel(gfx, GradiusNeoGame.state[StateSlot.Difficulty], 141);
-            if (3000n < java.lang.System.currentTimeMillis() - GradiusNeoGame.timestamps[2]) {
+            if (3000n < Clock.currentTimeMillis() - GradiusNeoGame.timestamps[2]) {
               GradiusNeoGame.screenState = ScreenState.Gameplay;
               GradiusNeoGame.requestBackgroundMusic(15 + GradiusNeoGame.state[StateSlot.CurrentStage] * 3);
               this.setSoftKeyLabels(4, 5);
@@ -8352,9 +8465,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 GradiusNeoGame.state[StateSlot.StageEventCountdown] =
                   GradiusNeoGame.state[StateSlot.StageEventCountdown] + 8;
 
-                let var4: short;
+                let var4: number;
                 do {
-                  let var34: int;
+                  let var34: number;
                   switch (
                     (var34 =
                       ((var4 =
@@ -8385,15 +8498,15 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                         GradiusNeoGame.state[StateSlot.PlayerY] =
                           GradiusNeoGame.state[StateSlot.PlayerY] - GradiusNeoGame.state[StateSlot.CameraOffsetY];
 
-                        for (let var35: int = 1; var35 < 17; var35++) {
+                        for (let var35: number = 1; var35 < 17; var35++) {
                           GradiusNeoGame.state[1143 + var35] =
                             GradiusNeoGame.state[1143 + var35] - GradiusNeoGame.state[StateSlot.CameraOffsetY];
                         }
 
-                        let var5: int = GradiusNeoGame.state[StateSlot.PrimaryEntityHead];
+                        let var5: number = GradiusNeoGame.state[StateSlot.PrimaryEntityHead];
 
                         while (var5 !== -1) {
-                          let var6: int = GradiusNeoGame.state[EntityField.Next + var5];
+                          let var6: number = GradiusNeoGame.state[EntityField.Next + var5];
                           GradiusNeoGame.state[EntityField.Y + var5] =
                             GradiusNeoGame.state[EntityField.Y + var5] - GradiusNeoGame.state[StateSlot.CameraOffsetY];
                           GradiusNeoGame.state[EntityField.YFixed + var5] =
@@ -8407,7 +8520,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                         ] = 0;
                         GradiusNeoGame.state[StateSlot.StageWorldHeight] = GAMEPLAY_HEIGHT;
 
-                        for (let var36: int = 0; var36 < 752; var36++) {
+                        for (let var36: number = 0; var36 < 752; var36++) {
                           GradiusNeoGame.state[1265 + var36] = 0;
                         }
                       }
@@ -8419,7 +8532,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                       if (GradiusNeoGame.state[41] === 5) {
                         GradiusNeoGame.state[StateSlot.VisualStageScrollX] = 0;
 
-                        for (let var37: int = 0; var37 < 16; var37++) {
+                        for (let var37: number = 0; var37 < 16; var37++) {
                           GradiusNeoGame.state[1265 + 240 + var37] = 1;
                         }
                       }
@@ -8460,7 +8573,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                         (GradiusNeoGame.stageEventScript[
                           3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition] + 1
                         ] &
-                          '\uff00') >>
+                          0xff00) >>
                           8,
                         GAME_VIEW_WIDTH,
                         (var4 & 255) * 4,
@@ -8480,7 +8593,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                             128) >>
                             7),
                       );
-                      GradiusNeoGame.state[StateSlot.StageScriptPosition]++;
+                      getAndIncrement(GradiusNeoGame.state, StateSlot.StageScriptPosition);
                       break;
                     }
 
@@ -8497,7 +8610,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                             ((GradiusNeoGame.stageEventScript[
                               3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition] + 1
                             ] &
-                              '\uf000') <<
+                              0xf000) <<
                               4) |
                             (GradiusNeoGame.stageEventScript[
                               3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition] + 1
@@ -8518,7 +8631,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                             ((GradiusNeoGame.stageEventScript[
                               3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition] + 1
                             ] &
-                              '\uf000') <<
+                              0xf000) <<
                               4) |
                             (GradiusNeoGame.stageEventScript[
                               3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition] + 1
@@ -8539,7 +8652,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                             3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition] + 1
                           ] &
                             15);
-                      GradiusNeoGame.state[StateSlot.StageScriptPosition]++;
+                      getAndIncrement(GradiusNeoGame.state, StateSlot.StageScriptPosition);
                       break;
                     }
 
@@ -8553,7 +8666,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                         ((GradiusNeoGame.stageEventScript[
                           3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition] + 1
                         ] &
-                          '\uf000') <<
+                          0xf000) <<
                           4) |
                           (GradiusNeoGame.stageEventScript[
                             3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition] + 1
@@ -8572,7 +8685,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                             3656 + GradiusNeoGame.state[StateSlot.StageScriptPosition] + 1
                           ] &
                             15);
-                      GradiusNeoGame.state[StateSlot.StageScriptPosition]++;
+                      getAndIncrement(GradiusNeoGame.state, StateSlot.StageScriptPosition);
                       break;
                     }
 
@@ -8587,7 +8700,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     }
 
                     case 126: {
-                      GradiusNeoGame.state[StateSlot.StageScriptPosition]--;
+                      getAndDecrement(GradiusNeoGame.state, StateSlot.StageScriptPosition);
                       break;
                     }
 
@@ -8601,20 +8714,20 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     }
                   }
 
-                  GradiusNeoGame.state[StateSlot.StageScriptPosition]++;
-                } while ((var4 & '耀') !== 0);
+                  getAndIncrement(GradiusNeoGame.state, StateSlot.StageScriptPosition);
+                } while ((var4 & 0x8000) !== 0);
               }
 
               this.updatePlayerWeaponsAndCollisions();
 
-              for (let var38: int = 0; var38 < 20; var38++) {
+              for (let var38: number = 0; var38 < 20; var38++) {
                 switch (GradiusNeoGame.state[1245 + var38]) {
                   case 0:
                   case 1:
                   case 3:
                   case 5:
                   case 16: {
-                    let var33: short = 117;
+                    let var33: number = 117;
                     if (GradiusNeoGame.state[1245 + var38] === 16) {
                       var33 = 273;
                     }
@@ -8744,12 +8857,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   }
 
                   case 7: {
-                    GradiusNeoGame.state[1225 + var38]++;
+                    getAndIncrement(GradiusNeoGame.state, 1225 + var38);
                     if (GradiusNeoGame.state[1225 + var38] >= 3) {
                       GradiusNeoGame.state[1225 + var38] = 3;
                     }
 
-                    let var32: int = 266 + (GradiusNeoGame.state[1225 + var38] - 1) * 1;
+                    let var32: number = 266 + (GradiusNeoGame.state[1225 + var38] - 1) * 1;
                     GradiusNeoGame.state[1185 + var38] = GradiusNeoGame.state[1185 + var38] + 32;
                     if (
                       GradiusNeoGame.state[1225 + var38] > 0 &&
@@ -8793,27 +8906,25 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     GradiusNeoGame.state[1205 + var38] = GradiusNeoGame.state[1160 + var38 / 4] + 16;
                     GradiusNeoGame.state[1185 + var38] = GradiusNeoGame.state[1185 + var38] + 48;
 
-                    for (
-                      let var96: int = GradiusNeoGame.state[1205 + var38];
-                      var96 < GradiusNeoGame.state[1185 + var38];
-                      var96 += 16
-                    ) {
+                    let terrainProbeX = GradiusNeoGame.state[1205 + var38];
+                    while (terrainProbeX < GradiusNeoGame.state[1185 + var38]) {
                       if (
                         GradiusNeoGame.sampleTerrainCollision(
-                          var96,
+                          terrainProbeX,
                           GradiusNeoGame.state[1165 + var38 / 4] - GradiusNeoGame.state[StateSlot.CameraOffsetY],
                         ) < 0
                       ) {
-                        GradiusNeoGame.state[1185 + var38] = var96;
+                        GradiusNeoGame.state[1185 + var38] = terrainProbeX;
                         GradiusNeoGame.spawnEntity(
                           13,
                           GradiusNeoGame.state[1185 + var38] - 8,
                           GradiusNeoGame.state[1165 + var38 / 4],
                           0,
                         );
-                        GradiusNeoGame.state[1245 + var38]++;
+                        getAndIncrement(GradiusNeoGame.state, 1245 + var38);
                         break;
                       }
+                      terrainProbeX += 16;
                     }
 
                     if (
@@ -8821,7 +8932,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                       GAME_VIEW_WIDTH - GradiusNeoGame.state[1185 + var38] < 0
                     ) {
                       GradiusNeoGame.state[1185 + var38] = GAME_VIEW_WIDTH;
-                      GradiusNeoGame.state[1245 + var38]++;
+                      getAndIncrement(GradiusNeoGame.state, 1245 + var38);
                     }
 
                     GradiusNeoGame.enqueueRenderCommand(0, var38, GradiusNeoGame.state[1165 + var38 / 4], 1, 0, 0);
@@ -8849,19 +8960,19 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                       case 0: {
                         GradiusNeoGame.state[1205 + var38] = 0;
                         GradiusNeoGame.state[1185 + var38] = 0;
-                        GradiusNeoGame.state[1225 + var38]++;
+                        getAndIncrement(GradiusNeoGame.state, 1225 + var38);
                         break;
                       }
 
                       case 1: {
-                        GradiusNeoGame.state[1205 + var38]++;
+                        getAndIncrement(GradiusNeoGame.state, 1205 + var38);
                         if (GradiusNeoGame.state[1205 + var38] === 2) {
                           GradiusNeoGame.requestSoundEffect(8);
                           GradiusNeoGame.state[1185 + var38] = GAME_VIEW_WIDTH;
                         }
 
                         if (GradiusNeoGame.state[1205 + var38] >= 5) {
-                          GradiusNeoGame.state[1225 + var38]++;
+                          getAndIncrement(GradiusNeoGame.state, 1225 + var38);
                         }
                         break;
                       }
@@ -8886,13 +8997,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                       case 19:
                       case 20:
                       default: {
-                        GradiusNeoGame.state[1225 + var38]++;
+                        getAndIncrement(GradiusNeoGame.state, 1225 + var38);
                         break;
                       }
 
                       case 21:
-                        if (--s[1205 + var38] < 0) {
-                          s[1225 + var38]++;
+                        if (decrementAndGet(s, 1205 + var38) < 0) {
+                          getAndIncrement(s, 1225 + var38);
                         }
                         break;
                       case 22:
@@ -8901,39 +9012,36 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                       case 25:
                       case 26:
                       case 27:
-                        if (++s[1225 + var38] >= 28) {
+                        if (incrementAndGet(s, 1225 + var38) >= 28) {
                           s[1245 + var38] = -1;
                         }
                     }
 
                     if (GradiusNeoGame.state[1205 + var38] >= 3) {
-                      for (
-                        let var95: int = GradiusNeoGame.state[StateSlot.PlayerX] + 40;
-                        var95 < GradiusNeoGame.state[1185 + var38];
-                        var95 += 16
-                      ) {
+                      let terrainProbeX = GradiusNeoGame.state[StateSlot.PlayerX] + 40;
+                      while (terrainProbeX < GradiusNeoGame.state[1185 + var38]) {
                         if (
                           (GradiusNeoGame.sampleTerrainCollision(
-                            var95,
+                            terrainProbeX,
                             GradiusNeoGame.state[StateSlot.PlayerY] -
                               16 -
                               GradiusNeoGame.state[StateSlot.CameraOffsetY],
                           ) |
                             GradiusNeoGame.sampleTerrainCollision(
-                              var95,
+                              terrainProbeX,
                               GradiusNeoGame.state[StateSlot.PlayerY] +
                                 0 -
                                 GradiusNeoGame.state[StateSlot.CameraOffsetY],
                             ) |
                             GradiusNeoGame.sampleTerrainCollision(
-                              var95,
+                              terrainProbeX,
                               GradiusNeoGame.state[StateSlot.PlayerY] +
                                 16 -
                                 GradiusNeoGame.state[StateSlot.CameraOffsetY],
                             )) <
                           0
                         ) {
-                          GradiusNeoGame.state[1185 + var38] = var95;
+                          GradiusNeoGame.state[1185 + var38] = terrainProbeX;
                           GradiusNeoGame.spawnEntity(
                             11,
                             GradiusNeoGame.state[1185 + var38] - 8,
@@ -8941,6 +9049,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                             0,
                           );
                         }
+                        terrainProbeX += 16;
                       }
                     }
 
@@ -8973,21 +9082,21 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                       if (GradiusNeoGame.state[1245 + var38] === 11) {
                         GradiusNeoGame.state[1245 + var38] = -1;
                       } else {
-                        GradiusNeoGame.state[1245 + var38]--;
+                        getAndDecrement(GradiusNeoGame.state, 1245 + var38);
                       }
                     }
 
-                    GradiusNeoGame.state[1225 + var38]++;
-                    let var111: int = 0;
+                    getAndIncrement(GradiusNeoGame.state, 1225 + var38);
+                    let var111: number = 0;
                     if (GradiusNeoGame.state[1225 + var38] < 4) {
-                      GradiusNeoGame.state[1245 + var38]++;
+                      getAndIncrement(GradiusNeoGame.state, 1245 + var38);
                     } else {
                       GradiusNeoGame.state[1185 + var38] = GradiusNeoGame.state[1185 + var38] + 16;
                       var111 = GradiusNeoGame.state[1225 + var38] - 4 + 1;
                     }
 
                     if (GradiusNeoGame.state[1245 + var38] >= 0) {
-                      for (let var94: int = 0; var94 <= GradiusNeoGame.state[1245 + var38] - 12; var94++) {
+                      for (let var94: number = 0; var94 <= GradiusNeoGame.state[1245 + var38] - 12; var94++) {
                         GradiusNeoGame.enqueueRenderCommand(
                           1,
                           GradiusNeoGame.state[1185 + var38] + var94 * 16,
@@ -9087,15 +9196,15 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     }
 
                     if (GradiusNeoGame.state[1225 + var38] < 5) {
-                      GradiusNeoGame.state[1225 + var38]++;
+                      getAndIncrement(GradiusNeoGame.state, 1225 + var38);
                     }
 
-                    let var110: int;
-                    for (var110 = 1; var110 < GradiusNeoGame.state[1225 + var38]; var110++) {
+                    let missileSegmentOffset = 1;
+                    while (missileSegmentOffset < GradiusNeoGame.state[1225 + var38]) {
                       GradiusNeoGame.enqueueRenderCommand(
                         1,
                         GradiusNeoGame.state[1185 + var38],
-                        GradiusNeoGame.state[1205 + var38] - 16 * var110,
+                        GradiusNeoGame.state[1205 + var38] - 16 * missileSegmentOffset,
                         15,
                         93,
                         0,
@@ -9103,17 +9212,18 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                       GradiusNeoGame.enqueueRenderCommand(
                         1,
                         GradiusNeoGame.state[1185 + var38],
-                        GradiusNeoGame.state[1205 + var38] + 16 * var110,
+                        GradiusNeoGame.state[1205 + var38] + 16 * missileSegmentOffset,
                         15,
                         93,
                         0,
                       );
+                      missileSegmentOffset++;
                     }
 
                     GradiusNeoGame.enqueueRenderCommand(
                       1,
                       GradiusNeoGame.state[1185 + var38],
-                      GradiusNeoGame.state[1205 + var38] - 16 * var110,
+                      GradiusNeoGame.state[1205 + var38] - 16 * missileSegmentOffset,
                       15,
                       92,
                       0,
@@ -9129,7 +9239,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     GradiusNeoGame.enqueueRenderCommand(
                       1,
                       GradiusNeoGame.state[1185 + var38],
-                      GradiusNeoGame.state[1205 + var38] + 16 * var110,
+                      GradiusNeoGame.state[1205 + var38] + 16 * missileSegmentOffset,
                       15,
                       94,
                       0,
@@ -9140,7 +9250,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   case 20: {
                     GradiusNeoGame.state[1185 + var38] = GradiusNeoGame.state[1185 + var38] + 2;
                     GradiusNeoGame.state[1205 + var38] = GradiusNeoGame.state[1205 + var38] + 8;
-                    let var31: byte = 96;
+                    let var31: number = 96;
                     if (
                       GradiusNeoGame.sampleTerrainCollision(
                         GradiusNeoGame.state[1185 + var38],
@@ -9186,8 +9296,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   case 21:
                   case 22: {
                     GradiusNeoGame.state[1185 + var38] =
-                      GradiusNeoGame.state[1185 + var38] + (6 - ++GradiusNeoGame.state[1225 + var38] / 4);
-                    let var2: int;
+                      GradiusNeoGame.state[1185 + var38] + (6 - incrementAndGet(GradiusNeoGame.state, 1225 + var38) / 4);
+                    let var2: number;
                     if ((var2 = (GradiusNeoGame.state[1225 + var38] / 4) * 1) > 3) {
                       var2 = 3;
                     }
@@ -9246,6 +9356,10 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               this.backdropLogicFrame = GradiusNeoGame.state[StateSlot.LogicFrame];
               this.backdropScrollX = GradiusNeoGame.state[StateSlot.VisualStageScrollX];
               GradiusNeoGame.state[78] = -1;
+              // The tunnel is assembled from repeating render commands rather
+              // than regular entities. Give the complete backdrop a stable
+              // motion identity so its blue bands interpolate continuously.
+              GradiusNeoGame.renderQueue.beginMotionSource(-20, GradiusNeoGame.state[41]);
               switch (GradiusNeoGame.state[41]) {
                 case 1: {
                   if (GradiusNeoGame.state[22] === 0) {
@@ -9272,12 +9386,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     }
                   }
 
-                  for (let var50: int = 0; var50 < 20; var50++) {
-                    let var122: int =
+                  for (let var50: number = 0; var50 < 20; var50++) {
+                    let var122: number =
                       (GradiusNeoGame.state[1055 + var50] -
                         GradiusNeoGame.state[StateSlot.LogicFrame] * (var50 / 2 + 1) * GradiusNeoGame.state[45]) &
                       0xff;
-                    let var130: int = GradiusNeoGame.state[1055 + 20 + var50] & 0xff;
+                    let var130: number = GradiusNeoGame.state[1055 + 20 + var50] & 0xff;
                     gfx.setColor(GradiusNeoGame.state[307 + var50]);
                     gfx.drawLine(
                       toRenderPixels(var122),
@@ -9287,13 +9401,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     );
                   }
 
-                  for (let var51: int = 0; var51 < 20; var51++) {
-                    let var123: int =
+                  for (let var51: number = 0; var51 < 20; var51++) {
+                    let var123: number =
                       (GradiusNeoGame.state[1055 + var51] -
                         GradiusNeoGame.state[StateSlot.LogicFrame] * (var51 / 2 + 1) * GradiusNeoGame.state[45] +
                         160) &
                       0xff;
-                    let var131: int = (GradiusNeoGame.state[1055 + 20 + var51] + 80) & 0xff;
+                    let var131: number = (GradiusNeoGame.state[1055 + 20 + var51] + 80) & 0xff;
                     gfx.setColor(GradiusNeoGame.state[307 + var51]);
                     gfx.drawLine(
                       toRenderPixels(var123),
@@ -9307,12 +9421,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
                 case 2:
                 case 3: {
-                  for (let var49: int = 0; var49 < 20; var49++) {
-                    let var121: int =
+                  for (let var49: number = 0; var49 < 20; var49++) {
+                    let var121: number =
                       (GradiusNeoGame.state[1055 + var49] -
                         GradiusNeoGame.state[StateSlot.LogicFrame] * (var49 / 2 + 1)) &
                       0xff;
-                    let var129: int =
+                    let var129: number =
                       (GradiusNeoGame.state[1055 + 20 + var49] - GradiusNeoGame.state[StateSlot.CameraOffsetY]) & 0xff;
                     gfx.setColor(GradiusNeoGame.state[307 + var49]);
                     gfx.drawLine(
@@ -9326,8 +9440,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 }
 
                 case 4: {
-                  for (let var47: int = 0; var47 < 20; var47++) {
-                    let var127: int = GradiusNeoGame.state[1055 + 20 + var47] & 0xff;
+                  for (let var47: number = 0; var47 < 20; var47++) {
+                    let var127: number = GradiusNeoGame.state[1055 + 20 + var47] & 0xff;
                     GradiusNeoGame.state[0] =
                       (((((GradiusNeoGame.state[307 + var47] >> 16) & 0xff) * (92 - 8 * GradiusNeoGame.state[46])) /
                         100) <<
@@ -9338,7 +9452,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                       (((GradiusNeoGame.state[307 + var47] & 0xff) * (92 - 8 * GradiusNeoGame.state[46])) / 100);
                     gfx.setColor(GradiusNeoGame.state[0]);
                     if (GradiusNeoGame.state[46] < 8) {
-                      let var117: int =
+                      let var117: number =
                         (GradiusNeoGame.state[1055 + var47] -
                           GradiusNeoGame.state[StateSlot.LogicFrame] * (var47 / 2 + 1) * GradiusNeoGame.state[45]) &
                         0xff;
@@ -9351,7 +9465,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                         toRenderPixels(var127),
                       );
                     } else {
-                      let var118: int =
+                      let var118: number =
                         (GradiusNeoGame.state[1055 + var47] -
                           GradiusNeoGame.state[StateSlot.LogicFrame] *
                             ((var47 / 2) * GradiusNeoGame.state[45] + (GradiusNeoGame.state[46] - 1) * 4 + 1)) &
@@ -9367,8 +9481,8 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     }
                   }
 
-                  for (let var48: int = 0; var48 < 20; var48++) {
-                    let var128: int = (GradiusNeoGame.state[1055 + 20 + var48] + 80) & 0xff;
+                  for (let var48: number = 0; var48 < 20; var48++) {
+                    let var128: number = (GradiusNeoGame.state[1055 + 20 + var48] + 80) & 0xff;
                     GradiusNeoGame.state[0] =
                       (((((GradiusNeoGame.state[307 + var48] >> 16) & 0xff) * (92 - 8 * GradiusNeoGame.state[46])) /
                         100) <<
@@ -9379,7 +9493,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                       (((GradiusNeoGame.state[307 + var48] & 0xff) * (92 - 8 * GradiusNeoGame.state[46])) / 100);
                     gfx.setColor(GradiusNeoGame.state[0]);
                     if (GradiusNeoGame.state[46] < 8) {
-                      let var119: int =
+                      let var119: number =
                         (GradiusNeoGame.state[1055 + var48] -
                           GradiusNeoGame.state[StateSlot.LogicFrame] * (var48 / 2 + 1) * GradiusNeoGame.state[45] +
                           160) &
@@ -9393,7 +9507,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                         toRenderPixels(var128),
                       );
                     } else {
-                      let var120: int =
+                      let var120: number =
                         (GradiusNeoGame.state[1055 + var48] -
                           GradiusNeoGame.state[StateSlot.LogicFrame] *
                             ((var48 / 2) * GradiusNeoGame.state[45] + (GradiusNeoGame.state[46] - 1) * 4 + 1) +
@@ -9421,7 +9535,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                       GradiusNeoGame.state[StateSlot.VisualStageScrollX] === 96 ||
                       GradiusNeoGame.state[StateSlot.VisualStageScrollX] >= 128
                     ) {
-                      for (let var42: int = 0; var42 < 16; var42++) {
+                      for (let var42: number = 0; var42 < 16; var42++) {
                         GradiusNeoGame.state[1265 + 0 + var42] = 1;
                         GradiusNeoGame.state[1265 + 208 + var42] = 1;
                       }
@@ -9435,12 +9549,12 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     }
                   }
 
-                  for (let var43: int = 0; var43 < 20; var43++) {
-                    let var8: int =
+                  for (let var43: number = 0; var43 < 20; var43++) {
+                    let var8: number =
                       (GradiusNeoGame.state[1055 + var43] -
                         GradiusNeoGame.state[StateSlot.LogicFrame] * (var43 / 2 + 1) * GradiusNeoGame.state[45]) &
                       0xff;
-                    let var9: int = GradiusNeoGame.state[1055 + 20 + var43] & 0xff;
+                    let var9: number = GradiusNeoGame.state[1055 + 20 + var43] & 0xff;
                     gfx.setColor(GradiusNeoGame.state[307 + var43]);
                     gfx.drawLine(
                       toRenderPixels(var8),
@@ -9450,13 +9564,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     );
                   }
 
-                  for (let var44: int = 0; var44 < 20; var44++) {
-                    let var116: int =
+                  for (let var44: number = 0; var44 < 20; var44++) {
+                    let var116: number =
                       (GradiusNeoGame.state[1055 + var44] -
                         GradiusNeoGame.state[StateSlot.LogicFrame] * (var44 / 2 + 1) * GradiusNeoGame.state[45] +
                         160) &
                       0xff;
-                    let var126: int = (GradiusNeoGame.state[1055 + 20 + var44] + 80) & 0xff;
+                    let var126: number = (GradiusNeoGame.state[1055 + 20 + var44] + 80) & 0xff;
                     gfx.setColor(GradiusNeoGame.state[307 + var44]);
                     gfx.drawLine(
                       toRenderPixels(var116),
@@ -9466,7 +9580,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     );
                   }
 
-                  for (let var45: int = 0; var45 < 6; var45++) {
+                  for (let var45: number = 0; var45 < 6; var45++) {
                     GradiusNeoGame.enqueueRenderCommand(
                       0,
                       0 - (GradiusNeoGame.state[StateSlot.VisualStageScrollX] % 48) + var45 * 16 * 3,
@@ -9486,7 +9600,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   }
 
                   if (GradiusNeoGame.state[22] === 0 && 128 <= GradiusNeoGame.state[StateSlot.VisualStageScrollX]) {
-                    for (let var46: int = 0; var46 < 6; var46++) {
+                    for (let var46: number = 0; var46 < 6; var46++) {
                       this.drawSpriteRegion(
                         gfx,
                         4,
@@ -9516,7 +9630,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 }
 
                 case 6: {
-                  for (let var40: int = 0; var40 < 6; var40++) {
+                  for (let var40: number = 0; var40 < 6; var40++) {
                     GradiusNeoGame.enqueueRenderCommand(
                       0,
                       0 - (GradiusNeoGame.state[StateSlot.VisualStageScrollX] % 48) + var40 * 16 * 3,
@@ -9536,7 +9650,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   }
 
                   if (GradiusNeoGame.state[22] === 0) {
-                    for (let var41: int = 0; var41 < 6; var41++) {
+                    for (let var41: number = 0; var41 < 6; var41++) {
                       this.drawSpriteRegion(
                         gfx,
                         4,
@@ -9559,8 +9673,16 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 }
 
                 case 7: {
+                  // The room shell and all four doors share the same offset
+                  // while stage 5 scrolls to an adjacent chamber. Treat them
+                  // as one stable render source so the 60 Hz renderer follows
+                  // the 10 Hz room transition instead of stepping each door.
+                  GradiusNeoGame.renderQueue.beginMotionSource(
+                    STAGE_FIVE_ROOM_SOURCE_ID,
+                    GradiusNeoGame.state[87],
+                  );
                   if (GradiusNeoGame.state[22] === 0) {
-                    for (let var39: int = 0; var39 < 6 * GradiusNeoGame.state[88]; var39++) {
+                    for (let var39: number = 0; var39 < 6 * GradiusNeoGame.state[88]; var39++) {
                       this.drawSpriteRegion(
                         gfx,
                         4,
@@ -10136,26 +10258,27 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
                 default:
               }
+              GradiusNeoGame.renderQueue.endEntity();
 
               switch (GradiusNeoGame.state[86]) {
                 case 1: {
-                  if (++GradiusNeoGame.state[96] <= 4) {
-                    GradiusNeoGame.state[88]++;
+                  if (incrementAndGet(GradiusNeoGame.state, 96) <= 4) {
+                    getAndIncrement(GradiusNeoGame.state, 88);
                   } else {
                     GradiusNeoGame.state[88] = 4;
-                    GradiusNeoGame.state[86]++;
+                    getAndIncrement(GradiusNeoGame.state, 86);
                     GradiusNeoGame.spawnAuxiliaryEntity(112, GAMEPLAY_HEIGHT, 0, GradiusNeoGame.state[87]);
                   }
+                  break;
                 }
 
-                case 2:
-                default: {
+                case 2: {
                   break;
                 }
 
                 case 3:
-                  if (++s[89] >= 8) {
-                    s[86]++;
+                  if (incrementAndGet(s, 89) >= 8) {
+                    getAndIncrement(s, 86);
                     s[89] = s[96] = 0;
                     s[9751 + s[87]] = 1;
                     s[9747] = s[9748] = s[9750] = 0;
@@ -10197,15 +10320,15 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   }
                   break;
                 case 4:
-                  if (s[96]++ >= 10) {
-                    s[86]++;
+                  if (getAndIncrement(s, 96) >= 10) {
+                    getAndIncrement(s, 86);
                   } else {
                     if (s[96] <= 4) {
                       s[88] = 4 - s[96];
                       break;
                     }
 
-                    for (let var57: int = 1; var57 < 4; var57++) {
+                    for (let var57: number = 1; var57 < 4; var57++) {
                       if (s[9747 + var57] == 1) {
                         s[9739 + var57] = s[9739 + var57] + 4;
                       }
@@ -10215,17 +10338,17 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 case 5:
                   if (s[9748] == 1 && 88 <= s[1126] && s[1126] <= 112 && s[1143] <= 40) {
                     s[87] = s[87] - 5;
-                    s[86]++;
+                    getAndIncrement(s, 86);
                     s[91] = -1;
                     s[9746] = 24;
                   } else if (s[9749] == 1 && 80 <= s[1143] && s[1143] <= 128 && 168 <= s[1126]) {
-                    s[87]++;
-                    s[86]++;
+                    getAndIncrement(s, 87);
+                    getAndIncrement(s, 86);
                     s[90] = 1;
                     s[9743] = 24;
                   } else if (s[9750] == 1 && 88 <= s[1126] && s[1126] <= 112 && 168 <= s[1143]) {
                     s[87] = s[87] + 5;
-                    s[86]++;
+                    getAndIncrement(s, 86);
                     s[91] = 1;
                     s[9744] = 24;
                   }
@@ -10233,7 +10356,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   s[96] = 0;
                   break;
                 case 6:
-                  if (s[96]++ < 6) {
+                  if (getAndIncrement(s, 96) < 6) {
                     if (s[91] != -1 && s[9748] != 0) {
                       s[9740] = s[9740] - 4;
                     }
@@ -10246,7 +10369,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                       s[9742] = s[9742] - 4;
                     }
                   } else {
-                    s[86]++;
+                    getAndIncrement(s, 86);
                     if (s[87] % 5 != 0 || s[90] != 1) {
                       break;
                     }
@@ -10256,7 +10379,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     s[9745] = 24;
                     s[9743] = 0;
 
-                    for (let var56: int = 0; var56 < 752; var56++) {
+                    for (let var56: number = 0; var56 < 752; var56++) {
                       s[1265 + var56] = 0;
                     }
 
@@ -10264,47 +10387,47 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   }
                   break;
                 case 7:
-                  s[86]++;
+                  getAndIncrement(s, 86);
                 case 8:
                   if (s[90] == 1) {
                     s[92] = s[92] - 16;
                     s[1126] = s[1126] - 10;
 
-                    for (let var55: int = 16; var55 >= 1; var55--) {
+                    for (let var55: number = 16; var55 >= 1; var55--) {
                       s[1126 + var55] = s[1126 + var55] - 10;
                     }
 
                     if (s[92] <= -GAME_VIEW_WIDTH) {
-                      s[86]++;
+                      getAndIncrement(s, 86);
                       s[96] = 0;
                     }
                   } else {
                     s[93] = s[93] - 16;
                     s[1143] = s[1143] - (s[91] * 16 * 5) / 8;
 
-                    for (let var54: int = 16; var54 >= 1; var54--) {
+                    for (let var54: number = 16; var54 >= 1; var54--) {
                       s[1143 + var54] = s[1143 + var54] - (s[91] * 16 * 5) / 8;
                     }
 
                     if (s[93] <= -GAMEPLAY_HEIGHT) {
-                      s[86]++;
+                      getAndIncrement(s, 86);
                       s[96] = 0;
                     }
                   }
                   break;
                 case 9:
-                  if (s[96]++ >= 6) {
+                  if (getAndIncrement(s, 96) >= 6) {
                     s[86] = 1;
                     s[92] = s[93] = s[90] = s[91] = 0;
                     s[9739] = s[9740] = s[9741] = s[9742] = s[9743] = s[9744] = s[9745] = s[9746] = 0;
                     s[96] = 0;
 
-                    for (let var52: int = 0; var52 < 15; var52++) {
+                    for (let var52: number = 0; var52 < 15; var52++) {
                       s[1265 + 0 + ((s[52] / 16 + var52) % 16)] = 1;
                       s[1265 + 208 + ((s[52] / 16 + var52) % 16)] = 1;
                     }
 
-                    for (let var53: int = 1; var53 < 13; var53++) {
+                    for (let var53: number = 1; var53 < 13; var53++) {
                       s[1265 + var53 * 16 + ((s[52] / 16) % 16)] = 1;
                       s[1265 + var53 * 16 + ((s[52] / 16 + 14) % 16)] = 1;
                     }
@@ -10321,6 +10444,10 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                       s[9743] = s[9743] - 4;
                     }
                   }
+                  break;
+
+                default:
+                  break;
               }
 
               this.updatePrimaryEntities();
@@ -10332,11 +10459,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                 this.renderStageTerrain(gfx);
 
                 if (GradiusNeoGame.state[StateSlot.VisualStageScrollX] % 16 === 0) {
-                  let var112: int =
-                    GradiusNeoGame.state[48] + Math.trunc(GradiusNeoGame.state[StateSlot.VisualStageScrollX] / 16) * 2;
+                  let var112: number =
+                    GradiusNeoGame.state[48] + intDiv(GradiusNeoGame.state[StateSlot.VisualStageScrollX], 16) * 2;
 
-                  for (let var59: int = 0; var59 < GradiusNeoGame.state[37] / 16; var59++) {
-                    let var115: byte = 0;
+                  for (let var59: number = 0; var59 < GradiusNeoGame.state[37] / 16; var59++) {
+                    let var115: number = 0;
                     if (
                       (GradiusNeoGame.resourceBuffer[var112] & 255) >=
                       GradiusNeoGame.state[39] + GradiusNeoGame.state[40] - 1
@@ -10345,11 +10472,9 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                     }
 
                     GradiusNeoGame.state[
-                      1265 +
-                        var59 * 16 +
-                        ((Math.trunc(GradiusNeoGame.state[StateSlot.CollisionMapScrollX] / 16) - 1) % 16)
+                      1265 + var59 * 16 + ((intDiv(GradiusNeoGame.state[StateSlot.CollisionMapScrollX], 16) - 1) % 16)
                     ] = var115;
-                    var112 += Math.trunc(GradiusNeoGame.state[38] / 16) * 2;
+                    var112 += intDiv(GradiusNeoGame.state[38], 16) * 2;
                   }
                 }
               }
@@ -10382,14 +10507,14 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
               }
 
               if (GradiusNeoGame.state[StateSlot.Score] >= GradiusNeoGame.state[StateSlot.NextExtraLifeScore]) {
-                GradiusNeoGame.state[StateSlot.Lives]++;
+                getAndIncrement(GradiusNeoGame.state, StateSlot.Lives);
                 GradiusNeoGame.state[StateSlot.NextExtraLifeScore] =
                   GradiusNeoGame.state[StateSlot.NextExtraLifeScore] + 70000;
                 GradiusNeoGame.requestSoundEffect(7);
               }
               this.renderGameplayHud(gfx);
 
-              if (GradiusNeoGame.state[34] !== 0 && 20 < GradiusNeoGame.state[34]++) {
+              if (GradiusNeoGame.state[34] !== 0 && 20 < getAndIncrement(GradiusNeoGame.state, 34)) {
                 if (GradiusNeoGame.runtimeFlags[9]) {
                   GradiusNeoGame.runtimeFlags[9] = false;
                   GradiusNeoGame.screenState = ScreenState.ContinueOrResults;
@@ -10406,7 +10531,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                   ) {
                     switch (GradiusNeoGame.state[StateSlot.CurrentStage]) {
                       case 0: {
-                        if (++GradiusNeoGame.state[67] >= 4) {
+                        if (incrementAndGet(GradiusNeoGame.state, 67) >= 4) {
                           GradiusNeoGame.state[67] = 4;
                         }
 
@@ -10415,7 +10540,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                       }
 
                       case 1: {
-                        if (++GradiusNeoGame.state[67] >= 4) {
+                        if (incrementAndGet(GradiusNeoGame.state, 67) >= 4) {
                           GradiusNeoGame.state[67] = 4;
                         }
 
@@ -10430,7 +10555,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                       }
 
                       case 3: {
-                        if (++GradiusNeoGame.state[67] >= 4) {
+                        if (incrementAndGet(GradiusNeoGame.state, 67) >= 4) {
                           GradiusNeoGame.state[67] = 4;
                         }
 
@@ -10495,7 +10620,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
                       }
                     }
 
-                    GradiusNeoGame.state[StateSlot.CurrentRound]++;
+                    getAndIncrement(GradiusNeoGame.state, StateSlot.CurrentRound);
                     if (GradiusNeoGame.state[33] < GradiusNeoGame.state[StateSlot.CurrentRound]) {
                       GradiusNeoGame.state[33] = GradiusNeoGame.state[StateSlot.CurrentRound];
                     }
@@ -10519,7 +10644,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           }
 
           case ScreenState.Boot: {
-            this.introPhaseDeadlineMillis = java.lang.System.currentTimeMillis() + 2000n;
+            this.introPhaseDeadlineMillis = Clock.currentTimeMillis() + 2000n;
             this.konamiLogoImage = Image.createImage('/konami.png');
             this.loadSpriteSheet(0, 'c1');
             gfx.drawImage(this.konamiLogoImage, fromLegacyRenderPixels(90), fromLegacyRenderPixels(90), 3);
@@ -10531,10 +10656,10 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           case ScreenState.KonamiLogo: {
             gfx.drawImage(this.konamiLogoImage, fromLegacyRenderPixels(90), fromLegacyRenderPixels(90), 3);
             if (
-              java.lang.System.currentTimeMillis() > this.introPhaseDeadlineMillis ||
+              Clock.currentTimeMillis() > this.introPhaseDeadlineMillis ||
               GradiusNeoGame.state[StateSlot.PressedInputBits] !== 0
             ) {
-              this.introPhaseDeadlineMillis = java.lang.System.currentTimeMillis() + 2000n;
+              this.introPhaseDeadlineMillis = Clock.currentTimeMillis() + 2000n;
               GradiusNeoGame.screenState = ScreenState.TitleIntro;
               this.konamiLogoImage = null;
             }
@@ -10542,16 +10667,16 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
           }
 
           case ScreenState.TitleIntro: {
-            let nowMillis: long;
+            let nowMillis: bigint;
             if (
-              (nowMillis = java.lang.System.currentTimeMillis()) > this.introPhaseDeadlineMillis ||
+              (nowMillis = Clock.currentTimeMillis()) > this.introPhaseDeadlineMillis ||
               GradiusNeoGame.state[StateSlot.PressedInputBits] !== 0
             ) {
               GradiusNeoGame.screenState = ScreenState.PrepareMainMenu;
               this.drawSpriteRegion(gfx, 2, 349, 0, fromLegacyRenderPixels(24), 20);
             } else {
               if (nowMillis > this.introPhaseDeadlineMillis - 500n) {
-                let titleRevealProgressMillis: int = Number(500n - this.introPhaseDeadlineMillis + nowMillis);
+                let titleRevealProgressMillis: number = Number(500n - this.introPhaseDeadlineMillis + nowMillis);
                 this.drawSpriteRegion(
                   gfx,
                   2,
@@ -10601,7 +10726,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
         this.renderSoftKeyBar(gfx);
       } catch (var29) {
-        if (var29 instanceof java.lang.Throwable) {
+        if (var29 instanceof Error) {
           throw new Error(`GradiusNeoGame.paint state ${GradiusNeoGame.screenState}: ${var29.message}`, {
             cause: var29,
           });
@@ -10614,7 +10739,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
   private cycleSoundMode(): void {
     GradiusNeoGame.soundMode++;
-    GradiusNeoGame.soundMode %= 3;
+    GradiusNeoGame.soundMode %= 4;
     switch (GradiusNeoGame.soundMode) {
       case 0: {
         this.stopAllAudio();
@@ -10627,6 +10752,13 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
       }
 
       case 2: {
+        this.stopActiveAudioPlayer();
+        GradiusNeoGame.requestSoundEffect(7);
+        break;
+      }
+
+      case 3: {
+        GradiusNeoGame.requestBackgroundMusic(GradiusNeoGame.requestedBgmId);
         GradiusNeoGame.requestSoundEffect(7);
       }
 
@@ -10639,11 +10771,11 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
   private processPendingSoundEffect(): void {
     if (GradiusNeoGame.runtimeFlags[3]) {
       GradiusNeoGame.runtimeFlags[3] = false;
-      if (GradiusNeoGame.soundMode !== 2 && !this.soundTestActive) {
+      if (GradiusNeoGame.soundMode !== 2 && GradiusNeoGame.soundMode !== 3 && !this.soundTestActive) {
         return;
       }
 
-      let var1: java.lang.String[] = [
+      let var1: string[] = [
         '0_skyenemydie',
         '1_corehit',
         '2_enemydie1',
@@ -10662,19 +10794,19 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
   }
 
   private processPendingBackgroundMusic(): void {
-    if (java.lang.System.currentTimeMillis() < this.audioResumeDeadlineMillis && this.audioResumePending) {
+    if (Clock.currentTimeMillis() < this.audioResumeDeadlineMillis && this.audioResumePending) {
       GradiusNeoGame.requestBackgroundMusic(GradiusNeoGame.requestedBgmId);
-      java.lang.Thread.yield();
+      Clock.yield();
     } else {
       this.audioResumeDeadlineMillis = 0n;
       if (GradiusNeoGame.runtimeFlags[2]) {
         GradiusNeoGame.runtimeFlags[2] = false;
-        if (GradiusNeoGame.soundMode !== 1 && !this.soundTestActive) {
+        if (GradiusNeoGame.soundMode !== 1 && GradiusNeoGame.soundMode !== 3 && !this.soundTestActive) {
           return;
         }
 
-        let var3: int = GradiusNeoGame.requestedBgmId / 3 - 4;
-        let var4: java.lang.String[] = ['boss1', 'st1', 'st2', 'st3', 'st4', 'st5', 'boss2', 'lastboss', 'ending1'];
+        let var3: number = GradiusNeoGame.requestedBgmId / 3 - 4;
+        let var4: string[] = ['boss1', 'st1', 'st2', 'st3', 'st4', 'st5', 'boss2', 'lastboss', 'ending1'];
         this.queueAudioPlayback('/' + var4[var3] + '.mid', -1);
         if (this.audioResumePending) {
           this.audioResumePending = false;
@@ -10688,7 +10820,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
     this.audioSystem.update();
   }
 
-  private queueAudioPlayback(resourcePath: java.lang.String, loopCount: int): void {
+  private queueAudioPlayback(resourcePath: string, loopCount: number): void {
     this.audioSystem.queue(resourcePath, loopCount);
   }
 
@@ -10706,7 +10838,7 @@ export class GradiusNeoGame extends GameCanvas implements java.lang.Runnable {
 
   public resumeAfterAppShow(): void {
     if (GradiusNeoGame.appSuspended) {
-      this.audioResumeDeadlineMillis = java.lang.System.currentTimeMillis() + 1000n;
+      this.audioResumeDeadlineMillis = Clock.currentTimeMillis() + 1000n;
       this.audioResumePending = true;
       GradiusNeoGame.appSuspended = false;
       if (GradiusNeoGame.screenState === ScreenState.Gameplay) {

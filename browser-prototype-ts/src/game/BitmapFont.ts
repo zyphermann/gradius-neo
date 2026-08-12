@@ -1,5 +1,4 @@
-import { Graphics } from '../j2me/lcdui/Graphics';
-import type { Image } from '../j2me/lcdui/Image';
+import { Graphics, type Image } from '../platform';
 import type { SpriteTable } from './SpriteTable';
 
 /** Portierung von b.a(Graphics, String, int, int). */
@@ -18,8 +17,8 @@ export class BitmapFont {
           graphics,
           this.image,
           sprite,
-          Math.trunc((x - 2) * 3 / 4),
-          Math.trunc((originalY - 2) * 3 / 4),
+          Math.trunc(((x - 2) * 3) / 4),
+          Math.trunc(((originalY - 2) * 3) / 4),
           Graphics.LEFT | Graphics.TOP,
         );
       }
