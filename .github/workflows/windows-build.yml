@@ -86,6 +86,9 @@ jobs:
           python -m nuitka `
             --mode=standalone `
             --assume-yes-for-downloads `
+            --lto=no `
+            --low-memory `
+            --jobs=2 `
             --windows-console-mode=disable `
             --python-flag=no_asserts `
             --python-flag=no_docstrings `
