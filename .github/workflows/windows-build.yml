@@ -86,7 +86,6 @@ jobs:
           python -m nuitka `
             --mode=standalone `
             --assume-yes-for-downloads `
-            --mingw64 `
             --clang `
             --lto=no `
             --low-memory `
