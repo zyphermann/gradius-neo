@@ -19,6 +19,7 @@ Controls:
   Escape           Back
   F1               Video filter
   F2               Screen size: 2x / 3x / full height
+  Alt+Enter        Toggle fullscreen
 
 Gamepad (SDL/XInput, including 8BitDo SN30 Pro):
   D-pad / left stick  Move

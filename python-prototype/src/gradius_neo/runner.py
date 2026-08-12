@@ -121,9 +121,8 @@ def main() -> None:
     scale_mode_index = 0
     display_effect_index = 1
     background_path, resource_path, save_path = runtime_paths()
-    background = pygame.image.load(str(background_path))
-    if background.get_size() != (output_width, output_height):
-        background = pygame.transform.smoothscale(background, (output_width, output_height))
+    background_source = pygame.image.load(str(background_path))
+    background = background_source
 
     def game_position_for_size(game_size: tuple[int, int]) -> tuple[int, int]:
         centered_y = (output_height - game_size[1]) // 2 + round(39 * layout_scale)
@@ -142,6 +141,26 @@ def main() -> None:
         base_game_position[0] + base_game_size[0] / 2,
         base_game_position[1] + base_game_size[1] / 2,
     )
+
+    def recalculate_layout() -> None:
+        nonlocal output_width, output_height, layout_scale, bezel_width, background
+        nonlocal base_presentation_scale, base_game_size, base_game_position, background_pivot
+        output_width, output_height = window.size
+        layout_scale = min(output_width / WINDOW_WIDTH, output_height / WINDOW_HEIGHT)
+        bezel_width = max(1, round(10 * layout_scale))
+        background = pygame.transform.smoothscale(background_source, (output_width, output_height))
+        base_presentation_scale = 2 * layout_scale
+        base_game_size = (
+            round(RENDER_WIDTH * base_presentation_scale),
+            round(RENDER_HEIGHT * base_presentation_scale),
+        )
+        base_game_position = game_position_for_size(base_game_size)
+        background_pivot = (
+            base_game_position[0] + base_game_size[0] / 2,
+            base_game_position[1] + base_game_size[1] / 2,
+        )
+
+    recalculate_layout()
 
     def create_presentation(scale_mode: int):
         if scale_mode < 2:
@@ -252,6 +271,28 @@ def main() -> None:
             f"Filter: {display_effects[display_effect_index][0]}"
         )
 
+    def toggle_fullscreen() -> None:
+        nonlocal fullscreen, game_surface, game_texture, bezel_surface, bezel_texture
+        nonlocal display_effects, game_position, background_texture, background_position, background_size
+        if fullscreen:
+            window.set_windowed()
+        else:
+            window.set_fullscreen(desktop=True)
+        fullscreen = not fullscreen
+        pygame.event.pump()
+        recalculate_layout()
+        (
+            game_surface,
+            game_texture,
+            bezel_surface,
+            bezel_texture,
+            display_effects,
+            game_position,
+            background_texture,
+            background_position,
+            background_size,
+        ) = create_presentation(scale_mode_index)
+
     def pause_game() -> None:
         if GradiusNeoGame.screenState == ScreenState.Gameplay:
             game.keyPressed(-7 if GradiusNeoGame.runtimeFlags[4] else -8)
@@ -270,6 +311,13 @@ def main() -> None:
                 pygame.CONTROLLERDEVICEREMAPPED,
             ):
                 gamepads.refresh()
+            elif (
+                event.type == pygame.KEYDOWN
+                and event.key == pygame.K_RETURN
+                and event.mod & pygame.KMOD_ALT
+                and not getattr(event, "repeat", False)
+            ):
+                toggle_fullscreen()
             elif event.type == pygame.KEYDOWN and event.key in (pygame.K_F1, pygame.K_f):
                 cycle_display_effect()
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_F2:
