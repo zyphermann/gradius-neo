@@ -25,6 +25,17 @@ jobs:
           cache: pip
           cache-dependency-path: python-prototype/pyproject.toml
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: browser-prototype-ts/package-lock.json
+
+      - name: Install generator dependencies
+        working-directory: browser-prototype-ts
+        run: npm ci
+
       - name: Install build dependencies
         shell: pwsh
         run: |
