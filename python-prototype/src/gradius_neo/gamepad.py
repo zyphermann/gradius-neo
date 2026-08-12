@@ -27,21 +27,18 @@ class GamepadManager:
         self.refresh()
 
     def refresh(self) -> None:
-        self._controllers = {
-            instance_id: gamepad
-            for instance_id, gamepad in self._controllers.items()
-            if gamepad.attached()
-        }
-        known_ids = set(self._controllers)
+        for gamepad in self._controllers.values():
+            if gamepad.get_init():
+                gamepad.quit()
+        self._controllers.clear()
         for device_index in range(controller_api.get_count()):
             if not controller_api.is_controller(device_index):
                 continue
-            gamepad = controller_api.Controller(device_index)
-            if gamepad.id in known_ids:
-                gamepad.quit()
+            try:
+                gamepad = controller_api.Controller(device_index)
+            except pygame.error:
                 continue
             self._controllers[gamepad.id] = gamepad
-            known_ids.add(gamepad.id)
             print(f"Gamepad connected: {gamepad.name}")
 
     def poll(self) -> tuple[set[int], set[int], bool, bool, bool]:
@@ -68,10 +65,10 @@ class GamepadManager:
         disconnected = False
 
         for gamepad in self._controllers.values():
-            if not gamepad.attached():
-                disconnected = True
-                continue
             try:
+                if not gamepad.get_init() or not gamepad.attached():
+                    disconnected = True
+                    continue
                 horizontal = gamepad.get_axis(pygame.CONTROLLER_AXIS_LEFTX)
                 vertical = gamepad.get_axis(pygame.CONTROLLER_AXIS_LEFTY)
                 if horizontal < -AXIS_DEAD_ZONE or gamepad.get_button(pygame.CONTROLLER_BUTTON_DPAD_LEFT):
